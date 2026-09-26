@@ -1,3 +1,27 @@
 spring:
   application:
     name: nova-server
+  datasource:
+    url: jdbc:mysql://localhost:3306/game
+    username: root
+    password: ${DB_PASSWORD:1234}
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:local-development-secret-please-change-in-production-0123456789}
+    access-token-validity-seconds: 900
+    refresh-token-validity-seconds: 2592000
+
+  oauth:
+    google-client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
+    apple-client-id: ${APPLE_OAUTH_CLIENT_ID:}
