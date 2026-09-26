@@ -12,9 +12,9 @@ respond when one fails.
 | `check-merge-conflict` | Detects leftover merge markers (`<<<<<<<`, `=======`) | Blocking |
 | `check-added-large-files` | Blocks new files over 5MB (`--maxkb=5000`) | Blocking |
 | `conventional-pre-commit` | Enforces Conventional Commits format (`commit-msg` stage) | Blocking |
-| `gitleaks` | Scans for hardcoded API keys, tokens, passwords | Blocking |
+| `gitleaks` | Scans for hardcoded API keys, tokens, passwords (misses short/low-entropy values like `password: 1234`) | Blocking |
 | `spotless-apply` | Formats Java code to Google Java Format (`./gradlew spotlessApply`) | Auto-fix |
-| `checkstyle` | Java lint check (`./gradlew checkstyleMain checkstyleTest`) | Blocking |
+| `checkstyle` | Java lint check incl. missing Javadoc (`./gradlew checkstyleMain checkstyleTest`) | Blocking |
 
 ## Auto-fix vs blocking
 
@@ -42,7 +42,13 @@ rework at commit time (optional, not required):
 ```
 
 Unlike Spotless, Checkstyle doesn't auto-fix — if there are violations, read the
-report and fix them by hand.
+report and fix them by hand. The HTML/XML reports are under
+`build/reports/checkstyle/`. The most common violation is missing or malformed
+Javadoc (see section 4 of `../SKILL.md`).
+
+If the build itself fails to evaluate (e.g. `Could not find method spotless()`),
+the hook isn't reporting a code problem — a plugin in `build.gradle` is missing or
+misconfigured. Fix the build script rather than the Java code.
 
 If you're unsure the commit message itself is compliant, manually check it
 against the type list and format before running `git commit`.

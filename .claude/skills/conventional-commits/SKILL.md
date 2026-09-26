@@ -7,7 +7,7 @@ description: Use when writing a git commit message in this repository — read t
 
 This repository enforces [Conventional Commits](https://www.conventionalcommits.org)
 via the `conventional-pre-commit` hook. If the hook rejects a commit, don't bypass the
-format — fix only what the rejection message points at and recommit (see section 3).
+format — fix only what the rejection message points at and recommit (see section 6).
 
 ## 1. This repo's agreed convention
 
@@ -17,7 +17,6 @@ Scope is not enforced, but fill one in when it's reasonably clear. Suggested val
 by layer:
 
 - Spring/Java repo: `api`, `entity`, `service`, `config`, `security`
-- Unity/C# repo: `ui`, `anim`, `audio`, `unity-meta`
 - Domain/feature scopes (once genre is settled) are fine too, and often read better in
   a CHANGELOG than layer names — e.g. `feat(shop): ...` over `feat(api): ...` for a
   user-facing change. Neither is required; use whichever helps a reader more.
@@ -33,7 +32,7 @@ Format: `type(scope): description`
 ```
 feat(shop): 상점 아이템 목록 조회 API 추가
 fix(entity): 연관관계 매핑 오류 수정
-chore(unity-meta): .meta 파일 정리
+chore(config): Checkstyle 규칙 추가
 ```
 
 - Description in the language the team actually writes commits in (Korean is fine —
@@ -51,7 +50,56 @@ commit time (formatting, secret scanning, lint). See
 `references/pre-commit-hooks.md` for the full hook list, how each one behaves, and
 commands to run them ahead of time.
 
-## 4. Split unrelated changes before committing
+If there are Java changes, Spotless and Checkstyle run against the whole build at
+commit time and can be slow, so running the following ahead of time avoids any
+rework at commit time (optional, not required):
+
+```
+./gradlew spotlessApply checkstyleMain checkstyleTest --quiet --build-cache
+```
+
+`gitleaks` only catches credentials that look like real keys — known token formats
+or long, high-entropy strings. A short literal such as `password: 1234` in
+`application*.yaml` passes it. Before committing config changes, check the staged
+diff for hardcoded passwords/secrets yourself and write them as
+`${ENV_VAR:local-default}` (e.g. `password: ${DB_PASSWORD:1234}`) so real values
+come from the environment. Test-only config under `src/test/resources` may keep
+obvious dummy values.
+
+## 4. Add missing Javadoc before committing
+
+Checkstyle (`MissingJavadocType`, `MissingJavadocMethod`, `maxWarnings = 0`) blocks
+the commit when Javadoc is missing, and it only reports after a slow full-build run.
+So check the staged diff yourself before committing and add Javadoc wherever the
+rules below require it — treat it like a compiler error: always fix it, don't ask
+whether to. Write the Javadoc in Korean (`docs/conventions.md`: 한글 Javadoc).
+
+Required on:
+
+- Every public/protected class, interface, enum, record, and annotation type
+  (except `@SpringBootApplication` / `@Generated`).
+- Public/protected methods and constructors whose body is 2+ lines, inside a
+  public type.
+
+Not required (same carve-outs as `config/checkstyle/checkstyle.xml`):
+
+- Members annotated `@Override`, `@Test`, or `@GetMapping`/`@PostMapping`/
+  `@PutMapping`/`@PatchMapping`/`@DeleteMapping`/`@RequestMapping`.
+- Repository-style methods: `findBy*`, `findAll*`, `findById*`, `save*`, `delete*`,
+  `deleteBy*`, `existsBy*`, `countBy*`, `getById*`.
+- Simple getters/setters, one-line methods, and members of non-public types.
+
+Format rules that Checkstyle also enforces once Javadoc exists:
+
+- The first sentence is the summary and **must end with a period**, even in
+  Korean: `/** 사용자 정보를 조회한다. */`, not `/** 사용자 정보 조회 */`.
+- Every `@param`/`@return`/`@throws` tag needs a description, tags come in that
+  order, and an empty line separates them from the description. `@param` and
+  `@return` themselves are optional.
+- A multi-paragraph body puts `<p>` directly before the first word of each new
+  paragraph (not on its own line).
+
+## 5. Split unrelated changes before committing
 
 A commit should represent one kind of change. Before writing a commit message,
 check what's actually staged (`git diff --staged`, or `git status` if nothing is
@@ -93,7 +141,7 @@ coherent enough" — that judgment call belongs to the user, not to you jumping
 straight into a mixed-concerns analysis or a per-file splitting proposal. Ask
 this scope question first, unconditionally, whenever staged content already
 exists; only after the user answers it do you move on to checking whether the
-resulting scope mixes concerns (section 4 above) or is branch-unrelated (below).
+resulting scope mixes concerns (section 5 above) or is branch-unrelated (below).
 
 **Branch-unrelated changes are a separate question from grouping.** If a change
 touches a file/area that doesn't match what the current branch name or PR is
@@ -111,7 +159,7 @@ Don't collapse this into a "how do you want it grouped" question that assumes
 inclusion — offering only bundling variants silently forecloses the "don't
 commit this here at all" option the user needed to see.
 
-## 5. Self-correct when a hook rejects
+## 6. Self-correct when a hook rejects
 
 Several hooks run together, so the response depends on the kind of rejection —
 auto-fix hooks (whitespace/EOF/Spotless) just need a restage and recommit, blocking
