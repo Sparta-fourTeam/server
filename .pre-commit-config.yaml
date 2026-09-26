@@ -1,0 +1,44 @@
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace # 줄 끝 공백 제거
+      - id: end-of-file-fixer # 파일 끝에 개행 문자 하나만 남도록 정리
+      - id: check-merge-conflict # <<<<<<<, ======= 같은 머지 충돌 마커가 남아있는지 검사
+      - id: check-added-large-files # 빌드 산출물이나 대용량 리소스가 커밋되는 걸 방지
+        args: [--maxkb=5000] # 5MB 넘는 파일이 새로 추가되는 걸 막음
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.4.0
+    hooks:
+      - id: conventional-pre-commit # Conventional Commits 형식(feat:, fix:, chore: 등)을 강제합니다.
+        stages: [commit-msg]
+        args: []  # 기본 타입 목록(feat, fix, docs, style, refactor, test, chore 등)
+        # 커스텀 타입(perf, build, ci 등)을 쓰고 싶다면 args: [--types, "feat,fix,perf,ci"] 식으로 추가할 수 있습니다.
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.29.1
+    hooks:
+      - id: gitleaks # API 키, 토큰, 패스워드 같은 민감 정보가 코드에 하드코딩되어 커밋되는 걸 스캔해서 막아줍니다.
+
+  - repo: local
+    hooks:
+      - id: spotless-apply # Java 포맷 검사
+        name: Spotless (Google Java Format) Check # Google Java Format 기준으로 코드 스타일 검사
+        entry: ./gradlew spotlessApply --quiet --build-cache
+        language: system
+        types: [java]
+        pass_filenames: false
+
+  - repo: local
+    hooks:
+      - id: checkstyle
+        name: Checkstyle
+        entry: ./gradlew checkstyleMain checkstyleTest --quiet --build-cache
+        language: system
+        types: [java]
+        pass_filenames: false

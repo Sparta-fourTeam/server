@@ -9,5 +9,4 @@ public class NovaServerApplication {
     public static void main(String[] args) {
         SpringApplication.run(NovaServerApplication.class, args);
     }
-
 }
