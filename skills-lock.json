@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "skills": {
+    "amplicode-install": {
+      "source": "Amplicode/spring-skills",
+      "sourceType": "github",
+      "skillPath": "skills/amplicode-install/SKILL.md",
+      "computedHash": "ab874af40ee1f1d9bbdd52deaa8113838a7857ecf1d971402f75b8f08a57cf09"
+    },
+    "codefmt": {
+      "source": "Amplicode/spring-skills",
+      "sourceType": "github",
+      "skillPath": "skills/codefmt/SKILL.md",
+      "computedHash": "4d70b6998e3c2f119e85b21101436c8f8d61834255ef1a03619b15fbd12574cd"
+    },
+    "connekt-script-writer": {
+      "source": "Amplicode/spring-skills",
+      "sourceType": "github",
+      "skillPath": "skills/connekt-script-writer/SKILL.md",
+      "computedHash": "7ba205c968eb1f9faed9539354cf156575fa9e0296061c7f48b9f2ab6dd2d733"
+    },
+    "coverage": {
+      "source": "Amplicode/spring-skills",
+      "sourceType": "github",
+      "skillPath": "skills/coverage/SKILL.md",
+      "computedHash": "0fdb6b1fca0a94e7d5cb3244801af7c2c69db014a8d60e9e1e150816d575d134"
+    },
+    "crud-rest-controller": {
+      "source": "Amplicode/spring-skills",
+      "sourceType": "github",
+      "skillPath": "skills/crud-rest-controller/SKILL.md",
+      "computedHash": "88134dc43233e82f2c413ed6f30e2b3e9e539b3917cb19f33ad57d41f186b0cb"
+    },
+    "dto-creator": {
+      "source": "Amplicode/spring-skills",
+      "sourceType": "github",
+      "skillPath": "skills/dto-creator/SKILL.md",
+      "computedHash": "ab81be16315ad3ab6261c21613dc398e119058d9510a156c9a739c137cf62f33"
+    },
+    "java-debug": {
+      "source": "Amplicode/spring-skills",
+      "sourceType": "github",
+      "skillPath": "skills/java-debug/SKILL.md",
+      "computedHash": "8cabf6c8a218d064ef906d86867be454e464673a1c8c1234d1c4ef801816b0db"
+    },
+    "kafka-configuration": {
+      "source": "Amplicode/spring-skills",
+      "sourceType": "github",
+      "skillPath": "skills/kafka-configuration/SKILL.md",
+      "computedHash": "fbb6383bfd7e8752ab3a749f4527c7af8f2f541b2ed95721fef034b881bd723c"
+    },
+    "mapper-creator": {
+      "source": "Amplicode/spring-skills",
+      "sourceType": "github",
+      "skillPath": "skills/mapper-creator/SKILL.md",
+      "computedHash": "a58a104efbd0d4abaeeb5ff1178cdadfb6958b8df11d73f089655ea4fd2f3734"
+    },
+    "mutation-testing": {
+      "source": "Amplicode/spring-skills",
+      "sourceType": "github",
+      "skillPath": "skills/mutation-testing/SKILL.md",
+      "computedHash": "ebfbc719eda8c653dd73220252b5aeb8a96181589dd15a98fce9a197f642f9d5"
+    },
+    "run-tests": {
+      "source": "Amplicode/spring-skills",
+      "sourceType": "github",
+      "skillPath": "skills/run-tests/SKILL.md",
+      "computedHash": "e5a773634141ced1151d0c522bde41a54075e436d5e4f56346c601f9a9c90bad"
+    },
+    "spring-data-jdbc": {
+      "source": "Amplicode/spring-skills",
+      "sourceType": "github",
+      "skillPath": "skills/spring-data-jdbc/SKILL.md",
+      "computedHash": "4f098550fb4d4862ea008252e958225678eb340a73e70fe51c926c7b7bad19c0"
+    },
+    "spring-data-jpa": {
+      "source": "Amplicode/spring-skills",
+      "sourceType": "github",
+      "skillPath": "skills/spring-data-jpa/SKILL.md",
+      "computedHash": "2a936a98887045bc91280fdcba4ecb1de8b54b3453f59def0e7843704c311ace"
+    },
+    "spring-explore": {
+      "source": "Amplicode/spring-skills",
+      "sourceType": "github",
+      "skillPath": "skills/spring-explore/SKILL.md",
+      "computedHash": "dd6069d85cae4871689daab0a982aa804c66a3ab583d3d936ebcde4204ca2f7b"
+    },
+    "spring-planning": {
+      "source": "Amplicode/spring-skills",
+      "sourceType": "github",
+      "skillPath": "skills/spring-planning/SKILL.md",
+      "computedHash": "be5e4950dbfaf4e876d2164a7211bc308b348d19b7c6cc6ace56b5a18ec22ac5"
+    },
+    "spring-security-configuration": {
+      "source": "Amplicode/spring-skills",
+      "sourceType": "github",
+      "skillPath": "skills/spring-security-configuration/SKILL.md",
+      "computedHash": "60dbc041e75b434b079874d1c01bf19b282a335e9fa89e38f3556d186803969b"
+    }
+  }
+}
