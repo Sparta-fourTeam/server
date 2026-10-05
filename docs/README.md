@@ -10,6 +10,7 @@
 - 공통 작업 규칙(브랜치, 커밋, PR): 조직 `.github` 레포의 `CONTRIBUTING.md`
 - 스테이지 흐름과 실패·복구 처리: 클라이언트 레포 `docs/flows.md`
 - API 명세: ApiDog
+- 모든 `@RestController` 경로 앞에는 `WebConfig`가 `/api`를 자동으로 붙인다. 컨트롤러에는 `/api`를 쓰지 않는다 (예: `@RequestMapping("/users")` → `/api/users`)
 
 ## 스택
 
