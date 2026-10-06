@@ -24,10 +24,10 @@
 
 ## 예외 처리
 
-- 최상위 공통 예외(`BusinessException`)를 두고, 도메인 예외는 이를 상속한다
-- 커스텀 예외는 `HttpStatus`와 메시지를 들고 있다
-- 컨트롤러마다 try-catch를 두지 않고, `@RestControllerAdvice` 하나에서 `ErrorResponse`로 바꾼다
-- 예외는 원인이 되는 계층(주로 Service)에서 던진다. Repository와 엔티티에서는 처리하지 않는다
+- 에러는 `global/error/ErrorCode`에 상태 코드와 메시지를 추가하고, `ErrorCode.XXX.exception(...)`으로 던진다
+- 응답 형식은 `CustomErrorAttributes`가 공통 형식으로 맞춘다
+- 예외는 원인이 되는 계층(주로 Service)에서 던진다. Repository와 엔티티에서는 던지지 않는다
+- 500 에러는 `ResponseStatusException`으로 직접 던진 경우만 메시지가 클라에 나가고, 그 외에는 "서버 오류가 발생했습니다"로 가려진다
 - 로그: 4xx는 `warn`, 5xx는 `error`
 
 ## JPA
