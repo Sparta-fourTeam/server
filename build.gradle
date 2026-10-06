@@ -73,7 +73,7 @@ checkstyle {
 }
 
 tasks.named('compileJava') {
-  dependsOn 'spotlessCheck'
+  dependsOn(System.getenv('CI') ? 'spotlessCheck' : 'spotlessApply')
 }
 
 tasks.named('check') {
