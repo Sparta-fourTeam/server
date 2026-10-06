@@ -13,9 +13,10 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.server.ResponseStatusException;
 
 /** 기본 에러 응답을 팀 공통 형식(status, error, message, path)으로 맞춘다. */
+@Slf4j
 @Component
 public class CustomErrorAttributes extends DefaultErrorAttributes {
-    
+
     @Override
     public Map<String, Object> getErrorAttributes(
             WebRequest webRequest, ErrorAttributeOptions options) {
@@ -34,6 +35,7 @@ public class CustomErrorAttributes extends DefaultErrorAttributes {
         } else if (error instanceof HttpMessageNotReadableException) {
             attrs.put("message", ErrorCode.INVALID_REQUEST.getMessage());
         } else if (status >= 500) {
+            log.error("서버 오류: {}", attrs.get("path"), error);
             if (!(error instanceof ResponseStatusException)) {
                 attrs.put("message", ErrorCode.INTERNAL_ERROR.getMessage());
             }
