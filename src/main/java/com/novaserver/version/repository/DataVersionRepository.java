@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-/** 데이터 버전 조회, 증가 */
+/** 데이터 버전 조회, 증가. */
 public interface DataVersionRepository extends JpaRepository<DataVersion, String> {
     @Modifying(clearAutomatically = true)
     @Query(

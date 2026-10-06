@@ -1,5 +1,6 @@
 package com.novaserver.version.service;
 
+import com.novaserver.global.error.ErrorCode;
 import com.novaserver.version.dto.DataVersionResponse;
 import com.novaserver.version.entity.DataTable;
 import com.novaserver.version.entity.DataVersion;
@@ -8,18 +9,16 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
-/** 게임 데이터 버전을 조회 및 버전 업데이트 */
+/** 게임 데이터 버전을 조회 및 버전 업데이트. */
 @Service
 @RequiredArgsConstructor
 public class DataVersionService {
     private final DataVersionRepository dataVersionRepository;
 
-    /** 전체 리비전과 테이블별 버전 조회 */
+    /** 전체 리비전과 테이블별 버전 조회. */
     @Transactional(readOnly = true)
     public DataVersionResponse getVersions() {
         Map<String, Integer> saved =
@@ -38,16 +37,20 @@ public class DataVersionService {
         return new DataVersionResponse(revision, tables);
     }
 
-    /** 테이블 버전과 전체 리비전을 1 올림 */
+    /** 테이블 버전과 전체 리비전을 1 올림. */
     @Transactional
-    public void increase(DataTable table) {
+    public void increase(String key) {
+        DataTable table =
+                DataTable.fromKey(key)
+                        .orElseThrow(() -> ErrorCode.DATA_TABLE_NOT_FOUND.exception(key));
+
         int updated =
                 dataVersionRepository.increaseVersion(table.getKey(), DataVersion.REVISION_KEY);
 
-        // 누군가 해당 테이블의 값을 없앴을 때
+        // 해당 테이블의 값이 사라졌을 때
+        // updated가 2라면 정상, 1이면 둘 중 하나가 없음, 0이면 둘다 없음
         if (updated != 2) {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR, "데이터 버전 행이 없습니다: " + table.getKey());
+            throw ErrorCode.DATA_VERSION_ROW_MISSING.exception(table.getKey());
         }
     }
 }

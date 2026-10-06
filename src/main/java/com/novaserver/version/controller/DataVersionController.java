@@ -1,15 +1,15 @@
 package com.novaserver.version.controller;
 
+import com.novaserver.version.dto.DataVersionRequest;
 import com.novaserver.version.dto.DataVersionResponse;
-import com.novaserver.version.entity.DataTable;
 import com.novaserver.version.service.DataVersionService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-/** 게임 데이터 버전 API */
+/** 게임 데이터 버전 API. */
 @Tag(name = "데이터 버전")
 @RestController
 @RequestMapping("/data")
@@ -25,7 +25,7 @@ public class DataVersionController {
 
     @Operation(summary = "버전 정보 업데이트", description = "특정 테이블의 버전 정보를 1 올립니다.")
     @PostMapping("/version")
-    public void updateVersion(@RequestBody @Parameter(name = "데이터 테이블") DataTable table) {
-        dataVersionService.increase(table);
+    public void updateVersion(@RequestBody @Valid DataVersionRequest request) {
+        dataVersionService.increase(request.getTable());
     }
 }

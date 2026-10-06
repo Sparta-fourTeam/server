@@ -1,5 +1,7 @@
 package com.novaserver.version.entity;
 
+import java.util.Arrays;
+import java.util.Optional;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -14,4 +16,8 @@ public enum DataTable {
     CARDS("Cards");
 
     private final String key;
+
+    public static Optional<DataTable> fromKey(String key) {
+        return Arrays.stream(values()).filter(t -> t.key.equals(key)).findFirst();
+    }
 }

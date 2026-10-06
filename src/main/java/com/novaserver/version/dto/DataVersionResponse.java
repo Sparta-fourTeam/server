@@ -6,7 +6,7 @@ import lombok.Getter;
 /**
  * 데이터 버전 응답.
  *
- * <p>revision 전체 리비전 tables 테이블 키별 버전
+ * <p>revision 전체 리비전 tables 테이블 키별 버전.
  */
 @Getter
 public class DataVersionResponse {

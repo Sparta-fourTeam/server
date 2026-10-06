@@ -1,6 +1,7 @@
 package com.novaserver.global.error;
 
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.error.ErrorAttributeOptions;
 import org.springframework.boot.web.error.ErrorAttributeOptions.Include;
 import org.springframework.boot.webmvc.error.DefaultErrorAttributes;
@@ -13,10 +14,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 /** 기본 에러 응답을 팀 공통 형식(status, error, message, path)으로 맞춘다. */
 @Component
-public class ErrorAttributes extends DefaultErrorAttributes {
-
-    private static final String SERVER_ERROR_MESSAGE = "서버 오류가 발생했습니다";
-
+public class CustomErrorAttributes extends DefaultErrorAttributes {
+    
     @Override
     public Map<String, Object> getErrorAttributes(
             WebRequest webRequest, ErrorAttributeOptions options) {
@@ -33,10 +32,10 @@ public class ErrorAttributes extends DefaultErrorAttributes {
                 attrs.put("message", fieldError.getDefaultMessage());
             }
         } else if (error instanceof HttpMessageNotReadableException) {
-            attrs.put("message", "요청 형식이 올바르지 않습니다");
+            attrs.put("message", ErrorCode.INVALID_REQUEST.getMessage());
         } else if (status >= 500) {
             if (!(error instanceof ResponseStatusException)) {
-                attrs.put("message", SERVER_ERROR_MESSAGE); // 예상 못 한 예외만 가림
+                attrs.put("message", ErrorCode.INTERNAL_ERROR.getMessage());
             }
         }
         return attrs;
