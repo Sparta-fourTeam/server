@@ -1,24 +1,17 @@
 spring:
   application:
     name: nova-server
-  datasource:
-    url: jdbc:mysql://localhost:3306/game
-    username: root
-    password: ${DB_PASSWORD:1234}
+  profiles:
+    default: local          # 아무 프로필도 지정 안 하면 local로 실행
+  config:
+    import: optional:file:.env[.properties] # 프로젝트 폴더의 .env를 읽음
 
   jpa:
-    show-sql: true
     hibernate:
       ddl-auto: update
 
-  data:
-    redis:
-      host: localhost
-      port: 6379
-
 app:
   jwt:
-    secret: ${JWT_SECRET:local-development-secret-please-change-in-production-0123456789}
     access-token-validity-seconds: 900
     refresh-token-validity-seconds: 2592000
 

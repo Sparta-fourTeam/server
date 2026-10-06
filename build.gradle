@@ -43,7 +43,7 @@ dependencies {
   testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
   testAnnotationProcessor 'org.projectlombok:lombok'
   testImplementation 'com.h2database:h2'
-  implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0'
+  implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0' // Swagger
   implementation 'org.springframework.boot:spring-boot-starter-actuator' // 헬스체크용
 }
 

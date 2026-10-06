@@ -2,3 +2,4 @@
 build
 src
 .idea
+.env
