@@ -1,21 +1,19 @@
 package com.novaserver.skill.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.novaserver.global.entity.BaseTimeEntity;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** 스킬 투사체 경로. name은 유니티가 그대로 받는 값이다. */
+/**
+ * 스킬 투사체 경로. name은 유니티가 그대로 받는 값이다.
+ */
 @Entity
 @Table(name = "skill_projectile_path")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class SkillProjectilePath {
+public class SkillProjectilePath extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -29,7 +27,7 @@ public class SkillProjectilePath {
     /**
      * 투사체 경로를 생성한다.
      *
-     * @param name 유니티에 내려가는 이름
+     * @param name  유니티에 내려가는 이름
      * @param label 관리 화면 표시 이름
      */
     public SkillProjectilePath(String name, String label) {
@@ -40,7 +38,7 @@ public class SkillProjectilePath {
     /**
      * 이름과 표시 이름을 수정한다.
      *
-     * @param name 유니티에 내려가는 이름
+     * @param name  유니티에 내려가는 이름
      * @param label 관리 화면 표시 이름
      */
     public void update(String name, String label) {

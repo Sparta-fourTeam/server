@@ -1,0 +1,24 @@
+package com.novaserver.skill.dto;
+
+import com.novaserver.skill.entity.SkillProjectilePath;
+import lombok.Getter;
+
+import java.time.LocalDateTime;
+
+/**
+ * 스킬 투사체 경로 응답.
+ */
+@Getter
+public class SkillProjectilePathResponse {
+    private final Long id;
+    private final String name;
+    private final String label;
+    private final LocalDateTime updatedAt;
+
+    public SkillProjectilePathResponse(SkillProjectilePath projectilePath) {
+        this.id = projectilePath.getId();
+        this.name = projectilePath.getName();
+        this.label = projectilePath.getLabel();
+        this.updatedAt = projectilePath.getUpdatedAt();
+    }
+}
