@@ -29,7 +29,7 @@ repos:
     hooks:
       - id: spotless-apply # Java 포맷 검사
         name: Spotless (Google Java Format) Check # Google Java Format 기준으로 코드 스타일 검사
-        entry: ./gradlew spotlessApply --quiet --build-cache
+        entry: sh ./gradlew spotlessApply --quiet --build-cache
         language: system
         types: [java]
         pass_filenames: false
@@ -38,7 +38,7 @@ repos:
     hooks:
       - id: checkstyle
         name: Checkstyle
-        entry: ./gradlew checkstyleMain checkstyleTest --quiet --build-cache
+        entry: sh ./gradlew checkstyleMain checkstyleTest --quiet --build-cache
         language: system
         types: [java]
         pass_filenames: false
