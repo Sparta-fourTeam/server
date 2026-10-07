@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+/** 서버 공통 에러 코드. 상태 코드와 메시지를 함께 관리한다. */
 @Getter
 @RequiredArgsConstructor
 public enum ErrorCode {
