@@ -25,15 +25,33 @@ public record SkillSummaryResponse(
         if (stats == null) {
             return groups;
         }
-        if (stats.getCast() != null) groups.add("cast");
-        if (stats.getProjectile() != null) groups.add("projectile");
-        if (stats.getReserve() != null) groups.add("reserve");
-        if (stats.getStatus() != null) groups.add("status");
-        if (stats.getExplosion() != null) groups.add("explosion");
-        if (stats.getArea() != null) groups.add("area");
-        if (stats.getChain() != null) groups.add("chain");
-        if (stats.getBeam() != null) groups.add("beam");
-        if (stats.getField() != null) groups.add("field");
+        if (stats.getCast() != null) {
+            groups.add("cast");
+        }
+        if (stats.getProjectile() != null) {
+            groups.add("projectile");
+        }
+        if (stats.getReserve() != null) {
+            groups.add("reserve");
+        }
+        if (stats.getStatus() != null) {
+            groups.add("status");
+        }
+        if (stats.getExplosion() != null) {
+            groups.add("explosion");
+        }
+        if (stats.getArea() != null) {
+            groups.add("area");
+        }
+        if (stats.getChain() != null) {
+            groups.add("chain");
+        }
+        if (stats.getBeam() != null) {
+            groups.add("beam");
+        }
+        if (stats.getField() != null) {
+            groups.add("field");
+        }
         return groups;
     }
 }
