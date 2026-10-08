@@ -26,6 +26,7 @@ public class SkillProjectilePathService {
                 .toList();
     }
 
+    /** 투사체 경로를 등록한다. 이름이 이미 있으면 409를 던진다. */
     @Transactional
     public SkillProjectilePathResponse createSkillProjectilePath(
             SkillProjectilePathRequest request) {
@@ -42,6 +43,7 @@ public class SkillProjectilePathService {
         }
     }
 
+    /** 투사체 경로를 수정한다. 없는 id면 404, 이름이 겹치면 409를 던진다. */
     @Transactional
     public SkillProjectilePathResponse updateSkillProjectilePath(
             Long id, SkillProjectilePathRequest request) {
@@ -67,6 +69,7 @@ public class SkillProjectilePathService {
         projectilePathRepository.delete(projectilePath);
     }
 
+    /** 투사체 경로를 id로 찾는다. 없으면 404를 던진다. */
     public SkillProjectilePath findProjectilePath(Long id) {
         return projectilePathRepository
                 .findById(id)

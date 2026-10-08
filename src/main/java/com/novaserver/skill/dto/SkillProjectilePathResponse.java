@@ -12,6 +12,7 @@ public class SkillProjectilePathResponse {
     private final String label;
     private final LocalDateTime updatedAt;
 
+    /** 엔티티로부터 응답을 만든다. */
     public SkillProjectilePathResponse(SkillProjectilePath projectilePath) {
         this.id = projectilePath.getId();
         this.name = projectilePath.getName();

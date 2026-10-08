@@ -19,7 +19,8 @@ public interface BattleRepository extends JpaRepository<BattleSession, Long> {
             value =
                     "INSERT INTO battle_session (user_id, battle_id, created_at) "
                             + "VALUES (:userId, :battleId, :createdAt) "
-                            + "ON DUPLICATE KEY UPDATE battle_id = :battleId, created_at = :createdAt",
+                            + "ON DUPLICATE KEY UPDATE battle_id = :battleId, "
+                            + "created_at = :createdAt",
             nativeQuery = true)
     int upsert(
             @Param("userId") Long userId,

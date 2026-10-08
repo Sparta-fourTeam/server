@@ -2,7 +2,15 @@ package com.novaserver.skill.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.novaserver.skill.entity.SkillBaseStats;
-import com.novaserver.skill.entity.stats.*;
+import com.novaserver.skill.entity.stats.SkillAreaStats;
+import com.novaserver.skill.entity.stats.SkillBeamStats;
+import com.novaserver.skill.entity.stats.SkillCastStats;
+import com.novaserver.skill.entity.stats.SkillChainStats;
+import com.novaserver.skill.entity.stats.SkillExplosionStats;
+import com.novaserver.skill.entity.stats.SkillFieldStats;
+import com.novaserver.skill.entity.stats.SkillProjectileStats;
+import com.novaserver.skill.entity.stats.SkillReserveStats;
+import com.novaserver.skill.entity.stats.SkillStatusStats;
 
 /** 스킬 기본 수치. 스킬이 사용하지 않는 그룹은 null로 두고 응답에서 제외한다. */
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -17,6 +25,7 @@ public record SkillBaseStatsResponse(
         Beam beam,
         Field field) {
 
+    /** 엔티티의 기본 수치를 응답 DTO로 변환한다. 없으면 null을 반환한다. */
     public static SkillBaseStatsResponse from(SkillBaseStats baseStats) {
         if (baseStats == null) {
             return null;

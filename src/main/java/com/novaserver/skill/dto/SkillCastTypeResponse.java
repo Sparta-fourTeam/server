@@ -12,6 +12,7 @@ public class SkillCastTypeResponse {
     private final String label;
     private final LocalDateTime updatedAt;
 
+    /** 엔티티로부터 응답을 만든다. */
     public SkillCastTypeResponse(SkillCastType castType) {
         this.id = castType.getId();
         this.name = castType.getName();

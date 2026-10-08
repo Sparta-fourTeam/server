@@ -25,6 +25,7 @@ public class SkillService {
     private final SkillCastTypeService skillCastTypeService;
     private final SkillProjectilePathService skillProjectilePathService;
 
+    /** 스킬 목록을 요약해서 조회한다. */
     @Transactional(readOnly = true)
     public List<SkillSummaryResponse> getSkillList() {
         List<Skill> skills = skillRepository.findAll();
@@ -42,6 +43,7 @@ public class SkillService {
         return SkillDetailResponse.from(findSkill(id));
     }
 
+    /** 유니티 클라이언트용 스킬 데이터를 전체 조회한다. */
     @Transactional(readOnly = true)
     public List<SkillDataResponse> getSkillData() {
         List<Skill> skills = skillRepository.findAll();
@@ -54,6 +56,7 @@ public class SkillService {
         return responses;
     }
 
+    /** 스킬을 등록한다. 이름이 이미 있으면 409를 던진다. */
     @Transactional
     public SkillDetailResponse createSkill(SkillRequest request) {
         if (skillRepository.existsByName(request.getName())) {
@@ -82,6 +85,7 @@ public class SkillService {
         }
     }
 
+    /** 스킬을 수정한다. 없는 id면 404, 이름이 겹치면 409를 던진다. */
     @Transactional
     public SkillDetailResponse updateSkill(Long id, SkillRequest request) {
         Skill skill = findSkill(id);
@@ -113,6 +117,7 @@ public class SkillService {
         skillRepository.delete(findSkill(id));
     }
 
+    /** 스킬을 id로 찾는다. 없으면 404를 던진다. */
     public Skill findSkill(Long id) {
         return skillRepository
                 .findById(id)

@@ -36,6 +36,7 @@ public class SkillBaseStatsRequest {
 
     @Valid private Field field;
 
+    /** 요청 DTO를 임베디드 엔티티로 변환한다. */
     public SkillBaseStats toEntity() {
         return new SkillBaseStats(
                 cast == null ? null : cast.toEntity(),

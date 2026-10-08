@@ -26,6 +26,7 @@ public class SkillCastTypeService {
                 .toList();
     }
 
+    /** 시전 방식을 등록한다. 이름이 이미 있으면 409를 던진다. */
     @Transactional
     public SkillCastTypeResponse createCastType(SkillCastTypeRequest request) {
         if (castTypeRepository.existsByName(request.getName())) {
@@ -41,6 +42,7 @@ public class SkillCastTypeService {
         }
     }
 
+    /** 시전 방식을 수정한다. 없는 id면 404, 이름이 겹치면 409를 던진다. */
     @Transactional
     public SkillCastTypeResponse updateCastType(Long id, SkillCastTypeRequest request) {
         SkillCastType castType = findCastType(id);
@@ -65,6 +67,7 @@ public class SkillCastTypeService {
         castTypeRepository.delete(castType);
     }
 
+    /** 시전 방식을 id로 찾는다. 없으면 404를 던진다. */
     public SkillCastType findCastType(Long id) {
         return castTypeRepository
                 .findById(id)

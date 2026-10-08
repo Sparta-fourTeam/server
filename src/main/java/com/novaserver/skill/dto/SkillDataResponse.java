@@ -16,6 +16,7 @@ public record SkillDataResponse(
         SkillBaseStatsResponse baseStats,
         Integer unlockLevel) {
 
+    /** 스킬 엔티티로부터 유니티용 데이터 응답을 만든다. */
     public static SkillDataResponse from(Skill skill) {
         return new SkillDataResponse(
                 skill.getId(),
