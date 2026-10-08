@@ -1,3 +1,109 @@
 package com.novaserver.skill.service;
 
-public class SkillService {}
+import com.novaserver.global.error.ErrorCode;
+import com.novaserver.skill.dto.SkillDataResponse;
+import com.novaserver.skill.dto.SkillDetailResponse;
+import com.novaserver.skill.dto.SkillRequest;
+import com.novaserver.skill.dto.SkillSummaryResponse;
+import com.novaserver.skill.entity.Skill;
+import com.novaserver.skill.entity.SkillCastType;
+import com.novaserver.skill.entity.SkillProjectilePath;
+import com.novaserver.skill.repository.SkillRepository;
+import java.util.ArrayList;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/** 스킬 관련 API. */
+@Service
+@RequiredArgsConstructor
+public class SkillService {
+    private final SkillRepository skillRepository;
+
+    private final SkillCastTypeService skillCastTypeService;
+    private final SkillProjectilePathService skillProjectilePathService;
+
+    @Transactional(readOnly = true)
+    public List<SkillSummaryResponse> getSkillList() {
+        List<Skill> skills = skillRepository.findAll();
+        List<SkillSummaryResponse> responses = new ArrayList<>();
+
+        for (Skill skill : skills) {
+            responses.add(SkillSummaryResponse.from(skill));
+        }
+
+        return responses;
+    }
+
+    @Transactional(readOnly = true)
+    public SkillDetailResponse getSkillDetail(Long id) {
+        return SkillDetailResponse.from(findSkill(id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<SkillDataResponse> getSkillData() {
+        List<Skill> skills = skillRepository.findAll();
+        List<SkillDataResponse> responses = new ArrayList<>();
+
+        for (Skill skill : skills) {
+            responses.add(SkillDataResponse.from(skill));
+        }
+
+        return responses;
+    }
+
+    @Transactional
+    public SkillDetailResponse createSkill(SkillRequest request) {
+        if (skillRepository.existsByName(request.getName()))
+            throw ErrorCode.SKILL_DUPLICATED.exception(request.getName());
+        SkillCastType castType = skillCastTypeService.findCastType(request.getCastTypeId());
+        SkillProjectilePath path =
+                skillProjectilePathService.findProjectilePath(request.getProjectilePathId());
+        Skill saved =
+                skillRepository.save(
+                        new Skill(
+                                request.getName(),
+                                request.getDesc(),
+                                castType,
+                                path,
+                                request.getMaxLevel(),
+                                request.isChildOnly(),
+                                request.getBaseStats() == null
+                                        ? null
+                                        : request.getBaseStats().toEntity(),
+                                request.getUnlockLevel()));
+        return SkillDetailResponse.from(saved);
+    }
+
+    @Transactional
+    public SkillDetailResponse updateSkill(Long id, SkillRequest request) {
+        Skill skill = findSkill(id);
+        if (skillRepository.existsByNameAndIdNot(request.getName(), id))
+            throw ErrorCode.SKILL_DUPLICATED.exception(request.getName());
+        SkillCastType castType = skillCastTypeService.findCastType(request.getCastTypeId());
+        SkillProjectilePath path =
+                skillProjectilePathService.findProjectilePath(request.getProjectilePathId());
+        skill.update(
+                request.getName(),
+                request.getDesc(),
+                castType,
+                path,
+                request.getMaxLevel(),
+                request.isChildOnly(),
+                request.getBaseStats() == null ? null : request.getBaseStats().toEntity(),
+                request.getUnlockLevel());
+        return SkillDetailResponse.from(skill);
+    }
+
+    @Transactional
+    public void deleteSkill(Long id) {
+        skillRepository.delete(findSkill(id));
+    }
+
+    public Skill findSkill(Long id) {
+        return skillRepository
+                .findById(id)
+                .orElseThrow(() -> ErrorCode.SKILL_NOT_FOUND.exception(id));
+    }
+}

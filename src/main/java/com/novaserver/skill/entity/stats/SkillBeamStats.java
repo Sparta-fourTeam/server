@@ -12,6 +12,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SkillBeamStats {
+    @Column(name = "beam_enabled")
+    private boolean enabled;
+
     @Column(name = "beam_length")
     private Float length;
 
@@ -22,5 +25,23 @@ public class SkillBeamStats {
     private Float duration;
 
     @Column(name = "beam_pulses")
-    private Float pulses;
+    private Integer pulses;
+
+    /**
+     * 광선 수치를 생성한다.
+     *
+     * @param enabled 그룹 사용 여부
+     * @param length 길이
+     * @param width 폭
+     * @param duration 지속시간
+     * @param pulses 틱 횟수
+     */
+    public SkillBeamStats(
+            boolean enabled, Float length, Float width, Float duration, Integer pulses) {
+        this.enabled = enabled;
+        this.length = length;
+        this.width = width;
+        this.duration = duration;
+        this.pulses = pulses;
+    }
 }

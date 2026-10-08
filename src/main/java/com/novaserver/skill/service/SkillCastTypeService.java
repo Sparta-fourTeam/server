@@ -14,11 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
 /** 스킬 시전 방식 관리 로직. */
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class SkillCastTypeService {
     private final SkillCastTypeRepository castTypeRepository;
     private final SkillRepository skillRepository;
 
+    @Transactional(readOnly = true)
     public List<SkillCastTypeResponse> getCastTypes() {
         return castTypeRepository.findAllByOrderByIdAsc().stream()
                 .map(SkillCastTypeResponse::new)
@@ -56,7 +56,7 @@ public class SkillCastTypeService {
         castTypeRepository.delete(castType);
     }
 
-    private SkillCastType findCastType(Long id) {
+    public SkillCastType findCastType(Long id) {
         return castTypeRepository
                 .findById(id)
                 .orElseThrow(() -> ErrorCode.SKILL_CAST_TYPE_NOT_FOUND.exception(id));

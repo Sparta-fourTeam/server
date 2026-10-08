@@ -12,6 +12,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SkillAreaStats {
+    @Column(name = "area_enabled")
+    private boolean enabled;
+
     @Column(name = "area_radius")
     private Float radius;
 
@@ -26,4 +29,29 @@ public class SkillAreaStats {
 
     @Column(name = "area_pull")
     private Float pull;
+
+    /**
+     * 영역 공격 수치를 생성한다.
+     *
+     * @param enabled 그룹 사용 여부
+     * @param radius 반경
+     * @param duration 지속시간
+     * @param pulseInterval 틱 간격
+     * @param moveSpeed 이동 속도
+     * @param pull 끌어당김 힘
+     */
+    public SkillAreaStats(
+            boolean enabled,
+            Float radius,
+            Float duration,
+            Float pulseInterval,
+            Float moveSpeed,
+            Float pull) {
+        this.enabled = enabled;
+        this.radius = radius;
+        this.duration = duration;
+        this.pulseInterval = pulseInterval;
+        this.moveSpeed = moveSpeed;
+        this.pull = pull;
+    }
 }

@@ -14,11 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
 /** 투사체 경로 관리 로직. */
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class SkillProjectilePathService {
     private final SkillProjectilePathRepository projectilePathRepository;
     private final SkillRepository skillRepository;
 
+    @Transactional(readOnly = true)
     public List<SkillProjectilePathResponse> getSkillProjectilePaths() {
         return projectilePathRepository.findAllByOrderByIdAsc().stream()
                 .map(SkillProjectilePathResponse::new)
@@ -29,7 +29,7 @@ public class SkillProjectilePathService {
     public SkillProjectilePathResponse createSkillProjectilePath(
             SkillProjectilePathRequest request) {
         if (projectilePathRepository.existsByName(request.getName())) {
-            throw ErrorCode.SKILL_PROJECTILE_PATH_DUPLICATED.exception();
+            throw ErrorCode.SKILL_PROJECTILE_PATH_DUPLICATED.exception(request.getName());
         }
         SkillProjectilePath saved =
                 projectilePathRepository.save(
@@ -59,7 +59,7 @@ public class SkillProjectilePathService {
         projectilePathRepository.delete(projectilePath);
     }
 
-    private SkillProjectilePath findProjectilePath(Long id) {
+    public SkillProjectilePath findProjectilePath(Long id) {
         return projectilePathRepository
                 .findById(id)
                 .orElseThrow(() -> ErrorCode.SKILL_PROJECTILE_PATH_NOT_FOUND.exception(id));
