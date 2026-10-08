@@ -8,6 +8,7 @@ import com.novaserver.skill.repository.SkillProjectilePathRepository;
 import com.novaserver.skill.repository.SkillRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,11 +32,14 @@ public class SkillProjectilePathService {
         if (projectilePathRepository.existsByName(request.getName())) {
             throw ErrorCode.SKILL_PROJECTILE_PATH_DUPLICATED.exception(request.getName());
         }
-        SkillProjectilePath saved =
-                projectilePathRepository.save(
-                        new SkillProjectilePath(request.getName(), request.getLabel()));
-
-        return new SkillProjectilePathResponse(saved);
+        try {
+            SkillProjectilePath saved =
+                    projectilePathRepository.save(
+                            new SkillProjectilePath(request.getName(), request.getLabel()));
+            return new SkillProjectilePathResponse(saved);
+        } catch (DataIntegrityViolationException e) {
+            throw ErrorCode.SKILL_PROJECTILE_PATH_DUPLICATED.exception(request.getName());
+        }
     }
 
     @Transactional
@@ -46,7 +50,11 @@ public class SkillProjectilePathService {
             throw ErrorCode.SKILL_PROJECTILE_PATH_DUPLICATED.exception(request.getName());
         }
         projectilePath.update(request.getName(), request.getLabel());
-        projectilePathRepository.flush();
+        try {
+            projectilePathRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw ErrorCode.SKILL_PROJECTILE_PATH_DUPLICATED.exception(request.getName());
+        }
         return new SkillProjectilePathResponse(projectilePath);
     }
 

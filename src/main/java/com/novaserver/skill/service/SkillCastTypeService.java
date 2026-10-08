@@ -8,6 +8,7 @@ import com.novaserver.skill.repository.SkillCastTypeRepository;
 import com.novaserver.skill.repository.SkillRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,10 +31,14 @@ public class SkillCastTypeService {
         if (castTypeRepository.existsByName(request.getName())) {
             throw ErrorCode.SKILL_CAST_TYPE_DUPLICATED.exception(request.getName());
         }
-        SkillCastType saved =
-                castTypeRepository.save(new SkillCastType(request.getName(), request.getLabel()));
-
-        return new SkillCastTypeResponse(saved);
+        try {
+            SkillCastType saved =
+                    castTypeRepository.save(
+                            new SkillCastType(request.getName(), request.getLabel()));
+            return new SkillCastTypeResponse(saved);
+        } catch (DataIntegrityViolationException e) {
+            throw ErrorCode.SKILL_CAST_TYPE_DUPLICATED.exception(request.getName());
+        }
     }
 
     @Transactional
@@ -43,7 +48,11 @@ public class SkillCastTypeService {
             throw ErrorCode.SKILL_CAST_TYPE_DUPLICATED.exception(request.getName());
         }
         castType.update(request.getName(), request.getLabel());
-        castTypeRepository.flush();
+        try {
+            castTypeRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw ErrorCode.SKILL_CAST_TYPE_DUPLICATED.exception(request.getName());
+        }
         return new SkillCastTypeResponse(castType);
     }
 

@@ -22,7 +22,7 @@ public record SkillDataResponse(
                 skill.getName(),
                 skill.getDesc(),
                 skill.getCastType().getName(),
-                skill.getProjectilePath() == null ? null : skill.getProjectilePath().getName(),
+                skill.getProjectilePath().getName(),
                 skill.getMaxLevel(),
                 skill.isChildOnly(),
                 SkillBaseStatsResponse.from(skill.getBaseStats()),

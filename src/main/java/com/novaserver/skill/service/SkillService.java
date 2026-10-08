@@ -12,6 +12,7 @@ import com.novaserver.skill.repository.SkillRepository;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,32 +56,38 @@ public class SkillService {
 
     @Transactional
     public SkillDetailResponse createSkill(SkillRequest request) {
-        if (skillRepository.existsByName(request.getName()))
+        if (skillRepository.existsByName(request.getName())) {
             throw ErrorCode.SKILL_DUPLICATED.exception(request.getName());
+        }
         SkillCastType castType = skillCastTypeService.findCastType(request.getCastTypeId());
         SkillProjectilePath path =
                 skillProjectilePathService.findProjectilePath(request.getProjectilePathId());
-        Skill saved =
-                skillRepository.save(
-                        new Skill(
-                                request.getName(),
-                                request.getDesc(),
-                                castType,
-                                path,
-                                request.getMaxLevel(),
-                                request.isChildOnly(),
-                                request.getBaseStats() == null
-                                        ? null
-                                        : request.getBaseStats().toEntity(),
-                                request.getUnlockLevel()));
-        return SkillDetailResponse.from(saved);
+        try {
+            Skill saved =
+                    skillRepository.save(
+                            new Skill(
+                                    request.getName(),
+                                    request.getDesc(),
+                                    castType,
+                                    path,
+                                    request.getMaxLevel(),
+                                    request.isChildOnly(),
+                                    request.getBaseStats() == null
+                                            ? null
+                                            : request.getBaseStats().toEntity(),
+                                    request.getUnlockLevel()));
+            return SkillDetailResponse.from(saved);
+        } catch (DataIntegrityViolationException e) {
+            throw ErrorCode.SKILL_DUPLICATED.exception(request.getName());
+        }
     }
 
     @Transactional
     public SkillDetailResponse updateSkill(Long id, SkillRequest request) {
         Skill skill = findSkill(id);
-        if (skillRepository.existsByNameAndIdNot(request.getName(), id))
+        if (skillRepository.existsByNameAndIdNot(request.getName(), id)) {
             throw ErrorCode.SKILL_DUPLICATED.exception(request.getName());
+        }
         SkillCastType castType = skillCastTypeService.findCastType(request.getCastTypeId());
         SkillProjectilePath path =
                 skillProjectilePathService.findProjectilePath(request.getProjectilePathId());
@@ -93,6 +100,11 @@ public class SkillService {
                 request.isChildOnly(),
                 request.getBaseStats() == null ? null : request.getBaseStats().toEntity(),
                 request.getUnlockLevel());
+        try {
+            skillRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw ErrorCode.SKILL_DUPLICATED.exception(request.getName());
+        }
         return SkillDetailResponse.from(skill);
     }
 
