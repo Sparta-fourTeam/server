@@ -14,6 +14,8 @@ public enum ErrorCode {
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다"),
 
     // 인증
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다"),
+    FORBIDDEN(HttpStatus.FORBIDDEN, "권한이 없습니다"),
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "토큰이 만료되었습니다"),
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다"),
 
