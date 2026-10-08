@@ -48,11 +48,15 @@ class SkillControllerTest {
     @Test
     void returnsSkillList() throws Exception {
         when(skillService.getSkillList())
-                .thenReturn(List.of(new SkillSummaryResponse(1L, "파이어볼", "Melee", "Straight")));
+                .thenReturn(
+                        List.of(
+                                new SkillSummaryResponse(
+                                        1L, "파이어볼", "Melee", "Straight", List.of("cast"))));
 
         mockMvc.perform(get("/api/skill/list"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("파이어볼"));
+                .andExpect(jsonPath("$[0].name").value("파이어볼"))
+                .andExpect(jsonPath("$[0].statGroups[0]").value("cast"));
     }
 
     @Test
