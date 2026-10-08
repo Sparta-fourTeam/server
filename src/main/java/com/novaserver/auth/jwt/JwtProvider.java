@@ -9,6 +9,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -41,19 +42,27 @@ public class JwtProvider {
         this.refreshTokenValiditySeconds = refreshTokenValiditySeconds;
     }
 
-    public String createAccessToken(Long playerId, ClientType clientType) {
-        return createToken(playerId, clientType, TokenType.ACCESS, accessTokenValiditySeconds);
+    public String createAccessToken(Long userId, ClientType clientType) {
+        return createToken(userId, clientType, TokenType.ACCESS, accessTokenValiditySeconds)
+                .token();
     }
 
-    public String createRefreshToken(Long playerId, ClientType clientType) {
-        return createToken(playerId, clientType, TokenType.REFRESH, refreshTokenValiditySeconds);
+    /**
+     * 새 refresh 토큰을 만든다. 반환된 tokenId는 refresh 저장소에 저장해야 재발급 때 쓸 수 있다.
+     *
+     * @param userId 토큰 주인
+     * @param clientType 발급 대상 클라이언트
+     * @return 토큰 문자열과 고유 ID
+     */
+    public IssuedToken createRefreshToken(Long userId, ClientType clientType) {
+        return createToken(userId, clientType, TokenType.REFRESH, refreshTokenValiditySeconds);
     }
 
     /**
      * 토큰을 검증하고 payload를 꺼낸다.
      *
      * @param token 검증할 토큰
-     * @return 토큰에 담긴 플레이어 id, 클라이언트 종류, 토큰 종류
+     * @return 토큰에 담긴 사용자 id, 클라이언트 종류, 토큰 종류, 고유 ID
      * @throws org.springframework.web.server.ResponseStatusException 만료되면 TOKEN_EXPIRED, 위조·형식 오류면
      *     INVALID_TOKEN
      */
@@ -62,24 +71,29 @@ public class JwtProvider {
         return new TokenInfo(
                 Long.valueOf(claims.getSubject()),
                 ClientType.valueOf(claims.getAudience().iterator().next()),
-                TokenType.valueOf(claims.get(TYPE_CLAIM, String.class)));
+                TokenType.valueOf(claims.get(TYPE_CLAIM, String.class)),
+                claims.getId());
     }
 
-    private String createToken(
-            Long playerId, ClientType clientType, TokenType tokenType, long validitySeconds) {
+    private IssuedToken createToken(
+            Long userId, ClientType clientType, TokenType tokenType, long validitySeconds) {
+        String tokenId = UUID.randomUUID().toString();
         Date now = new Date();
         Date expiry = new Date(now.getTime() + validitySeconds * 1000);
 
-        return Jwts.builder()
-                .subject(String.valueOf(playerId))
-                .audience()
-                .add(clientType.name())
-                .and()
-                .claim(TYPE_CLAIM, tokenType.name())
-                .issuedAt(now)
-                .expiration(expiry)
-                .signWith(secretKey)
-                .compact();
+        String token =
+                Jwts.builder()
+                        .id(tokenId)
+                        .subject(String.valueOf(userId))
+                        .audience()
+                        .add(clientType.name())
+                        .and()
+                        .claim(TYPE_CLAIM, tokenType.name())
+                        .issuedAt(now)
+                        .expiration(expiry)
+                        .signWith(secretKey)
+                        .compact();
+        return new IssuedToken(token, tokenId);
     }
 
     private Claims parseClaims(String token) {
