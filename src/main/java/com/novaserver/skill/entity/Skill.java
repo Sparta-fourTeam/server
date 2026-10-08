@@ -7,9 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.ColumnDefault;
 
-/**
- * 스킬 밸런스 데이터. 유니티 Skills 테이블 한 행에 대응한다.
- */
+/** 스킬 밸런스 데이터. 유니티 Skills 테이블 한 행에 대응한다. */
 @Getter
 @Entity
 @Table(name = "skill")
@@ -39,8 +37,7 @@ public class Skill extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean childOnly;
 
-    @Embedded
-    private SkillBaseStats baseStats;
+    @Embedded private SkillBaseStats baseStats;
 
     @ColumnDefault("1")
     @Column(nullable = false)
@@ -49,24 +46,24 @@ public class Skill extends BaseTimeEntity {
     /**
      * 스킬을 생성한다.
      *
-     * @param name           표시 이름
-     * @param desc           설명. 없으면 null
-     * @param castType       시전 방식
+     * @param name 표시 이름
+     * @param desc 설명.
+     * @param castType 시전 방식
      * @param projectilePath 투사체 경로
-     * @param maxLevel       최대 강화 횟수
-     * @param childOnly      자식 전용 여부
-     * @param baseStats      기본 전투 수치. 없으면 null
-     * @param unlockLevel    해금 레벨. null이면 1
+     * @param maxLevel 최대 강화 횟수
+     * @param childOnly 자식 전용 여부
+     * @param baseStats 기본 전투 수치.
+     * @param unlockLevel 해금 레벨. 기본값 1
      */
     public Skill(
-        String name,
-        String desc,
-        SkillCastType castType,
-        SkillProjectilePath projectilePath,
-        int maxLevel,
-        boolean childOnly,
-        SkillBaseStats baseStats,
-        Integer unlockLevel) {
+            String name,
+            String desc,
+            SkillCastType castType,
+            SkillProjectilePath projectilePath,
+            int maxLevel,
+            boolean childOnly,
+            SkillBaseStats baseStats,
+            Integer unlockLevel) {
         this.name = name;
         this.desc = desc;
         this.castType = castType;
@@ -80,24 +77,24 @@ public class Skill extends BaseTimeEntity {
     /**
      * 스킬 정보를 수정한다. baseStats는 통째로 교체한다.
      *
-     * @param name           표시 이름
-     * @param desc           설명. 없으면 null
-     * @param castType       시전 방식
+     * @param name 표시 이름
+     * @param desc 설명. 없으면 null
+     * @param castType 시전 방식
      * @param projectilePath 투사체 경로
-     * @param maxLevel       최대 강화 횟수
-     * @param childOnly      자식 전용 여부
-     * @param baseStats      기본 전투 수치. 없으면 null
-     * @param unlockLevel    해금 레벨. null이면 1
+     * @param maxLevel 최대 강화 횟수
+     * @param childOnly 자식 전용 여부
+     * @param baseStats 기본 전투 수치. 없으면 null
+     * @param unlockLevel 해금 레벨. null이면 1
      */
     public void update(
-        String name,
-        String desc,
-        SkillCastType castType,
-        SkillProjectilePath projectilePath,
-        int maxLevel,
-        boolean childOnly,
-        SkillBaseStats baseStats,
-        Integer unlockLevel) {
+            String name,
+            String desc,
+            SkillCastType castType,
+            SkillProjectilePath projectilePath,
+            int maxLevel,
+            boolean childOnly,
+            SkillBaseStats baseStats,
+            Integer unlockLevel) {
         this.name = name;
         this.desc = desc;
         this.castType = castType;

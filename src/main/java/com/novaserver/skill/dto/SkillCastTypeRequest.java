@@ -5,9 +5,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 
-/**
- * 스킬 시전 방식 등록·수정 요청.
- */
+/** 스킬 시전 방식 등록·수정 요청. */
 @Getter
 public class SkillCastTypeRequest {
     @NotBlank(message = "이름은 필수값입니다.")

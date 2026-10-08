@@ -6,9 +6,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/**
- * 스킬 투사체 경로. name은 유니티가 그대로 받는 값이다.
- */
+/** 스킬 투사체 경로. name은 유니티가 그대로 받는 값이다. */
 @Entity
 @Table(name = "skill_projectile_path")
 @Getter
@@ -27,7 +25,7 @@ public class SkillProjectilePath extends BaseTimeEntity {
     /**
      * 투사체 경로를 생성한다.
      *
-     * @param name  유니티에 내려가는 이름
+     * @param name 유니티에 내려가는 이름
      * @param label 관리 화면 표시 이름
      */
     public SkillProjectilePath(String name, String label) {
@@ -38,7 +36,7 @@ public class SkillProjectilePath extends BaseTimeEntity {
     /**
      * 이름과 표시 이름을 수정한다.
      *
-     * @param name  유니티에 내려가는 이름
+     * @param name 유니티에 내려가는 이름
      * @param label 관리 화면 표시 이름
      */
     public void update(String name, String label) {

@@ -1,13 +1,10 @@
 package com.novaserver.skill.dto;
 
 import com.novaserver.skill.entity.SkillCastType;
+import java.time.LocalDateTime;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
-
-/**
- * 스킬 시전 방식 응답.
- */
+/** 스킬 시전 방식 응답. */
 @Getter
 public class SkillCastTypeResponse {
     private final Long id;

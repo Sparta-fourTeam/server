@@ -1,9 +1,9 @@
 package com.novaserver.battle.service;
 
 import com.novaserver.battle.dto.BattleResponse;
-import com.novaserver.battle.entity.BattleSession;
 import com.novaserver.battle.repository.BattleRepository;
 import com.novaserver.global.error.ErrorCode;
+import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,7 +24,7 @@ public class BattleService {
     @Transactional
     public BattleResponse createBattle(Long userId) {
         String battleId = UUID.randomUUID().toString();
-        battleRepository.save(new BattleSession(userId, battleId));
+        battleRepository.upsert(userId, battleId, LocalDateTime.now());
         return new BattleResponse(battleId);
     }
 
