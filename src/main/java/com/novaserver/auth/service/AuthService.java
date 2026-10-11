@@ -5,6 +5,8 @@ import com.novaserver.auth.dto.TokenResponse;
 import com.novaserver.auth.jwt.ClientType;
 import com.novaserver.auth.jwt.IssuedToken;
 import com.novaserver.auth.jwt.JwtProvider;
+import com.novaserver.auth.jwt.TokenInfo;
+import com.novaserver.auth.jwt.TokenType;
 import com.novaserver.auth.repository.RefreshTokenRepository;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.user.Provider;
@@ -19,7 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 게스트 가입·로그인과 토큰 발급을 담당한다. */
+/** 게스트 가입·로그인, 토큰 발급·재발급을 담당한다. */
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -57,6 +59,34 @@ public class AuthService {
                         .findByProviderAndAccountId(Provider.GUEST, hashed)
                         .orElseThrow(ErrorCode.INVALID_GUEST_ID::exception);
         return issueTokens(user.getId(), ClientType.GAME);
+    }
+
+    /**
+     * Refresh 토큰을 검증하고 새 access·refresh 토큰을 발급한다. 기존 refresh는 새 값으로 덮어써져 무효가 된다.
+     *
+     * <p>저장된 값과 다른 refresh가 오면 탈취로 보고 저장된 refresh를 삭제한다. 이후 해당 유저는 다시 로그인해야 한다.
+     *
+     * @param refreshToken 클라이언트가 보관하던 refresh 토큰
+     * @return 새 access·refresh 토큰
+     * @throws org.springframework.web.server.ResponseStatusException 만료되면 TOKEN_EXPIRED, refresh
+     *     토큰이 아니거나 저장된 값이 없거나 일치하지 않으면 INVALID_TOKEN
+     */
+    public TokenResponse refresh(String refreshToken) {
+        TokenInfo parsed = jwtProvider.parse(refreshToken);
+        if (parsed.tokenType() != TokenType.REFRESH) {
+            throw ErrorCode.INVALID_TOKEN.exception();
+        }
+
+        String storedTokenId =
+                refreshTokenRepository
+                        .findTokenId(parsed.userId(), parsed.clientType())
+                        .orElseThrow(ErrorCode.INVALID_TOKEN::exception);
+        if (!storedTokenId.equals(parsed.tokenId())) {
+            refreshTokenRepository.delete(parsed.userId(), parsed.clientType());
+            throw ErrorCode.INVALID_TOKEN.exception();
+        }
+
+        return issueTokens(parsed.userId(), parsed.clientType());
     }
 
     private UUID parseUuid(String guestId) {
