@@ -3,6 +3,8 @@ package com.novaserver.auth.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -13,6 +15,8 @@ import com.novaserver.auth.dto.TokenResponse;
 import com.novaserver.auth.jwt.ClientType;
 import com.novaserver.auth.jwt.IssuedToken;
 import com.novaserver.auth.jwt.JwtProvider;
+import com.novaserver.auth.jwt.TokenInfo;
+import com.novaserver.auth.jwt.TokenType;
 import com.novaserver.auth.repository.RefreshTokenRepository;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.user.Provider;
@@ -24,6 +28,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Optional;
 import java.util.UUID;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,6 +45,7 @@ class AuthServiceTest {
 
     private static final String GUEST_ID = "550e8400-e29b-41d4-a716-446655440000";
     private static final Long USER_ID = 42L;
+    private static final String OLD_REFRESH = "old-refresh-token";
 
     @Mock private UserRepository userRepository;
     @Mock private JwtProvider jwtProvider;
@@ -156,6 +162,125 @@ class AuthServiceTest {
                         });
         verify(userRepository, never()).save(any());
         verifyNoInteractions(jwtProvider, refreshTokenRepository);
+    }
+
+    @Test
+    @DisplayName("저장된 tokenId와 일치하면 새 토큰을 발급하고 새 tokenId로 덮어쓴다")
+    void shouldRotateTokens_whenRefreshTokenMatches() {
+        // given
+        when(jwtProvider.parse(OLD_REFRESH))
+                .thenReturn(new TokenInfo(USER_ID, ClientType.GAME, TokenType.REFRESH, "old-jti"));
+        when(refreshTokenRepository.findTokenId(USER_ID, ClientType.GAME))
+                .thenReturn(Optional.of("old-jti"));
+        stubTokens();
+
+        // when
+        TokenResponse response = authService.refresh(OLD_REFRESH);
+
+        // then
+        assertThat(response.getAccessToken()).isEqualTo("access-token");
+        assertThat(response.getRefreshToken()).isEqualTo("refresh-token");
+        verify(refreshTokenRepository).save(USER_ID, ClientType.GAME, "refresh-jti");
+        verify(refreshTokenRepository, never()).delete(anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("토큰의 clientType 그대로 재발급한다")
+    void shouldKeepClientType_onRefresh() {
+        // given
+        when(jwtProvider.parse(OLD_REFRESH))
+                .thenReturn(new TokenInfo(USER_ID, ClientType.WEB, TokenType.REFRESH, "old-jti"));
+        when(refreshTokenRepository.findTokenId(USER_ID, ClientType.WEB))
+                .thenReturn(Optional.of("old-jti"));
+        when(jwtProvider.createAccessToken(USER_ID, ClientType.WEB)).thenReturn("web-access");
+        when(jwtProvider.createRefreshToken(USER_ID, ClientType.WEB))
+                .thenReturn(new IssuedToken("web-refresh", "web-jti"));
+
+        // when
+        TokenResponse response = authService.refresh(OLD_REFRESH);
+
+        // then
+        assertThat(response.getAccessToken()).isEqualTo("web-access");
+        verify(refreshTokenRepository).save(USER_ID, ClientType.WEB, "web-jti");
+    }
+
+    @Test
+    @DisplayName("access 토큰으로 재발급하면 401 INVALID_TOKEN이고 저장된 refresh는 건드리지 않는다")
+    void shouldThrowInvalidToken_whenAccessTokenUsed() {
+        // given
+        when(jwtProvider.parse(OLD_REFRESH))
+                .thenReturn(new TokenInfo(USER_ID, ClientType.GAME, TokenType.ACCESS, "jti"));
+
+        // when & then
+        assertStatus(
+                () -> authService.refresh(OLD_REFRESH),
+                HttpStatus.UNAUTHORIZED,
+                ErrorCode.INVALID_TOKEN);
+        verifyNoInteractions(refreshTokenRepository);
+        verify(jwtProvider, never()).createRefreshToken(anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("저장된 refresh가 없으면 401 INVALID_TOKEN이고 새 토큰을 발급하지 않는다")
+    void shouldThrowInvalidToken_whenNoStoredRefresh() {
+        // given
+        when(jwtProvider.parse(OLD_REFRESH))
+                .thenReturn(new TokenInfo(USER_ID, ClientType.GAME, TokenType.REFRESH, "old-jti"));
+        when(refreshTokenRepository.findTokenId(USER_ID, ClientType.GAME))
+                .thenReturn(Optional.empty());
+
+        // when & then
+        assertStatus(
+                () -> authService.refresh(OLD_REFRESH),
+                HttpStatus.UNAUTHORIZED,
+                ErrorCode.INVALID_TOKEN);
+        verify(refreshTokenRepository, never()).save(anyLong(), any(), anyString());
+        verify(jwtProvider, never()).createAccessToken(anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("저장된 값과 다른 refresh가 오면 탈취로 보고 저장된 refresh를 삭제한 뒤 401을 던진다")
+    void shouldDeleteStoredRefresh_whenReusedTokenDetected() {
+        // given
+        when(jwtProvider.parse(OLD_REFRESH))
+                .thenReturn(new TokenInfo(USER_ID, ClientType.GAME, TokenType.REFRESH, "old-jti"));
+        when(refreshTokenRepository.findTokenId(USER_ID, ClientType.GAME))
+                .thenReturn(Optional.of("newer-jti"));
+
+        // when & then
+        assertStatus(
+                () -> authService.refresh(OLD_REFRESH),
+                HttpStatus.UNAUTHORIZED,
+                ErrorCode.INVALID_TOKEN);
+        verify(refreshTokenRepository).delete(USER_ID, ClientType.GAME);
+        verify(refreshTokenRepository, never()).save(anyLong(), any(), anyString());
+        verify(jwtProvider, never()).createAccessToken(anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("만료된 refresh면 parse의 TOKEN_EXPIRED를 그대로 던지고 저장소를 건드리지 않는다")
+    void shouldPropagateTokenExpired_whenRefreshExpired() {
+        // given
+        when(jwtProvider.parse(OLD_REFRESH)).thenThrow(ErrorCode.TOKEN_EXPIRED.exception());
+
+        // when & then
+        assertStatus(
+                () -> authService.refresh(OLD_REFRESH),
+                HttpStatus.UNAUTHORIZED,
+                ErrorCode.TOKEN_EXPIRED);
+        verifyNoInteractions(refreshTokenRepository);
+    }
+
+    private static void assertStatus(
+            ThrowingCallable call, HttpStatus status, ErrorCode errorCode) {
+        assertThatThrownBy(call)
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(
+                        e -> {
+                            ResponseStatusException ex = (ResponseStatusException) e;
+                            assertThat(ex.getStatusCode()).isEqualTo(status);
+                            assertThat(ex.getReason()).isEqualTo(errorCode.getMessage());
+                        });
     }
 
     private void stubTokens() {
