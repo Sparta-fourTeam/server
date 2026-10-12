@@ -40,7 +40,17 @@ public enum ErrorCode {
 
     // 스킬
     SKILL_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 스킬입니다: %s"),
-    SKILL_DUPLICATED(HttpStatus.CONFLICT, "이미 존재하는 스킬명입니다: %s");
+    SKILL_DUPLICATED(HttpStatus.CONFLICT, "이미 존재하는 스킬명입니다: %s"),
+
+    // 스킬 형태
+    SKILL_FORM_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 스킬 형태입니다: %s"),
+    SKILL_FORM_DUPLICATED(HttpStatus.CONFLICT, "이미 있는 스킬 형태 이름입니다: %s"),
+    SKILL_FORM_IN_USE(HttpStatus.CONFLICT, "사용 중인 효과가 있어 삭제할 수 없습니다: %s"),
+
+    // 효과 발동 시점
+    EFFECT_TRIGGER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 발동 시점입니다: %s"),
+    EFFECT_TRIGGER_DUPLICATED(HttpStatus.CONFLICT, "이미 있는 발동 시점 이름입니다: %s"),
+    EFFECT_TRIGGER_IN_USE(HttpStatus.CONFLICT, "사용 중인 효과가 있어 삭제할 수 없습니다: %s");
 
     private final HttpStatus status;
     private final String message;
