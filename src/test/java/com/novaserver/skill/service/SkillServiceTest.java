@@ -74,7 +74,7 @@ class SkillServiceTest {
     @Test
     void returnsSkillSummaryList() {
         Skill skill = skill(1L, "파이어볼", castType(), path());
-        when(skillRepository.findAll()).thenReturn(List.of(skill));
+        when(skillRepository.findAllBy()).thenReturn(List.of(skill));
 
         List<SkillSummaryResponse> responses = skillService.getSkillList();
 

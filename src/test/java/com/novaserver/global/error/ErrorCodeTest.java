@@ -18,11 +18,12 @@ class ErrorCodeTest {
 
     @Test
     void fillsMessagePlaceholdersInOrder() {
-        ResponseStatusException exception = ErrorCode.SKILL_NOT_FOUND.exception();
-        assertThat(exception.getReason()).isEqualTo("존재하지 않는 스킬입니다");
+        ResponseStatusException exception = ErrorCode.SKILL_NOT_FOUND.exception(7L);
+        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(exception.getReason()).isEqualTo("존재하지 않는 스킬입니다: 7");
 
         ResponseStatusException duplicated = ErrorCode.SKILL_DUPLICATED.exception("파이어볼");
         assertThat(duplicated.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(duplicated.getReason()).isEqualTo("이미 존재하는 스킬명입니다 : 파이어볼");
+        assertThat(duplicated.getReason()).isEqualTo("이미 존재하는 스킬명입니다: 파이어볼");
     }
 }

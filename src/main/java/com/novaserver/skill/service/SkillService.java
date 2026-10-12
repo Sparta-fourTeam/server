@@ -28,7 +28,7 @@ public class SkillService {
     /** 스킬 목록을 요약해서 조회한다. */
     @Transactional(readOnly = true)
     public List<SkillSummaryResponse> getSkillList() {
-        List<Skill> skills = skillRepository.findAll();
+        List<Skill> skills = skillRepository.findAllBy();
         List<SkillSummaryResponse> responses = new ArrayList<>();
 
         for (Skill skill : skills) {
@@ -46,7 +46,7 @@ public class SkillService {
     /** 유니티 클라이언트용 스킬 데이터를 전체 조회한다. */
     @Transactional(readOnly = true)
     public List<SkillDataResponse> getSkillData() {
-        List<Skill> skills = skillRepository.findAll();
+        List<Skill> skills = skillRepository.findAllBy();
         List<SkillDataResponse> responses = new ArrayList<>();
 
         for (Skill skill : skills) {
