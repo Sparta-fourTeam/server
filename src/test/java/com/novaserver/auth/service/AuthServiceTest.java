@@ -76,8 +76,8 @@ class AuthServiceTest {
                 .isEqualTo(sha256(response.getGuestId()))
                 .isNotEqualTo(response.getGuestId())
                 .hasSize(64);
-        assertThat(response.getAccessToken()).isEqualTo("access-token");
-        assertThat(response.getRefreshToken()).isEqualTo("refresh-token");
+        assertThat(response.getTokens().getAccessToken()).isEqualTo("access-token");
+        assertThat(response.getTokens().getRefreshToken()).isEqualTo("refresh-token");
     }
 
     @Test

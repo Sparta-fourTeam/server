@@ -39,8 +39,7 @@ public class AuthService {
     public GuestSignUpResponse guestSignUp() {
         String guestId = UUID.randomUUID().toString();
         User user = userRepository.save(new User(Provider.GUEST, hash(guestId)));
-        TokenResponse tokens = issueTokens(user.getId(), ClientType.GAME);
-        return new GuestSignUpResponse(guestId, tokens.getAccessToken(), tokens.getRefreshToken());
+        return new GuestSignUpResponse(guestId, issueTokens(user.getId(), ClientType.GAME));
     }
 
     /**

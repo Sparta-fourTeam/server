@@ -14,9 +14,6 @@ public class GuestSignUpResponse {
             example = "550e8400-e29b-41d4-a716-446655440000")
     private final String guestId;
 
-    @Schema(description = "access 토큰")
-    private final String accessToken;
-
-    @Schema(description = "refresh 토큰")
-    private final String refreshToken;
+    @Schema(description = "발급된 access·refresh 토큰. 로그인·재발급 응답과 같은 형식이다")
+    private final TokenResponse tokens;
 }
