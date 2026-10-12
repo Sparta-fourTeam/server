@@ -6,15 +6,12 @@ import com.novaserver.skill.service.SkillCastTypeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
-/**
- * 스킬 시전 방식 관리 API.
- */
+/** 스킬 시전 방식 관리 API. */
 @Tag(name = "스킬 시전 방식", description = "시전 방식 목록·등록·수정·삭제")
 @RestController
 @RequestMapping("/admin/skill-cast-types")
@@ -37,7 +34,7 @@ public class SkillCastTypeController {
     @Operation(summary = "시전 방식 수정", description = "없는 id면 404, 다른 시전 방식과 이름이 겹치면 409 반환합니다.")
     @PutMapping("/{id}")
     public SkillCastTypeResponse updateCastType(
-        @PathVariable Long id, @Valid @RequestBody SkillCastTypeRequest request) {
+            @PathVariable Long id, @Valid @RequestBody SkillCastTypeRequest request) {
         return skillCastTypeService.updateCastType(id, request);
     }
 

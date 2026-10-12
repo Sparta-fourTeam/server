@@ -7,15 +7,12 @@ import com.novaserver.skill.service.SkillService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
-/**
- * 스킬 관리 관리자용 API.
- */
+/** 스킬 관리 관리자용 API. */
 @Tag(name = "스킬 관리", description = "스킬 등록·수정·삭제")
 @RestController
 @RequestMapping("/admin/skill")
@@ -44,7 +41,7 @@ public class SkillAdminController {
     @Operation(summary = "스킬 수정", description = "스킬을 수정합니다.")
     @PutMapping("/{id}")
     public SkillDetailResponse updateSkill(
-        @PathVariable Long id, @Valid @RequestBody SkillRequest request) {
+            @PathVariable Long id, @Valid @RequestBody SkillRequest request) {
         return skillService.updateSkill(id, request);
     }
 
