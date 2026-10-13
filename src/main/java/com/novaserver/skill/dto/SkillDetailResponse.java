@@ -14,7 +14,8 @@ public record SkillDetailResponse(
         Integer maxLevel,
         Boolean childOnly,
         SkillBaseStatsResponse baseStats,
-        Integer unlockLevel) {
+        Integer unlockLevel,
+        String progressionId) {
 
     /** 연관 테이블 값. */
     public record NamedRef(Long id, String name) {}
@@ -31,6 +32,7 @@ public record SkillDetailResponse(
                 skill.getMaxLevel(),
                 skill.isChildOnly(),
                 SkillBaseStatsResponse.from(skill.getBaseStats()),
-                skill.getUnlockLevel());
+                skill.getUnlockLevel(),
+                skill.getProgressionId());
     }
 }

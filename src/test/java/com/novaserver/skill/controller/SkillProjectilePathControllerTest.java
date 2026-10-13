@@ -39,7 +39,7 @@ class SkillProjectilePathControllerTest {
                                 new SkillProjectilePathResponse(
                                         new SkillProjectilePath("Straight", "직선"))));
 
-        mockMvc.perform(get("/api/skill-projectile-paths"))
+        mockMvc.perform(get("/api/admin/skill-projectile-paths"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Straight"));
     }
@@ -47,7 +47,7 @@ class SkillProjectilePathControllerTest {
     @Test
     void returnsBadRequestWhenNameMissing() throws Exception {
         mockMvc.perform(
-                        post("/api/skill-projectile-paths")
+                        post("/api/admin/skill-projectile-paths")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"label\":\"직선\"}"))
                 .andExpect(status().isBadRequest());
@@ -60,7 +60,7 @@ class SkillProjectilePathControllerTest {
                         new SkillProjectilePathResponse(new SkillProjectilePath("Straight", "직선")));
 
         mockMvc.perform(
-                        post("/api/skill-projectile-paths")
+                        post("/api/admin/skill-projectile-paths")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"name\":\"Straight\",\"label\":\"직선\"}"))
                 .andExpect(status().isOk())
@@ -74,7 +74,7 @@ class SkillProjectilePathControllerTest {
                         new SkillProjectilePathResponse(new SkillProjectilePath("Curve", "곡선")));
 
         mockMvc.perform(
-                        put("/api/skill-projectile-paths/1")
+                        put("/api/admin/skill-projectile-paths/1")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"name\":\"Curve\",\"label\":\"곡선\"}"))
                 .andExpect(status().isOk())
@@ -83,7 +83,8 @@ class SkillProjectilePathControllerTest {
 
     @Test
     void returnsNoContentOnDelete() throws Exception {
-        mockMvc.perform(delete("/api/skill-projectile-paths/1")).andExpect(status().isNoContent());
+        mockMvc.perform(delete("/api/admin/skill-projectile-paths/1"))
+                .andExpect(status().isNoContent());
 
         verify(skillProjectilePathService).deleteSkillProjectilePath(1L);
     }

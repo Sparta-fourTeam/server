@@ -43,7 +43,43 @@ public enum ErrorCode {
 
     // 스킬
     SKILL_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 스킬입니다: %s"),
-    SKILL_DUPLICATED(HttpStatus.CONFLICT, "이미 존재하는 스킬명입니다: %s");
+    SKILL_DUPLICATED(HttpStatus.CONFLICT, "이미 존재하는 스킬명입니다: %s"),
+
+    // 스킬 형태
+    SKILL_FORM_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 스킬 형태입니다: %s"),
+    SKILL_FORM_DUPLICATED(HttpStatus.CONFLICT, "이미 있는 스킬 형태 이름입니다: %s"),
+    SKILL_FORM_IN_USE(HttpStatus.CONFLICT, "사용 중인 효과가 있어 삭제할 수 없습니다: %s"),
+
+    // 효과 발동 시점
+    EFFECT_TRIGGER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 발동 시점입니다: %s"),
+    EFFECT_TRIGGER_DUPLICATED(HttpStatus.CONFLICT, "이미 있는 발동 시점 이름입니다: %s"),
+    EFFECT_TRIGGER_IN_USE(HttpStatus.CONFLICT, "사용 중인 효과가 있어 삭제할 수 없습니다: %s"),
+
+    // 효과 종류
+    EFFECT_KIND_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 효과 종류입니다: %s"),
+    EFFECT_KIND_DUPLICATED(HttpStatus.CONFLICT, "이미 있는 효과 종류 이름입니다: %s"),
+    EFFECT_KIND_IN_USE(HttpStatus.CONFLICT, "사용 중인 효과가 있어 삭제할 수 없습니다: %s"),
+
+    // 강화 카드
+    UPGRADE_CARD_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 강화 카드입니다: %s"),
+    CARD_MIN_BATTLE_LEVEL_INVALID(HttpStatus.BAD_REQUEST, "minBattleLevel은 1~%s 사이여야 합니다: %s"),
+
+    // 카드 변형
+    CARD_VARIANT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 카드 변형입니다: %s"),
+    CARD_VARIANT_DUPLICATED(HttpStatus.CONFLICT, "이미 있는 변형 조건입니다: %s"),
+
+    // 카드 효과
+    CARD_EFFECT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 카드 효과입니다: %s"),
+
+    // 선행 카드 조건
+    REQUIRED_CARD_COUNT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 선행 카드 조건입니다: %s"),
+    REQUIRED_CARD_COUNT_DUPLICATED(HttpStatus.CONFLICT, "이미 등록된 선행 카드 조건입니다: %s"),
+    REQUIRED_CARD_COUNT_SELF_REFERENCE(HttpStatus.BAD_REQUEST, "자기 자신을 선행 카드로 지정할 수 없습니다: %s"),
+
+    // 카드 배제 조건
+    CARD_EXCLUSION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 배제 조건입니다: %s"),
+    CARD_EXCLUSION_DUPLICATED(HttpStatus.CONFLICT, "이미 등록된 배제 조건입니다: %s"),
+    CARD_EXCLUSION_SELF_REFERENCE(HttpStatus.BAD_REQUEST, "자기 자신을 배제 카드로 지정할 수 없습니다: %s");
 
     private final HttpStatus status;
     private final String message;

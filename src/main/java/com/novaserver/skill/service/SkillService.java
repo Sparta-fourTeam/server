@@ -1,5 +1,7 @@
 package com.novaserver.skill.service;
 
+import com.novaserver.cards.dto.CardDataResponse;
+import com.novaserver.cards.service.CardService;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.skill.dto.SkillDataResponse;
 import com.novaserver.skill.dto.SkillDetailResponse;
@@ -11,6 +13,7 @@ import com.novaserver.skill.entity.SkillProjectilePath;
 import com.novaserver.skill.repository.SkillRepository;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -24,6 +27,7 @@ public class SkillService {
 
     private final SkillCastTypeService skillCastTypeService;
     private final SkillProjectilePathService skillProjectilePathService;
+    private final CardService cardService;
 
     /** 스킬 목록을 요약해서 조회한다. */
     @Transactional(readOnly = true)
@@ -43,14 +47,19 @@ public class SkillService {
         return SkillDetailResponse.from(findSkill(id));
     }
 
-    /** 유니티 클라이언트용 스킬 데이터를 전체 조회한다. */
+    /** 유니티 클라이언트용 스킬 데이터를 전체 조회한다. 각 스킬의 강화 카드 목록을 upgrades로 함께 내려준다. */
     @Transactional(readOnly = true)
     public List<SkillDataResponse> getSkillData() {
         List<Skill> skills = skillRepository.findAllBy();
+        List<Long> skillIds = skills.stream().map(Skill::getId).toList();
+        Map<Long, List<CardDataResponse>> upgradesBySkillId =
+                cardService.getCardDataBySkillIds(skillIds);
         List<SkillDataResponse> responses = new ArrayList<>();
 
         for (Skill skill : skills) {
-            responses.add(SkillDataResponse.from(skill));
+            responses.add(
+                    SkillDataResponse.from(
+                            skill, upgradesBySkillId.getOrDefault(skill.getId(), List.of())));
         }
 
         return responses;
@@ -78,7 +87,8 @@ public class SkillService {
                                     request.getBaseStats() == null
                                             ? null
                                             : request.getBaseStats().toEntity(),
-                                    request.getUnlockLevel()));
+                                    request.getUnlockLevel(),
+                                    request.getProgressionId()));
             return SkillDetailResponse.from(saved);
         } catch (DataIntegrityViolationException e) {
             throw ErrorCode.SKILL_DUPLICATED.exception(request.getName());
@@ -103,7 +113,8 @@ public class SkillService {
                 request.getMaxLevel(),
                 request.isChildOnly(),
                 request.getBaseStats() == null ? null : request.getBaseStats().toEntity(),
-                request.getUnlockLevel());
+                request.getUnlockLevel(),
+                request.getProgressionId());
         try {
             skillRepository.flush();
         } catch (DataIntegrityViolationException e) {

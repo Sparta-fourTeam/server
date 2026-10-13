@@ -31,4 +31,6 @@ public class SkillRequest {
     @Valid private SkillBaseStatsRequest baseStats;
 
     private Integer unlockLevel;
+
+    private String progressionId;
 }

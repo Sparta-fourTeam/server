@@ -36,7 +36,7 @@ class SkillCastTypeControllerTest {
         when(skillCastTypeService.getCastTypes())
                 .thenReturn(List.of(new SkillCastTypeResponse(new SkillCastType("Melee", "근접"))));
 
-        mockMvc.perform(get("/api/skill-cast-types"))
+        mockMvc.perform(get("/api/admin/skill-cast-types"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Melee"));
     }
@@ -44,7 +44,7 @@ class SkillCastTypeControllerTest {
     @Test
     void returnsBadRequestWhenNameMissing() throws Exception {
         mockMvc.perform(
-                        post("/api/skill-cast-types")
+                        post("/api/admin/skill-cast-types")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"label\":\"근접\"}"))
                 .andExpect(status().isBadRequest());
@@ -56,7 +56,7 @@ class SkillCastTypeControllerTest {
                 .thenReturn(new SkillCastTypeResponse(new SkillCastType("Melee", "근접")));
 
         mockMvc.perform(
-                        post("/api/skill-cast-types")
+                        post("/api/admin/skill-cast-types")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"name\":\"Melee\",\"label\":\"근접\"}"))
                 .andExpect(status().isOk())
@@ -69,7 +69,7 @@ class SkillCastTypeControllerTest {
                 .thenReturn(new SkillCastTypeResponse(new SkillCastType("Ranged", "원거리")));
 
         mockMvc.perform(
-                        put("/api/skill-cast-types/1")
+                        put("/api/admin/skill-cast-types/1")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"name\":\"Ranged\",\"label\":\"원거리\"}"))
                 .andExpect(status().isOk())
@@ -78,7 +78,7 @@ class SkillCastTypeControllerTest {
 
     @Test
     void returnsNoContentOnDelete() throws Exception {
-        mockMvc.perform(delete("/api/skill-cast-types/1")).andExpect(status().isNoContent());
+        mockMvc.perform(delete("/api/admin/skill-cast-types/1")).andExpect(status().isNoContent());
 
         verify(skillCastTypeService).deleteCastType(1L);
     }
