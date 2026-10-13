@@ -3,7 +3,6 @@ package com.novaserver.cards.service;
 import com.novaserver.cards.dto.EffectTriggerRequest;
 import com.novaserver.cards.dto.EffectTriggerResponse;
 import com.novaserver.cards.entity.EffectTrigger;
-import com.novaserver.cards.repository.CardEffectRepository;
 import com.novaserver.cards.repository.EffectTriggerRepository;
 import com.novaserver.global.error.ErrorCode;
 import java.util.List;
@@ -25,7 +24,7 @@ public class EffectTriggerService {
                 .toList();
     }
 
-    /** 발동 시점을 등록한다. 이름이 이미 있으면 409를 던진다. */
+    /** 발동 시점을 등록한다. */
     @Transactional
     public EffectTriggerResponse createTrigger(EffectTriggerRequest request) {
         if (effectTriggerRepository.existsByName(request.getName())) {
@@ -41,7 +40,7 @@ public class EffectTriggerService {
         }
     }
 
-    /** 발동 시점을 수정한다. 없는 id면 404, 이름이 겹치면 409를 던진다. */
+    /** 발동 시점을 수정한다. */
     @Transactional
     public EffectTriggerResponse updateTrigger(Long id, EffectTriggerRequest request) {
         EffectTrigger trigger = findTrigger(id);
@@ -57,4 +56,9 @@ public class EffectTriggerService {
         return new EffectTriggerResponse(trigger);
     }
 
+    private EffectTrigger findTrigger(Long id) {
+        return effectTriggerRepository
+                .findById(id)
+                .orElseThrow(() -> ErrorCode.EFFECT_TRIGGER_NOT_FOUND.exception(id));
+    }
 }

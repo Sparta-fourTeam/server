@@ -3,7 +3,6 @@ package com.novaserver.cards.service;
 import com.novaserver.cards.dto.SkillFormRequest;
 import com.novaserver.cards.dto.SkillFormResponse;
 import com.novaserver.cards.entity.SkillForm;
-import com.novaserver.cards.repository.CardEffectRepository;
 import com.novaserver.cards.repository.SkillFormRepository;
 import com.novaserver.global.error.ErrorCode;
 import java.util.List;
@@ -25,7 +24,7 @@ public class SkillFormService {
                 .toList();
     }
 
-    /** 형태를 등록한다. 이름이 이미 있으면 409를 던진다. */
+    /** 형태를 등록한다. */
     @Transactional
     public SkillFormResponse createForm(SkillFormRequest request) {
         if (skillFormRepository.existsByName(request.getName())) {
@@ -40,7 +39,7 @@ public class SkillFormService {
         }
     }
 
-    /** 형태를 수정한다. 없는 id면 404, 이름이 겹치면 409를 던진다. */
+    /** 형태를 수정한다. */
     @Transactional
     public SkillFormResponse updateForm(Long id, SkillFormRequest request) {
         SkillForm form = findForm(id);
@@ -54,5 +53,11 @@ public class SkillFormService {
             throw ErrorCode.SKILL_FORM_DUPLICATED.exception(request.getName());
         }
         return new SkillFormResponse(form);
+    }
+
+    private SkillForm findForm(Long id) {
+        return skillFormRepository
+                .findById(id)
+                .orElseThrow(() -> ErrorCode.SKILL_FORM_NOT_FOUND.exception(id));
     }
 }

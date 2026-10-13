@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 /** 효과 발동 시점 관리 API. */
@@ -37,5 +36,4 @@ public class EffectTriggerController {
             @PathVariable Long id, @Valid @RequestBody EffectTriggerRequest request) {
         return effectTriggerService.updateTrigger(id, request);
     }
-
 }

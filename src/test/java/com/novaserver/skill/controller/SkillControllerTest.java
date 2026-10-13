@@ -75,7 +75,16 @@ class SkillControllerTest {
                 .thenReturn(
                         List.of(
                                 new SkillDataResponse(
-                                        1L, "파이어볼", "설명", "Melee", "Straight", 5, false, null, 1)));
+                                        1L,
+                                        "파이어볼",
+                                        "설명",
+                                        "Melee",
+                                        "Straight",
+                                        5,
+                                        false,
+                                        null,
+                                        1,
+                                        List.of())));
 
         mockMvc.perform(get("/api/skill"))
                 .andExpect(status().isOk())

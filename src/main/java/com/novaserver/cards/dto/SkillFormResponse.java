@@ -12,7 +12,6 @@ public class SkillFormResponse {
     private final String label;
     private final LocalDateTime updatedAt;
 
-    /** 엔티티로부터 응답을 만든다. */
     public SkillFormResponse(SkillForm form) {
         this.id = form.getId();
         this.name = form.getName();
