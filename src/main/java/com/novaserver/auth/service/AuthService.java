@@ -8,6 +8,7 @@ import com.novaserver.auth.jwt.JwtProvider;
 import com.novaserver.auth.jwt.TokenInfo;
 import com.novaserver.auth.jwt.TokenType;
 import com.novaserver.auth.repository.RefreshTokenRepository;
+import com.novaserver.auth.social.SocialTokenVerifier;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.user.Provider;
 import com.novaserver.user.entity.User;
@@ -18,10 +19,11 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 게스트 가입·로그인, 토큰 발급·재발급을 담당한다. */
+/** 게스트·소셜 로그인과 토큰 발급·재발급을 담당한다. */
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -29,6 +31,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final JwtProvider jwtProvider;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final SocialTokenVerifier socialTokenVerifier;
 
     /**
      * 새 게스트 유저를 만들고 토큰을 발급한다. DB에는 guestId의 해시만 저장한다.
@@ -111,5 +114,37 @@ public class AuthService {
         IssuedToken refresh = jwtProvider.createRefreshToken(userId, clientType);
         refreshTokenRepository.save(userId, clientType, refresh.tokenId());
         return new TokenResponse(access, refresh.token());
+    }
+
+    /**
+     * Google·Apple ID 토큰을 검증하고 토큰을 발급한다. 처음 로그인한 계정이면 유저를 새로 만든다.
+     *
+     * <p>DB 쓰기가 유저 생성 한 번뿐이고 공개키 조회로 오래 걸릴 수 있어 트랜잭션으로 묶지 않는다. 같은 계정의 첫 로그인이 동시에 들어와도 한쪽이 먼저 만든 유저를
+     * 다시 조회해 둘 다 성공한다.
+     *
+     * @param idToken 클라이언트가 Google·Apple에서 받은 ID 토큰 원문
+     * @param provider ID 토큰을 발급한 소셜 provider
+     * @param clientType 발급할 토큰의 클라이언트 종류. 엔드포인트(컨트롤러)가 정한다
+     * @return access·refresh 토큰
+     * @throws org.springframework.web.server.ResponseStatusException 소셜 provider가 아니면
+     *     UNSUPPORTED_PROVIDER, ID 토큰 검증에 실패하면 INVALID_SOCIAL_TOKEN, 공개키를 받아오지 못하면
+     *     SOCIAL_PROVIDER_UNAVAILABLE
+     */
+    public TokenResponse socialLogIn(String idToken, Provider provider, ClientType clientType) {
+        String sub = socialTokenVerifier.verify(provider, idToken);
+        User user =
+                userRepository
+                        .findByProviderAndAccountId(provider, sub)
+                        .orElseGet(() -> createSocialUser(provider, sub));
+        return issueTokens(user.getId(), clientType);
+    }
+
+    private User createSocialUser(Provider provider, String sub) {
+        try {
+            return userRepository.save(new User(provider, sub));
+        } catch (DataIntegrityViolationException e) {
+            // 같은 계정의 첫 로그인이 동시에 들어와 다른 요청이 먼저 가입시킨 경우. 아니면 원래 예외를 그대로 던진다
+            return userRepository.findByProviderAndAccountId(provider, sub).orElseThrow(() -> e);
+        }
     }
 }

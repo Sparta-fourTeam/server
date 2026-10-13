@@ -21,6 +21,12 @@ app:
     access-token-validity-seconds: 900
     refresh-token-validity-seconds: 2592000
 
-  oauth:
-    google-client-id: ""
-    apple-client-id: ""
+  social:
+    google:
+      jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
+      issuers: https://accounts.google.com,accounts.google.com
+      client-ids: test-google-client-id
+    apple:
+      jwk-set-uri: https://appleid.apple.com/auth/keys
+      issuers: https://appleid.apple.com
+      client-ids: test-apple-client-id

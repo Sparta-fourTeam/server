@@ -16,6 +16,12 @@ app:
     access-token-validity-seconds: 900
     refresh-token-validity-seconds: 2592000
 
-  oauth:
-    google-client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
-    apple-client-id: ${APPLE_OAUTH_CLIENT_ID:}
+  social:
+    google:
+      jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
+      issuers: https://accounts.google.com,accounts.google.com
+      client-ids: ${GOOGLE_CLIENT_IDS:}   # 쉼표로 구분, ID 토큰의 aud로 허용할 값
+    apple:
+      jwk-set-uri: https://appleid.apple.com/auth/keys
+      issuers: https://appleid.apple.com
+      client-ids: ${APPLE_CLIENT_IDS:}    # 번들 ID(·Services ID), 쉼표로 구분
