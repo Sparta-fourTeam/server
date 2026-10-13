@@ -42,7 +42,8 @@ class SkillControllerTest {
                 5,
                 false,
                 null,
-                1);
+                1,
+                null);
     }
 
     @Test
@@ -84,6 +85,7 @@ class SkillControllerTest {
                                         false,
                                         null,
                                         1,
+                                        null,
                                         List.of())));
 
         mockMvc.perform(get("/api/skill"))

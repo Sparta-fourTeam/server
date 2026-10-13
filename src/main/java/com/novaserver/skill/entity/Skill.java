@@ -1,16 +1,7 @@
 package com.novaserver.skill.entity;
 
 import com.novaserver.global.entity.BaseTimeEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Embedded;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -52,6 +43,9 @@ public class Skill extends BaseTimeEntity {
     @Column(nullable = false)
     private int unlockLevel;
 
+    @Column(name = "progression_id")
+    private String progressionId;
+
     /**
      * 스킬을 생성한다.
      *
@@ -63,6 +57,7 @@ public class Skill extends BaseTimeEntity {
      * @param childOnly 자식 전용 여부
      * @param baseStats 기본 전투 수치.
      * @param unlockLevel 해금 레벨. 기본값 1
+     * @param progressionId 유저 영구 강화 레벨을 찾을 키.
      */
     public Skill(
             String name,
@@ -72,7 +67,8 @@ public class Skill extends BaseTimeEntity {
             int maxLevel,
             boolean childOnly,
             SkillBaseStats baseStats,
-            Integer unlockLevel) {
+            Integer unlockLevel,
+            String progressionId) {
         this.name = name;
         this.desc = desc;
         this.castType = castType;
@@ -81,19 +77,21 @@ public class Skill extends BaseTimeEntity {
         this.childOnly = childOnly;
         this.baseStats = baseStats;
         this.unlockLevel = unlockLevel != null ? unlockLevel : 1;
+        this.progressionId = progressionId;
     }
 
     /**
      * 스킬 정보를 수정한다. baseStats는 통째로 교체한다.
      *
      * @param name 표시 이름
-     * @param desc 설명. 없으면 null
+     * @param desc 설명.
      * @param castType 시전 방식
      * @param projectilePath 투사체 경로
      * @param maxLevel 최대 강화 횟수
      * @param childOnly 자식 전용 여부
-     * @param baseStats 기본 전투 수치. 없으면 null
-     * @param unlockLevel 해금 레벨. null이면 1
+     * @param baseStats 기본 전투 수치.
+     * @param unlockLevel 해금 레벨.
+     * @param progressionId 유저 영구 강화 레벨을 찾을 키.
      */
     public void update(
             String name,
@@ -103,7 +101,8 @@ public class Skill extends BaseTimeEntity {
             int maxLevel,
             boolean childOnly,
             SkillBaseStats baseStats,
-            Integer unlockLevel) {
+            Integer unlockLevel,
+            String progressionId) {
         this.name = name;
         this.desc = desc;
         this.castType = castType;
@@ -112,5 +111,6 @@ public class Skill extends BaseTimeEntity {
         this.childOnly = childOnly;
         this.baseStats = baseStats;
         this.unlockLevel = unlockLevel != null ? unlockLevel : 1;
+        this.progressionId = progressionId;
     }
 }

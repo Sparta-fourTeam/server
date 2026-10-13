@@ -87,7 +87,8 @@ public class SkillService {
                                     request.getBaseStats() == null
                                             ? null
                                             : request.getBaseStats().toEntity(),
-                                    request.getUnlockLevel()));
+                                    request.getUnlockLevel(),
+                                    request.getProgressionId()));
             return SkillDetailResponse.from(saved);
         } catch (DataIntegrityViolationException e) {
             throw ErrorCode.SKILL_DUPLICATED.exception(request.getName());
@@ -112,7 +113,8 @@ public class SkillService {
                 request.getMaxLevel(),
                 request.isChildOnly(),
                 request.getBaseStats() == null ? null : request.getBaseStats().toEntity(),
-                request.getUnlockLevel());
+                request.getUnlockLevel(),
+                request.getProgressionId());
         try {
             skillRepository.flush();
         } catch (DataIntegrityViolationException e) {
