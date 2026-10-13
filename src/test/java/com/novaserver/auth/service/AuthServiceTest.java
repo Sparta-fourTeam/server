@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -18,6 +19,7 @@ import com.novaserver.auth.jwt.JwtProvider;
 import com.novaserver.auth.jwt.TokenInfo;
 import com.novaserver.auth.jwt.TokenType;
 import com.novaserver.auth.repository.RefreshTokenRepository;
+import com.novaserver.auth.social.SocialTokenVerifier;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.user.Provider;
 import com.novaserver.user.entity.User;
@@ -36,6 +38,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
@@ -46,10 +49,13 @@ class AuthServiceTest {
     private static final String GUEST_ID = "550e8400-e29b-41d4-a716-446655440000";
     private static final Long USER_ID = 42L;
     private static final String OLD_REFRESH = "old-refresh-token";
+    private static final String ID_TOKEN = "google-id-token";
+    private static final String SUB = "google-sub-1";
 
     @Mock private UserRepository userRepository;
     @Mock private JwtProvider jwtProvider;
     @Mock private RefreshTokenRepository refreshTokenRepository;
+    @Mock private SocialTokenVerifier socialTokenVerifier;
 
     @InjectMocks private AuthService authService;
 
@@ -269,6 +275,101 @@ class AuthServiceTest {
                 HttpStatus.UNAUTHORIZED,
                 ErrorCode.TOKEN_EXPIRED);
         verifyNoInteractions(refreshTokenRepository);
+    }
+
+    @Test
+    @DisplayName("소셜 로그인: 이미 가입한 계정이면 새로 만들지 않고 GAME 토큰을 발급한다")
+    void shouldIssueTokens_whenSocialUserExists() {
+        // given
+        when(socialTokenVerifier.verify(Provider.GOOGLE, ID_TOKEN)).thenReturn(SUB);
+        when(userRepository.findByProviderAndAccountId(Provider.GOOGLE, SUB))
+                .thenReturn(Optional.of(withId(new User(Provider.GOOGLE, SUB))));
+        stubTokens();
+
+        // when
+        TokenResponse response =
+                authService.socialLogIn(ID_TOKEN, Provider.GOOGLE, ClientType.GAME);
+
+        // then
+        assertThat(response.getAccessToken()).isEqualTo("access-token");
+        verify(userRepository, never()).save(any());
+        verify(refreshTokenRepository).save(USER_ID, ClientType.GAME, "refresh-jti");
+    }
+
+    @Test
+    @DisplayName("소셜 로그인: 처음 로그인한 계정이면 provider와 sub로 유저를 만들고 토큰을 발급한다")
+    void shouldCreateUser_whenSocialUserIsNew() {
+        // given
+        when(socialTokenVerifier.verify(Provider.APPLE, ID_TOKEN)).thenReturn(SUB);
+        when(userRepository.findByProviderAndAccountId(Provider.APPLE, SUB))
+                .thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class)))
+                .thenAnswer(invocation -> withId(invocation.getArgument(0)));
+        stubTokens();
+
+        // when
+        TokenResponse response = authService.socialLogIn(ID_TOKEN, Provider.APPLE, ClientType.GAME);
+
+        // then
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().getProvider()).isEqualTo(Provider.APPLE);
+        assertThat(captor.getValue().getAccountId()).isEqualTo(SUB);
+        assertThat(response.getRefreshToken()).isEqualTo("refresh-token");
+    }
+
+    @Test
+    @DisplayName("소셜 로그인: 동시 첫 로그인으로 저장이 unique 위반이면 먼저 만들어진 유저로 토큰을 발급한다")
+    void shouldUseExistingUser_whenConcurrentSignUpConflicts() {
+        // given
+        when(socialTokenVerifier.verify(Provider.GOOGLE, ID_TOKEN)).thenReturn(SUB);
+        when(userRepository.findByProviderAndAccountId(Provider.GOOGLE, SUB))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(withId(new User(Provider.GOOGLE, SUB))));
+        when(userRepository.save(any(User.class)))
+                .thenThrow(new DataIntegrityViolationException("Duplicate entry"));
+        stubTokens();
+
+        // when
+        TokenResponse response =
+                authService.socialLogIn(ID_TOKEN, Provider.GOOGLE, ClientType.GAME);
+
+        // then
+        assertThat(response.getAccessToken()).isEqualTo("access-token");
+        verify(userRepository, times(2)).findByProviderAndAccountId(Provider.GOOGLE, SUB);
+    }
+
+    @Test
+    @DisplayName("소셜 로그인: 저장 실패 후 다시 조회해도 없으면 원래 예외를 그대로 던진다")
+    void shouldRethrowOriginalException_whenUserStillMissingAfterConflict() {
+        // given
+        DataIntegrityViolationException original =
+                new DataIntegrityViolationException("Data too long for column");
+        when(socialTokenVerifier.verify(Provider.GOOGLE, ID_TOKEN)).thenReturn(SUB);
+        when(userRepository.findByProviderAndAccountId(Provider.GOOGLE, SUB))
+                .thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenThrow(original);
+
+        // when & then
+        assertThatThrownBy(
+                        () -> authService.socialLogIn(ID_TOKEN, Provider.GOOGLE, ClientType.GAME))
+                .isSameAs(original);
+        verifyNoInteractions(jwtProvider, refreshTokenRepository);
+    }
+
+    @Test
+    @DisplayName("소셜 로그인: ID 토큰 검증에 실패하면 예외를 그대로 던지고 유저를 조회·생성하지 않는다")
+    void shouldNotTouchUsers_whenIdTokenInvalid() {
+        // given
+        when(socialTokenVerifier.verify(Provider.GOOGLE, ID_TOKEN))
+                .thenThrow(ErrorCode.INVALID_SOCIAL_TOKEN.exception());
+
+        // when & then
+        assertStatus(
+                () -> authService.socialLogIn(ID_TOKEN, Provider.GOOGLE, ClientType.GAME),
+                HttpStatus.UNAUTHORIZED,
+                ErrorCode.INVALID_SOCIAL_TOKEN);
+        verifyNoInteractions(userRepository, jwtProvider, refreshTokenRepository);
     }
 
     private static void assertStatus(
