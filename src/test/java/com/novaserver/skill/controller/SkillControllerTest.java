@@ -40,6 +40,7 @@ class SkillControllerTest {
                                         null,
                                         1,
                                         null,
+                                        List.of(),
                                         List.of())));
 
         mockMvc.perform(get("/api/skill"))

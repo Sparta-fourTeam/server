@@ -88,6 +88,10 @@ public enum ErrorCode {
     REQUIRED_SKILL_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 필요 스킬 조건입니다: %s"),
     REQUIRED_SKILL_DUPLICATED(HttpStatus.CONFLICT, "이미 등록된 필요 스킬 조건입니다: %s"),
 
+    // 카드 효과 적용 조건
+    MIRRORED_CARD_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 카드 효과 적용 조건입니다: %s"),
+    MIRRORED_CARD_DUPLICATED(HttpStatus.CONFLICT, "이미 등록된 카드 효과 적용 조건입니다: %s"),
+
     // 스킬 속성
     SKILL_ELEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 속성입니다: %s"),
     SKILL_ELEMENT_DUPLICATED(HttpStatus.CONFLICT, "이미 있는 속성 이름입니다: %s"),

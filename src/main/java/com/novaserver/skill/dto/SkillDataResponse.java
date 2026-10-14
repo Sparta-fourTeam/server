@@ -20,7 +20,8 @@ public record SkillDataResponse(
         Map<String, Map<String, Double>> baseStats,
         Integer unlockLevel,
         String progressionId,
-        List<CardDataResponse> upgrades) {
+        List<CardDataResponse> upgrades,
+        List<MirroredCardDataResponse> mirrorCards) {
 
     /** 스킬 및 소속 강화 카드. 유니티용 데이터 응답을 만든다. */
     public static SkillDataResponse from(Skill skill, List<CardDataResponse> upgrades) {
@@ -36,6 +37,7 @@ public record SkillDataResponse(
                 skill.getBaseStats(),
                 skill.getUnlockLevel(),
                 skill.getProgressionId(),
-                upgrades);
+                upgrades,
+                skill.getMirroredCards().stream().map(MirroredCardDataResponse::from).toList());
     }
 }

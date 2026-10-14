@@ -11,6 +11,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -65,6 +67,9 @@ public class Skill extends BaseTimeEntity {
 
     @Column(name = "progression_id")
     private String progressionId;
+
+    @OneToMany(mappedBy = "skill", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MirroredCard> mirroredCards = new ArrayList<>();
 
     /**
      * 스킬을 생성한다.

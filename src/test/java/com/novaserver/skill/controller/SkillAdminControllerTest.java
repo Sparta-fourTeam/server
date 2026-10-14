@@ -43,7 +43,8 @@ class SkillAdminControllerTest {
                 false,
                 null,
                 1,
-                null);
+                null,
+                List.of());
     }
 
     @Test

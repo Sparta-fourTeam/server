@@ -2,6 +2,7 @@ package com.novaserver.skill.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.novaserver.skill.entity.Skill;
+import java.util.List;
 import java.util.Map;
 
 /** 웹용 스킬 상세 응답. */
@@ -17,7 +18,8 @@ public record SkillDetailResponse(
         Boolean childOnly,
         Map<String, Map<String, Double>> baseStats,
         Integer unlockLevel,
-        String progressionId) {
+        String progressionId,
+        List<MirroredCardResponse> mirroredCards) {
 
     /** 연관 테이블 값. */
     public record NamedRef(Long id, String name) {}
@@ -38,6 +40,7 @@ public record SkillDetailResponse(
                 skill.isChildOnly(),
                 skill.getBaseStats(),
                 skill.getUnlockLevel(),
-                skill.getProgressionId());
+                skill.getProgressionId(),
+                skill.getMirroredCards().stream().map(MirroredCardResponse::from).toList());
     }
 }
