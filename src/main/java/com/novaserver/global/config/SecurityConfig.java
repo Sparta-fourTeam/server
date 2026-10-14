@@ -34,9 +34,6 @@ public class SecurityConfig {
         "/swagger-ui.html"
     };
 
-    // TODO: 게스트 로그인(#1) 완료 후 제거. 로그인 API가 없어 토큰을 받을 수 없는 동안 기존 API를 임시로 연다
-    private static final String[] TEMP_PUBLIC_PATHS = {"/api/**"};
-
     private final JwtProvider jwtProvider;
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
     private final JwtAccessDeniedHandler accessDeniedHandler;
@@ -55,8 +52,6 @@ public class SecurityConfig {
                                         .permitAll()
                                         .requestMatchers("/api/admin/**")
                                         .hasRole(Role.ADMIN.name())
-                                        .requestMatchers(TEMP_PUBLIC_PATHS)
-                                        .permitAll()
                                         .anyRequest()
                                         .authenticated())
                 .exceptionHandling(
