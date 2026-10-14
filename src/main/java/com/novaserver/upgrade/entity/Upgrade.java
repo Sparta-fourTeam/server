@@ -11,11 +11,11 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Upgrade {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Id private String id;
 
-    public static Upgrade create() {
-        return new Upgrade();
+    public static Upgrade create(String id) {
+        Upgrade upgrade = new Upgrade();
+        upgrade.id = id;
+        return upgrade;
     }
 }

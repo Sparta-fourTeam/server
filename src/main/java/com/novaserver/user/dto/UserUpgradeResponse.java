@@ -10,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 @Schema(description = "유저 강화 응답")
 public class UserUpgradeResponse {
     @Schema(description = "강화 id")
-    private final Long upgradeId;
+    private final String upgradeId;
 
     @Schema(description = "강화 레벨")
     private final Integer level;
