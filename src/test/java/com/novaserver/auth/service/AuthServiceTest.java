@@ -25,6 +25,7 @@ import com.novaserver.user.Provider;
 import com.novaserver.user.Role;
 import com.novaserver.user.entity.User;
 import com.novaserver.user.repository.UserRepository;
+import com.novaserver.user.service.UserService;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -54,6 +55,7 @@ class AuthServiceTest {
     private static final String SUB = "google-sub-1";
 
     @Mock private UserRepository userRepository;
+    @Mock private UserService userService;
     @Mock private JwtProvider jwtProvider;
     @Mock private RefreshTokenRepository refreshTokenRepository;
     @Mock private SocialTokenVerifier socialTokenVerifier;

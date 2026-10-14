@@ -14,6 +14,7 @@ import com.novaserver.user.Provider;
 import com.novaserver.user.Role;
 import com.novaserver.user.entity.User;
 import com.novaserver.user.repository.UserRepository;
+import com.novaserver.user.service.UserService;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -31,6 +32,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final UserService userService;
     private final JwtProvider jwtProvider;
     private final RefreshTokenRepository refreshTokenRepository;
     private final SocialTokenVerifier socialTokenVerifier;
@@ -44,6 +46,7 @@ public class AuthService {
     public GuestSignUpResponse guestSignUp() {
         String guestId = UUID.randomUUID().toString();
         User user = userRepository.save(new User(Provider.GUEST, hash(guestId)));
+        userService.createInitialState(user);
         return new GuestSignUpResponse(
                 guestId, issueTokens(user.getId(), ClientType.GAME, Role.USER));
     }
@@ -153,12 +156,15 @@ public class AuthService {
     }
 
     private User createSocialUser(Provider provider, String sub) {
+        User user;
         try {
-            return userRepository.save(new User(provider, sub));
+            user = userRepository.save(new User(provider, sub));
         } catch (DataIntegrityViolationException e) {
             // 같은 계정의 첫 로그인이 동시에 들어와 다른 요청이 먼저 가입시킨 경우. 아니면 원래 예외를 그대로 던진다
             return userRepository.findByProviderAndAccountId(provider, sub).orElseThrow(() -> e);
         }
+        userService.createInitialState(user);
+        return user;
     }
 
     /**

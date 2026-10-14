@@ -79,7 +79,12 @@ public enum ErrorCode {
     // 카드 배제 조건
     CARD_EXCLUSION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 배제 조건입니다: %s"),
     CARD_EXCLUSION_DUPLICATED(HttpStatus.CONFLICT, "이미 등록된 배제 조건입니다: %s"),
-    CARD_EXCLUSION_SELF_REFERENCE(HttpStatus.BAD_REQUEST, "자기 자신을 배제 카드로 지정할 수 없습니다: %s");
+    CARD_EXCLUSION_SELF_REFERENCE(HttpStatus.BAD_REQUEST, "자기 자신을 배제 카드로 지정할 수 없습니다: %s"),
+
+    // 유저
+    USER_DATA_NOT_FOUND(HttpStatus.NOT_FOUND, "유저 데이터가 없습니다: %s"),
+    WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "유저 지갑이 없습니다: %s"),
+    ENERGY_NOT_FOUND(HttpStatus.NOT_FOUND, "유저 에너지가 없습니다: %s");
 
     private final HttpStatus status;
     private final String message;
