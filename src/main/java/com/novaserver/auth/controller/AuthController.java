@@ -1,28 +1,34 @@
 package com.novaserver.auth.controller;
 
+import com.novaserver.auth.dto.AccessTokenResponse;
 import com.novaserver.auth.dto.GuestLogInRequest;
 import com.novaserver.auth.dto.GuestSignUpResponse;
 import com.novaserver.auth.dto.RefreshRequest;
 import com.novaserver.auth.dto.SocialLogInRequest;
 import com.novaserver.auth.dto.TokenResponse;
 import com.novaserver.auth.jwt.ClientType;
+import com.novaserver.auth.jwt.RefreshCookieFactory;
 import com.novaserver.auth.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 게스트·소셜 로그인과 토큰 재발급 API. */
-@Tag(name = "인증", description = "게스트·소셜 로그인 및 토큰 재발급 API")
+/** 게스트·소셜 로그인, 토큰 재발급, Web 로그인·로그아웃 API. */
+@Tag(name = "인증", description = "게스트·소셜 로그인, 토큰 재발급, Web 로그인·로그아웃 API")
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
     private final AuthService authService;
+    private final RefreshCookieFactory refreshCookieFactory;
 
     @Operation(
             summary = "게스트 가입",
@@ -60,6 +66,55 @@ public class AuthController {
                             + "이미 사용한 토큰이 오면 저장된 refresh도 삭제되어 다시 로그인해야 합니다.")
     @PostMapping("/refresh")
     public TokenResponse refresh(@Valid @RequestBody RefreshRequest request) {
-        return authService.refresh(request.getRefreshToken());
+        return authService.refresh(request.getRefreshToken(), ClientType.GAME);
+    }
+
+    @Operation(
+            summary = "Web 로그인",
+            description =
+                    "Google·Apple ID 토큰으로 Web 토큰을 발급합니다. access 토큰은 body로, "
+                            + "refresh 토큰은 HttpOnly 쿠키(refresh_token)로 내려갑니다. "
+                            + "실패 조건은 소셜 로그인과 같습니다.")
+    @PostMapping("/web/login")
+    public ResponseEntity<AccessTokenResponse> webLogIn(
+            @Valid @RequestBody SocialLogInRequest request) {
+        TokenResponse tokens =
+                authService.socialLogIn(
+                        request.getIdToken(), request.getProvider(), ClientType.WEB);
+        return withRefreshCookie(tokens);
+    }
+
+    @Operation(
+            summary = "Web 토큰 재발급",
+            description =
+                    "refresh_token 쿠키로 새 토큰을 발급합니다. access 토큰은 body로, 새 refresh 토큰은 쿠키로 "
+                            + "내려갑니다. 쿠키가 없거나, 만료됐거나, Web 토큰이 아니거나, 이미 사용한 토큰이면 "
+                            + "401을 반환합니다.")
+    @PostMapping("/web/refresh")
+    public ResponseEntity<AccessTokenResponse> webRefresh(
+            @CookieValue(name = RefreshCookieFactory.NAME, required = false) String refreshToken) {
+        return withRefreshCookie(authService.refresh(refreshToken, ClientType.WEB));
+    }
+
+    @Operation(
+            summary = "Web 로그아웃",
+            description =
+                    "저장된 refresh 토큰을 무효로 하고 refresh_token 쿠키를 지웁니다. "
+                            + "쿠키가 없거나 이미 만료된 경우에도 항상 204를 반환합니다.")
+    @PostMapping("/web/logout")
+    public ResponseEntity<Void> webLogOut(
+            @CookieValue(name = RefreshCookieFactory.NAME, required = false) String refreshToken) {
+        authService.webLogOut(refreshToken);
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, refreshCookieFactory.expire().toString())
+                .build();
+    }
+
+    private ResponseEntity<AccessTokenResponse> withRefreshCookie(TokenResponse tokens) {
+        return ResponseEntity.ok()
+                .header(
+                        HttpHeaders.SET_COOKIE,
+                        refreshCookieFactory.create(tokens.getRefreshToken()).toString())
+                .body(new AccessTokenResponse(tokens.getAccessToken()));
     }
 }

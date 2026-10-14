@@ -1,9 +1,8 @@
 package com.novaserver.auth.repository;
 
 import com.novaserver.auth.jwt.ClientType;
-import java.time.Duration;
+import com.novaserver.auth.jwt.TokenValidityProperties;
 import java.util.Optional;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -18,30 +17,31 @@ public class RefreshTokenRepository {
     private static final String KEY_PREFIX = "refresh:";
 
     private final StringRedisTemplate redisTemplate;
-    private final Duration ttl;
+    private final TokenValidityProperties validity;
 
     /**
-     * Redis 템플릿과 refresh 토큰 유효 시간으로 저장소를 만든다.
+     * Redis 템플릿과 토큰 유효기간으로 저장소를 만든다.
      *
      * @param redisTemplate Redis 접근 템플릿
-     * @param refreshTokenValiditySeconds refresh 토큰 유효 시간(초). 저장 TTL로 쓴다
+     * @param validity 클라이언트 종류별 토큰 유효기간. refresh 유효기간을 저장 TTL로 쓴다
      */
     public RefreshTokenRepository(
-            StringRedisTemplate redisTemplate,
-            @Value("${app.jwt.refresh-token-validity-seconds}") long refreshTokenValiditySeconds) {
+            StringRedisTemplate redisTemplate, TokenValidityProperties validity) {
         this.redisTemplate = redisTemplate;
-        this.ttl = Duration.ofSeconds(refreshTokenValiditySeconds);
+        this.validity = validity;
     }
 
     /**
-     * 사용자의 refresh 토큰 ID를 저장한다. 같은 사용자·클라이언트의 기존 값은 덮어쓴다.
+     * 사용자의 refresh 토큰 ID를 저장한다. 같은 사용자·클라이언트의 기존 값은 덮어쓴다. TTL은 클라이언트 종류별 refresh 유효기간이다.
      *
      * @param userId 토큰 주인
      * @param clientType 발급 대상 클라이언트
      * @param tokenId refresh 토큰의 jti
      */
     public void save(Long userId, ClientType clientType, String tokenId) {
-        redisTemplate.opsForValue().set(key(userId, clientType), tokenId, ttl);
+        redisTemplate
+                .opsForValue()
+                .set(key(userId, clientType), tokenId, validity.of(clientType).refresh());
     }
 
     public Optional<String> findTokenId(Long userId, ClientType clientType) {
