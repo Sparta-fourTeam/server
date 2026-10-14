@@ -2,7 +2,12 @@ package com.novaserver.cards.service;
 
 import com.novaserver.cards.dto.CardEffectRequest;
 import com.novaserver.cards.dto.CardEffectResponse;
-import com.novaserver.cards.entity.*;
+import com.novaserver.cards.entity.CardEffect;
+import com.novaserver.cards.entity.CardVariant;
+import com.novaserver.cards.entity.EffectKind;
+import com.novaserver.cards.entity.EffectTrigger;
+import com.novaserver.cards.entity.SkillForm;
+import com.novaserver.cards.entity.UpgradeCard;
 import com.novaserver.cards.repository.CardEffectRepository;
 import com.novaserver.cards.repository.EffectKindRepository;
 import com.novaserver.cards.repository.EffectTriggerRepository;
@@ -27,18 +32,20 @@ public class CardEffectService {
     private final EffectTriggerRepository effectTriggerRepository;
     private final SkillRepository skillRepository;
 
+    /** 카드에 바로 붙는 효과를 정렬 순서대로 조회한다. */
     @Transactional(readOnly = true)
     public List<CardEffectResponse> getCardEffects(Long cardId) {
         cardService.findCard(cardId);
-        return cardEffectRepository.findAllByCard_IdOrderBySortOrderAsc(cardId).stream()
+        return cardEffectRepository.findAllByCardIdOrderBySortOrderAsc(cardId).stream()
                 .map(CardEffectResponse::from)
                 .toList();
     }
 
+    /** 변형에 붙는 효과를 정렬 순서대로 조회한다. */
     @Transactional(readOnly = true)
     public List<CardEffectResponse> getVariantEffects(Long variantId) {
         cardVariantService.findVariant(variantId);
-        return cardEffectRepository.findAllByVariant_IdOrderBySortOrderAsc(variantId).stream()
+        return cardEffectRepository.findAllByVariantIdOrderBySortOrderAsc(variantId).stream()
                 .map(CardEffectResponse::from)
                 .toList();
     }

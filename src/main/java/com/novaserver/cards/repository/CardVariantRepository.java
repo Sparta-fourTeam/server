@@ -7,10 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 /** 카드 변형 저장소. */
 public interface CardVariantRepository extends JpaRepository<CardVariant, Long> {
 
-    List<CardVariant> findAllByCard_IdOrderByMinPermanentLevelAsc(Long cardId);
+    List<CardVariant> findAllByCardIdOrderByMinPermanentLevelAsc(Long cardId);
 
-    boolean existsByCard_IdAndMinPermanentLevel(Long cardId, int minPermanentLevel);
+    boolean existsByCardIdAndMinPermanentLevel(Long cardId, int minPermanentLevel);
 
-    boolean existsByCard_IdAndMinPermanentLevelAndIdNot(
-            Long cardId, int minPermanentLevel, Long id);
+    boolean existsByCardIdAndMinPermanentLevelAndIdNot(Long cardId, int minPermanentLevel, Long id);
 }

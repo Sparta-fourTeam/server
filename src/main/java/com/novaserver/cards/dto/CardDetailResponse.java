@@ -25,6 +25,7 @@ public record CardDetailResponse(
     /** 연관 테이블 값. */
     public record NamedRef(Long id, String name) {}
 
+    /** 카드 엔티티를 상세 응답으로 변환한다. */
     public static CardDetailResponse from(UpgradeCard card) {
         return new CardDetailResponse(
                 card.getId(),

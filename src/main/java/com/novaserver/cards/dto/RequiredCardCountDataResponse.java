@@ -7,6 +7,7 @@ import com.novaserver.cards.entity.RequiredCardCount;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record RequiredCardCountDataResponse(Long cardId, int count, Long skillId) {
 
+    /** 선행 카드 조건 엔티티를 유니티용 데이터로 변환한다. */
     public static RequiredCardCountDataResponse from(RequiredCardCount requiredCardCount) {
         return new RequiredCardCountDataResponse(
                 requiredCardCount.getRequiredCard().getId(),

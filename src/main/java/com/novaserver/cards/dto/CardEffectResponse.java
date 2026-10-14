@@ -21,6 +21,7 @@ public record CardEffectResponse(
         boolean excludeHit,
         Double interval) {
 
+    /** 효과 엔티티를 응답으로 변환한다. */
     public static CardEffectResponse from(CardEffect effect) {
         return new CardEffectResponse(
                 effect.getId(),

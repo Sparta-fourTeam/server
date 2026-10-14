@@ -7,6 +7,7 @@ import com.novaserver.cards.entity.CardExclusion;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record CardExclusionDataResponse(Long cardId, Long skillId, int belowPermanentLevel) {
 
+    /** 배제 조건 엔티티를 유니티용 데이터로 변환한다. */
     public static CardExclusionDataResponse from(CardExclusion exclusion) {
         return new CardExclusionDataResponse(
                 exclusion.getExcludingCard().getId(),

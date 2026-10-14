@@ -19,6 +19,7 @@ public record CardEffectDataResponse(
         boolean excludeHit,
         Double interval) {
 
+    /** 효과 엔티티를 유니티용 효과 데이터로 변환한다. */
     public static CardEffectDataResponse from(CardEffect effect) {
         return new CardEffectDataResponse(
                 effect.getKind().getName(),

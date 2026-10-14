@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 /** 선행 카드 조건 저장소. */
 public interface RequiredCardCountRepository extends JpaRepository<RequiredCardCount, Long> {
 
-    List<RequiredCardCount> findAllByCard_Id(Long cardId);
+    List<RequiredCardCount> findAllByCardId(Long cardId);
 
-    boolean existsByCard_IdAndRequiredCard_Id(Long cardId, Long requiredCardId);
+    boolean existsByCardIdAndRequiredCardId(Long cardId, Long requiredCardId);
 }
