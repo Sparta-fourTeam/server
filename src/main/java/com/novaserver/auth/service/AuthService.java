@@ -143,13 +143,14 @@ public class AuthService {
     }
 
     private User createSocialUser(Provider provider, String sub) {
+        User user;
         try {
-            User user = userRepository.save(new User(provider, sub));
-            userService.createInitialState(user);
-            return user;
+            user = userRepository.save(new User(provider, sub));
         } catch (DataIntegrityViolationException e) {
             // 같은 계정의 첫 로그인이 동시에 들어와 다른 요청이 먼저 가입시킨 경우. 아니면 원래 예외를 그대로 던진다
             return userRepository.findByProviderAndAccountId(provider, sub).orElseThrow(() -> e);
         }
+        userService.createInitialState(user);
+        return user;
     }
 }
