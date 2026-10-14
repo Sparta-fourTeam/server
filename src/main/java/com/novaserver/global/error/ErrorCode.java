@@ -71,6 +71,7 @@ public enum ErrorCode {
 
     // 카드 효과
     CARD_EFFECT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 카드 효과입니다: %s"),
+    CARD_EFFECT_INHERIT_VALUE_INVALID(HttpStatus.BAD_REQUEST, "inherit 값은 유한한 숫자여야 합니다: %s"),
 
     // 선행 카드 조건
     REQUIRED_CARD_COUNT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 선행 카드 조건입니다: %s"),

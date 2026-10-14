@@ -16,6 +16,7 @@ import com.novaserver.global.error.ErrorCode;
 import com.novaserver.skill.entity.Skill;
 import com.novaserver.skill.repository.SkillRepository;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -82,7 +83,8 @@ public class CardEffectService {
                 request.getCount(),
                 findFormIfPresent(request.getOnlyForm()),
                 request.getExcludeHit(),
-                request.getInterval());
+                request.getInterval(),
+                validatedInherit(request.getInherit()));
         return CardEffectResponse.from(effect);
     }
 
@@ -115,7 +117,21 @@ public class CardEffectService {
                 request.getCount(),
                 findFormIfPresent(request.getOnlyForm()),
                 request.getExcludeHit(),
-                request.getInterval());
+                request.getInterval(),
+                validatedInherit(request.getInherit()));
+    }
+
+    /** 모든 inherit 값이 유한한 숫자인지 확인한다. 아니면 400을 던진다. */
+    private Map<String, Double> validatedInherit(Map<String, Double> inherit) {
+        if (inherit == null) {
+            return null;
+        }
+        for (Double value : inherit.values()) {
+            if (value == null || !Double.isFinite(value)) {
+                throw ErrorCode.CARD_EFFECT_INHERIT_VALUE_INVALID.exception(value);
+            }
+        }
+        return inherit;
     }
 
     private EffectKind findKind(String name) {

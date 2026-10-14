@@ -143,7 +143,7 @@ public class SkillService {
         return elementId != null ? skillElementService.findElement(elementId) : null;
     }
 
-    /** baseStats 값이 전부 유한한 숫자인지 확인한다. 아니면 400을 던진다. */
+    /** 모든 baseStats 값이 유한한 숫자인지 확인한다. 아니면 400을 던진다. */
     private Map<String, Map<String, Double>> validatedBaseStats(
             Map<String, Map<String, Double>> baseStats) {
         if (baseStats == null) {

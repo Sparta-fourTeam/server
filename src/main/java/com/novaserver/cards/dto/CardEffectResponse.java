@@ -1,6 +1,7 @@
 package com.novaserver.cards.dto;
 
 import com.novaserver.cards.entity.CardEffect;
+import java.util.Map;
 
 /** 카드 효과 응답. */
 public record CardEffectResponse(
@@ -19,7 +20,8 @@ public record CardEffectResponse(
         int count,
         String onlyForm,
         boolean excludeHit,
-        Double interval) {
+        Double interval,
+        Map<String, Double> inherit) {
 
     /** 효과 엔티티를 응답으로 변환한다. */
     public static CardEffectResponse from(CardEffect effect) {
@@ -39,6 +41,7 @@ public record CardEffectResponse(
                 effect.getCount(),
                 effect.getOnlyForm() != null ? effect.getOnlyForm().getName() : null,
                 effect.isExcludeHit(),
-                effect.getInterval());
+                effect.getInterval(),
+                effect.getInherit());
     }
 }

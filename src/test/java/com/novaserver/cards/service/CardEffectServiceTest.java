@@ -182,7 +182,7 @@ class CardEffectServiceTest {
         verify(existing)
                 .update(
                         eq(0), eq(kind), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
-                        isNull(), isNull(), isNull(), isNull(), isNull());
+                        isNull(), isNull(), isNull(), isNull(), isNull(), isNull());
     }
 
     @Test
