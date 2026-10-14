@@ -9,6 +9,7 @@ import java.util.List;
 public record CardVariantDataResponse(
         int minPermanentLevel, String name, String desc, List<CardEffectDataResponse> effects) {
 
+    /** 변형 엔티티를 유니티용 변형 데이터로 변환한다. */
     public static CardVariantDataResponse from(CardVariant variant) {
         return new CardVariantDataResponse(
                 variant.getMinPermanentLevel(),

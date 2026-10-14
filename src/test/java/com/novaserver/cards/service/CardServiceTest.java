@@ -96,7 +96,7 @@ class CardServiceTest {
     void returnsCardDataGroupedBySkillId() {
         Skill skill = skill(1L, "화염검", 10);
         UpgradeCard card = card(1L, "카드", skill);
-        when(upgradeCardRepository.findAllBySkill_IdIn(List.of(1L))).thenReturn(List.of(card));
+        when(upgradeCardRepository.findAllBySkillIdIn(List.of(1L))).thenReturn(List.of(card));
 
         Map<Long, List<CardDataResponse>> result = cardService.getCardDataBySkillIds(List.of(1L));
 

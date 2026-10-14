@@ -9,6 +9,7 @@ public record CardExclusionResponse(
     /** 연관 테이블 값. */
     public record NamedRef(Long id, String name) {}
 
+    /** 배제 조건 엔티티를 응답으로 변환한다. */
     public static CardExclusionResponse from(CardExclusion exclusion) {
         return new CardExclusionResponse(
                 exclusion.getId(),

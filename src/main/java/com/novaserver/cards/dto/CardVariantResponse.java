@@ -11,6 +11,7 @@ public record CardVariantResponse(
         String desc,
         List<CardEffectResponse> effects) {
 
+    /** 변형 엔티티를 응답으로 변환한다. */
     public static CardVariantResponse from(CardVariant variant) {
         return new CardVariantResponse(
                 variant.getId(),

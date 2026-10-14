@@ -1,6 +1,7 @@
 package com.novaserver.user.entity;
 
 import com.novaserver.user.Provider;
+import com.novaserver.user.Role;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -35,6 +37,11 @@ public class User {
 
     @Column(nullable = false, length = 255)
     private String accountId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @ColumnDefault("'USER'")
+    private Role role = Role.USER;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)

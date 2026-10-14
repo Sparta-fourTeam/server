@@ -89,7 +89,7 @@ class CardEffectServiceTest {
         EffectKind kind = kind(1L, "damage");
         CardEffect effect = effect(1L, kind);
         when(cardService.findCard(1L)).thenReturn(card);
-        when(cardEffectRepository.findAllByCard_IdOrderBySortOrderAsc(1L))
+        when(cardEffectRepository.findAllByCardIdOrderBySortOrderAsc(1L))
                 .thenReturn(List.of(effect));
 
         List<CardEffectResponse> responses = cardEffectService.getCardEffects(1L);
@@ -104,7 +104,7 @@ class CardEffectServiceTest {
         EffectKind kind = kind(1L, "damage");
         CardEffect effect = effect(1L, kind);
         when(cardVariantService.findVariant(1L)).thenReturn(variant);
-        when(cardEffectRepository.findAllByVariant_IdOrderBySortOrderAsc(1L))
+        when(cardEffectRepository.findAllByVariantIdOrderBySortOrderAsc(1L))
                 .thenReturn(List.of(effect));
 
         List<CardEffectResponse> responses = cardEffectService.getVariantEffects(1L);

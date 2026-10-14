@@ -21,6 +21,7 @@ public record CardDataResponse(
         List<CardEffectDataResponse> effects,
         List<CardVariantDataResponse> variants) {
 
+    /** 카드 엔티티를 유니티용 카드 데이터로 변환한다. */
     public static CardDataResponse from(UpgradeCard card) {
         return new CardDataResponse(
                 card.getId(),

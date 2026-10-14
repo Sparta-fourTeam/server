@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 /** 카드 효과 저장소. */
 public interface CardEffectRepository extends JpaRepository<CardEffect, Long> {
 
-    List<CardEffect> findAllByCard_IdOrderBySortOrderAsc(Long cardId);
+    List<CardEffect> findAllByCardIdOrderBySortOrderAsc(Long cardId);
 
-    List<CardEffect> findAllByVariant_IdOrderBySortOrderAsc(Long variantId);
+    List<CardEffect> findAllByVariantIdOrderBySortOrderAsc(Long variantId);
 }

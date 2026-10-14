@@ -63,7 +63,7 @@ class RequiredCardCountServiceTest {
         UpgradeCard requiredCard = card(2L, "선행카드");
         RequiredCardCount requiredCardCount = requiredCardCount(1L, requiredCard, 2);
         when(cardService.findCard(1L)).thenReturn(card);
-        when(requiredCardCountRepository.findAllByCard_Id(1L))
+        when(requiredCardCountRepository.findAllByCardId(1L))
                 .thenReturn(List.of(requiredCardCount));
 
         List<RequiredCardCountResponse> responses =
@@ -90,8 +90,7 @@ class RequiredCardCountServiceTest {
         UpgradeCard requiredCard = card(2L, "선행카드");
         when(cardService.findCard(1L)).thenReturn(card);
         when(cardService.findCard(2L)).thenReturn(requiredCard);
-        when(requiredCardCountRepository.existsByCard_IdAndRequiredCard_Id(1L, 2L))
-                .thenReturn(true);
+        when(requiredCardCountRepository.existsByCardIdAndRequiredCardId(1L, 2L)).thenReturn(true);
         RequiredCardCountRequest request = request(2L, 2);
 
         assertThatThrownBy(() -> requiredCardCountService.createRequiredCardCount(1L, request))
@@ -108,8 +107,7 @@ class RequiredCardCountServiceTest {
         RequiredCardCount saved = requiredCardCount(1L, requiredCard, 2);
         when(cardService.findCard(1L)).thenReturn(card);
         when(cardService.findCard(2L)).thenReturn(requiredCard);
-        when(requiredCardCountRepository.existsByCard_IdAndRequiredCard_Id(1L, 2L))
-                .thenReturn(false);
+        when(requiredCardCountRepository.existsByCardIdAndRequiredCardId(1L, 2L)).thenReturn(false);
         when(requiredCardCountRepository.save(any())).thenReturn(saved);
         RequiredCardCountRequest request = request(2L, 2);
 

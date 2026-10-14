@@ -9,7 +9,11 @@ import com.novaserver.auth.jwt.ClientType;
 import com.novaserver.auth.jwt.JwtAccessDeniedHandler;
 import com.novaserver.auth.jwt.JwtAuthenticationEntryPoint;
 import com.novaserver.auth.jwt.JwtProvider;
+import com.novaserver.auth.jwt.TokenValidityProperties;
+import com.novaserver.auth.jwt.TokenValidityProperties.Validity;
 import com.novaserver.global.error.ErrorCode;
+import com.novaserver.user.Role;
+import java.time.Duration;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,8 +39,10 @@ import org.springframework.web.bind.annotation.RestController;
 @TestPropertySource(
         properties = {
             "app.jwt.secret=" + SecurityConfigTest.SECRET,
-            "app.jwt.access-token-validity-seconds=900",
-            "app.jwt.refresh-token-validity-seconds=2592000"
+            "app.jwt.validity.game.access=15m",
+            "app.jwt.validity.game.refresh=30d",
+            "app.jwt.validity.web.access=15m",
+            "app.jwt.validity.web.refresh=1h"
         })
 class SecurityConfigTest {
 
@@ -59,7 +65,7 @@ class SecurityConfigTest {
     @DisplayName("유효한 access 토큰이면 통과하고 컨트롤러가 userId를 받는다")
     void shouldPassAndProvideUserId_whenAccessTokenIsValid() throws Exception {
         // given
-        String token = jwtProvider.createAccessToken(42L, ClientType.GAME);
+        String token = jwtProvider.createAccessToken(42L, ClientType.GAME, Role.USER);
 
         // when
         ResultActions result = callWithToken("/api/player/me", token);
@@ -86,8 +92,8 @@ class SecurityConfigTest {
     void shouldReturnInvalidToken_whenSignedWithOtherKey() throws Exception {
         // given
         JwtProvider otherKeyProvider =
-                new JwtProvider("other-secret-key-other-secret-key-0123456789", 900, 900);
-        String token = otherKeyProvider.createAccessToken(42L, ClientType.GAME);
+                new JwtProvider("other-secret-key-other-secret-key-0123456789", validity(900));
+        String token = otherKeyProvider.createAccessToken(42L, ClientType.GAME, Role.USER);
 
         // when
         ResultActions result = callWithToken("/api/player/me", token);
@@ -100,7 +106,7 @@ class SecurityConfigTest {
     @DisplayName("refresh 토큰으로는 API를 호출할 수 없다")
     void shouldReturnInvalidToken_whenRefreshTokenIsUsed() throws Exception {
         // given
-        String token = jwtProvider.createRefreshToken(42L, ClientType.GAME).token();
+        String token = jwtProvider.createRefreshToken(42L, ClientType.GAME, Role.USER).token();
 
         // when
         ResultActions result = callWithToken("/api/player/me", token);
@@ -123,10 +129,10 @@ class SecurityConfigTest {
     }
 
     @Test
-    @DisplayName("관리자 경로에 GAME 토큰이면 403 '권한이 없습니다'")
-    void shouldReturnForbidden_whenGameTokenAccessesAdminPath() throws Exception {
+    @DisplayName("관리자 경로에 USER 토큰이면 403 '권한이 없습니다'")
+    void shouldReturnForbidden_whenUserAccessesAdminPath() throws Exception {
         // given
-        String token = jwtProvider.createAccessToken(42L, ClientType.GAME);
+        String token = jwtProvider.createAccessToken(42L, ClientType.WEB, Role.USER);
 
         // when
         ResultActions result = callWithToken("/api/admin/ping", token);
@@ -136,10 +142,10 @@ class SecurityConfigTest {
     }
 
     @Test
-    @DisplayName("관리자 경로에 WEB 토큰이면 통과한다")
-    void shouldPass_whenWebTokenAccessesAdminPath() throws Exception {
+    @DisplayName("관리자 경로에 ADMIN 토큰이면 clientType과 상관없이 통과한다")
+    void shouldPass_whenAdminAccessesAdminPath() throws Exception {
         // given
-        String token = jwtProvider.createAccessToken(1L, ClientType.WEB);
+        String token = jwtProvider.createAccessToken(1L, ClientType.GAME, Role.ADMIN);
 
         // when
         ResultActions result = callWithToken("/api/admin/ping", token);
@@ -153,7 +159,13 @@ class SecurityConfigTest {
     }
 
     private static String expiredAccessToken() {
-        return new JwtProvider(SECRET, -60, -60).createAccessToken(42L, ClientType.GAME);
+        return new JwtProvider(SECRET, validity(-60))
+                .createAccessToken(42L, ClientType.GAME, Role.USER);
+    }
+
+    private static TokenValidityProperties validity(long seconds) {
+        Validity validity = new Validity(Duration.ofSeconds(seconds), Duration.ofSeconds(seconds));
+        return new TokenValidityProperties(validity, validity);
     }
 
     /** MockMvc는 sendError를 /error로 넘기지 않으므로 상태 코드와 에러 메시지를 직접 확인한다. */

@@ -21,10 +21,11 @@ public class RequiredCardCountService {
     private final CardService cardService;
     private final SkillRepository skillRepository;
 
+    /** 카드의 선행 카드 조건을 조회한다. */
     @Transactional(readOnly = true)
     public List<RequiredCardCountResponse> getRequiredCardCounts(Long cardId) {
         cardService.findCard(cardId);
-        return requiredCardCountRepository.findAllByCard_Id(cardId).stream()
+        return requiredCardCountRepository.findAllByCardId(cardId).stream()
                 .map(RequiredCardCountResponse::from)
                 .toList();
     }
@@ -38,7 +39,7 @@ public class RequiredCardCountService {
         }
         UpgradeCard card = cardService.findCard(cardId);
         UpgradeCard requiredCard = cardService.findCard(request.getRequiredCardId());
-        if (requiredCardCountRepository.existsByCard_IdAndRequiredCard_Id(
+        if (requiredCardCountRepository.existsByCardIdAndRequiredCardId(
                 cardId, request.getRequiredCardId())) {
             throw ErrorCode.REQUIRED_CARD_COUNT_DUPLICATED.exception(request.getRequiredCardId());
         }

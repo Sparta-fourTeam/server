@@ -13,8 +13,16 @@ spring:
 app:
   jwt:
     secret: ${JWT_SECRET}   # 32바이트(256bit) 이상, .env에 정의
-    access-token-validity-seconds: 900
-    refresh-token-validity-seconds: 2592000
+    validity:
+      web:
+        access: ${JWT_WEB_ACCESS:15m}
+        refresh: ${JWT_WEB_REFRESH:1h}
+      game:
+        access: ${JWT_GAME_ACCESS:15m}
+        refresh: ${JWT_GAME_REFRESH:30d}
+
+  cookie:
+    secure: ${COOKIE_SECURE:true}
 
   social:
     google:

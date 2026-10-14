@@ -18,10 +18,11 @@ public class CardVariantService {
     private final CardVariantRepository cardVariantRepository;
     private final CardService cardService;
 
+    /** 카드의 변형을 최소 영구 레벨 순으로 조회한다. */
     @Transactional(readOnly = true)
     public List<CardVariantResponse> getVariants(Long cardId) {
         cardService.findCard(cardId);
-        return cardVariantRepository.findAllByCard_IdOrderByMinPermanentLevelAsc(cardId).stream()
+        return cardVariantRepository.findAllByCardIdOrderByMinPermanentLevelAsc(cardId).stream()
                 .map(CardVariantResponse::from)
                 .toList();
     }
@@ -30,7 +31,7 @@ public class CardVariantService {
     @Transactional
     public CardVariantResponse createVariant(Long cardId, CardVariantRequest request) {
         UpgradeCard card = cardService.findCard(cardId);
-        if (cardVariantRepository.existsByCard_IdAndMinPermanentLevel(
+        if (cardVariantRepository.existsByCardIdAndMinPermanentLevel(
                 cardId, request.getMinPermanentLevel())) {
             throw ErrorCode.CARD_VARIANT_DUPLICATED.exception(request.getMinPermanentLevel());
         }
@@ -48,7 +49,7 @@ public class CardVariantService {
     @Transactional
     public CardVariantResponse updateVariant(Long id, CardVariantRequest request) {
         CardVariant variant = findVariant(id);
-        if (cardVariantRepository.existsByCard_IdAndMinPermanentLevelAndIdNot(
+        if (cardVariantRepository.existsByCardIdAndMinPermanentLevelAndIdNot(
                 variant.getCard().getId(), request.getMinPermanentLevel(), id)) {
             throw ErrorCode.CARD_VARIANT_DUPLICATED.exception(request.getMinPermanentLevel());
         }
