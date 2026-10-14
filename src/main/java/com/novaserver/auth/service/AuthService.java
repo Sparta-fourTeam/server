@@ -168,6 +168,42 @@ public class AuthService {
     }
 
     /**
+     * 게스트 계정에 소셜 계정을 연동한다. 이미 소셜 계정이 연동된 유저거나, 연동하려는 소셜 계정이 이미 다른 유저에 연동되어 있으면 예외를 던진다.
+     *
+     * @param userId 연동할 게스트 유저 ID
+     * @param idToken 연동할 Google·Apple ID 토큰 원문
+     * @param provider ID 토큰을 발급한 소셜 provider
+     * @throws org.springframework.web.server.ResponseStatusException 유저가 없으면 USER_DATA_NOT_FOUND,
+     *     이미 소셜 계정이 연동되어 있으면 ALREADY_LINKED_PROVIDER, 연동하려는 소셜 계정이 이미 다른 유저에 연동되어 있으면
+     *     SOCIAL_ACCOUNT_ALREADY_LINKED
+     */
+    @Transactional
+    public void linkSocialAccount(Long userId, String idToken, Provider provider) {
+        if (userId == null) {
+            throw ErrorCode.UNAUTHORIZED.exception();
+        }
+        User user =
+                userRepository
+                        .findById(userId)
+                        .orElseThrow(() -> ErrorCode.USER_DATA_NOT_FOUND.exception(userId));
+        if (user.getProvider() != Provider.GUEST) {
+            throw ErrorCode.ALREADY_LINKED_PROVIDER.exception();
+        }
+
+        String sub = socialTokenVerifier.verify(provider, idToken);
+        if (userRepository.findByProviderAndAccountId(provider, sub).isPresent()) {
+            throw ErrorCode.SOCIAL_ACCOUNT_ALREADY_LINKED.exception();
+        }
+
+        user.linkSocialAccount(provider, sub);
+        try {
+            userRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw ErrorCode.SOCIAL_ACCOUNT_ALREADY_LINKED.exception();
+        }
+    }
+
+    /**
      * Web refresh 토큰을 무효로 만든다. 저장된 값과 같은 refresh일 때만 Redis에서 지운다.
      *
      * <p>로그아웃은 실패할 이유가 없는 요청이라 예외를 던지지 않는다. 토큰이 없거나 만료됐거나 잘못된 토큰이면 지울 것이 없으므로 그냥 끝낸다. access 토큰은

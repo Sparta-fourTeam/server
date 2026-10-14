@@ -15,6 +15,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -56,6 +57,19 @@ public class AuthController {
     public TokenResponse socialLogIn(@Valid @RequestBody SocialLogInRequest request) {
         return authService.socialLogIn(
                 request.getIdToken(), request.getProvider(), ClientType.GAME);
+    }
+
+    @Operation(
+            summary = "소셜 계정 연동",
+            description =
+                    "로그인한 게스트 계정에 Google·Apple 계정을 연동합니다. "
+                            + "로그인하지 않았으면 401, 이미 소셜 계정이 연동된 유저면 409, "
+                            + "연동하려는 소셜 계정이 이미 다른 유저에 연동되어 있으면 409를 반환합니다.")
+    @PostMapping("/social/link")
+    public ResponseEntity<Void> linkSocialAccount(
+            @AuthenticationPrincipal Long userId, @Valid @RequestBody SocialLogInRequest request) {
+        authService.linkSocialAccount(userId, request.getIdToken(), request.getProvider());
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(
