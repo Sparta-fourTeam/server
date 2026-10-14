@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -389,6 +390,105 @@ class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("소셜 연동: 게스트 계정에 Google 계정을 연동하면 provider·accountId가 바뀌고 flush로 즉시 반영한다")
+    void shouldLinkGoogleAccount_whenGuestLinks() {
+        // given
+        User user = storedUser(Role.USER);
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(socialTokenVerifier.verify(Provider.GOOGLE, ID_TOKEN)).thenReturn(SUB);
+        when(userRepository.findByProviderAndAccountId(Provider.GOOGLE, SUB))
+                .thenReturn(Optional.empty());
+
+        // when
+        authService.linkSocialAccount(USER_ID, ID_TOKEN, Provider.GOOGLE);
+
+        // then
+        assertThat(user.getProvider()).isEqualTo(Provider.GOOGLE);
+        assertThat(user.getAccountId()).isEqualTo(SUB);
+        verify(userRepository).flush();
+    }
+
+    @Test
+    @DisplayName("소셜 연동: 로그인하지 않았으면 401 UNAUTHORIZED이고 아무것도 조회하지 않는다")
+    void shouldThrowUnauthorized_whenLinkingWithoutLogin() {
+        // when & then
+        assertStatus(
+                () -> authService.linkSocialAccount(null, ID_TOKEN, Provider.GOOGLE),
+                HttpStatus.UNAUTHORIZED,
+                ErrorCode.UNAUTHORIZED);
+        verifyNoInteractions(userRepository, socialTokenVerifier);
+    }
+
+    @Test
+    @DisplayName("소셜 연동: 유저가 없으면 404 USER_DATA_NOT_FOUND이고 소셜 토큰은 검증하지 않는다")
+    void shouldThrowNotFound_whenLinkingUserMissing() {
+        // given
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
+
+        // when & then
+        assertStatus(
+                () -> authService.linkSocialAccount(USER_ID, ID_TOKEN, Provider.GOOGLE),
+                HttpStatus.NOT_FOUND,
+                ErrorCode.USER_DATA_NOT_FOUND,
+                USER_ID);
+        verifyNoInteractions(socialTokenVerifier);
+    }
+
+    @Test
+    @DisplayName("소셜 연동: 이미 소셜 계정이 연동된 유저면 409 ALREADY_LINKED_PROVIDER이고 소셜 토큰은 검증하지 않는다")
+    void shouldThrowConflict_whenUserAlreadyLinkedToProvider() {
+        // given
+        when(userRepository.findById(USER_ID))
+                .thenReturn(Optional.of(withId(new User(Provider.GOOGLE, "already-linked-sub"))));
+
+        // when & then
+        assertStatus(
+                () -> authService.linkSocialAccount(USER_ID, ID_TOKEN, Provider.GOOGLE),
+                HttpStatus.CONFLICT,
+                ErrorCode.ALREADY_LINKED_PROVIDER);
+        verifyNoInteractions(socialTokenVerifier);
+    }
+
+    @Test
+    @DisplayName("소셜 연동: 연동하려는 Google 계정이 이미 다른 유저에 연동되어 있으면 409 SOCIAL_ACCOUNT_ALREADY_LINKED")
+    void shouldThrowConflict_whenRequestedAccountAlreadyLinkedToAnotherUser() {
+        // given
+        User user = storedUser(Role.USER);
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(socialTokenVerifier.verify(Provider.GOOGLE, ID_TOKEN)).thenReturn(SUB);
+        when(userRepository.findByProviderAndAccountId(Provider.GOOGLE, SUB))
+                .thenReturn(Optional.of(withId(new User(Provider.GOOGLE, SUB))));
+
+        // when & then
+        assertStatus(
+                () -> authService.linkSocialAccount(USER_ID, ID_TOKEN, Provider.GOOGLE),
+                HttpStatus.CONFLICT,
+                ErrorCode.SOCIAL_ACCOUNT_ALREADY_LINKED);
+        assertThat(user.getProvider()).isEqualTo(Provider.GUEST);
+        verify(userRepository, never()).flush();
+    }
+
+    @Test
+    @DisplayName("소셜 연동: 같은 Google 계정의 동시 연동이 unique 위반으로 충돌하면 409 SOCIAL_ACCOUNT_ALREADY_LINKED")
+    void shouldThrowConflict_whenConcurrentLinkingConflicts() {
+        // given
+        User user = storedUser(Role.USER);
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(socialTokenVerifier.verify(Provider.GOOGLE, ID_TOKEN)).thenReturn(SUB);
+        when(userRepository.findByProviderAndAccountId(Provider.GOOGLE, SUB))
+                .thenReturn(Optional.empty());
+        doThrow(new DataIntegrityViolationException("Duplicate entry"))
+                .when(userRepository)
+                .flush();
+
+        // when & then
+        assertStatus(
+                () -> authService.linkSocialAccount(USER_ID, ID_TOKEN, Provider.GOOGLE),
+                HttpStatus.CONFLICT,
+                ErrorCode.SOCIAL_ACCOUNT_ALREADY_LINKED);
+    }
+
+    @Test
     @DisplayName("경로의 clientType과 토큰의 clientType이 다르면 401이고 저장된 refresh는 건드리지 않는다")
     void shouldThrowInvalidToken_whenClientTypeMismatches() {
         // given
@@ -514,14 +614,15 @@ class AuthServiceTest {
     }
 
     private static void assertStatus(
-            ThrowingCallable call, HttpStatus status, ErrorCode errorCode) {
+            ThrowingCallable call, HttpStatus status, ErrorCode errorCode, Object... args) {
         assertThatThrownBy(call)
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(
                         e -> {
                             ResponseStatusException ex = (ResponseStatusException) e;
                             assertThat(ex.getStatusCode()).isEqualTo(status);
-                            assertThat(ex.getReason()).isEqualTo(errorCode.getMessage());
+                            assertThat(ex.getReason())
+                                    .isEqualTo(errorCode.getMessage().formatted(args));
                         });
     }
 
