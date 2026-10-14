@@ -34,6 +34,7 @@ class SkillControllerTest {
                                         "설명",
                                         "Melee",
                                         "Straight",
+                                        null,
                                         5,
                                         false,
                                         null,

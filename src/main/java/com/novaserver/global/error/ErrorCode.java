@@ -44,6 +44,7 @@ public enum ErrorCode {
     // 스킬
     SKILL_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 스킬입니다: %s"),
     SKILL_DUPLICATED(HttpStatus.CONFLICT, "이미 존재하는 스킬명입니다: %s"),
+    SKILL_BASE_STAT_VALUE_INVALID(HttpStatus.BAD_REQUEST, "baseStats 값은 유한한 숫자여야 합니다: %s"),
 
     // 스킬 형태
     SKILL_FORM_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 스킬 형태입니다: %s"),
@@ -80,6 +81,16 @@ public enum ErrorCode {
     CARD_EXCLUSION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 배제 조건입니다: %s"),
     CARD_EXCLUSION_DUPLICATED(HttpStatus.CONFLICT, "이미 등록된 배제 조건입니다: %s"),
     CARD_EXCLUSION_SELF_REFERENCE(HttpStatus.BAD_REQUEST, "자기 자신을 배제 카드로 지정할 수 없습니다: %s"),
+    CARD_EXCLUSION_SELF_REFERENCE(HttpStatus.BAD_REQUEST, "자기 자신을 배제 카드로 지정할 수 없습니다: %s"),
+
+    // 필요 스킬 조건
+    REQUIRED_SKILL_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 필요 스킬 조건입니다: %s"),
+    REQUIRED_SKILL_DUPLICATED(HttpStatus.CONFLICT, "이미 등록된 필요 스킬 조건입니다: %s"),
+
+    // 스킬 속성
+    SKILL_ELEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 속성입니다: %s"),
+    SKILL_ELEMENT_DUPLICATED(HttpStatus.CONFLICT, "이미 있는 속성 이름입니다: %s"),
+    SKILL_ELEMENT_IN_USE(HttpStatus.CONFLICT, "사용 중인 스킬이 있어 삭제할 수 없습니다: %s"),
 
     // 유저
     USER_DATA_NOT_FOUND(HttpStatus.NOT_FOUND, "유저 데이터가 없습니다: %s"),

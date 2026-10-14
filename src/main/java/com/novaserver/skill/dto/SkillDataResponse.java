@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.novaserver.cards.dto.CardDataResponse;
 import com.novaserver.skill.entity.Skill;
 import java.util.List;
+import java.util.Map;
 
 /** 웹용 스킬 목록 응답. */
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -13,9 +14,10 @@ public record SkillDataResponse(
         String desc,
         String castType,
         String projectilePath,
+        String element,
         Integer maxLevel,
         Boolean childOnly,
-        SkillBaseStatsResponse baseStats,
+        Map<String, Map<String, Double>> baseStats,
         Integer unlockLevel,
         String progressionId,
         List<CardDataResponse> upgrades) {
@@ -28,9 +30,10 @@ public record SkillDataResponse(
                 skill.getDesc(),
                 skill.getCastType().getName(),
                 skill.getProjectilePath().getName(),
+                skill.getElement() != null ? skill.getElement().getName() : null,
                 skill.getMaxLevel(),
                 skill.isChildOnly(),
-                SkillBaseStatsResponse.from(skill.getBaseStats()),
+                skill.getBaseStats(),
                 skill.getUnlockLevel(),
                 skill.getProgressionId(),
                 upgrades);

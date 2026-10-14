@@ -11,10 +11,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.util.Map;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /** 스킬 밸런스 데이터. 유니티 Skills 테이블 한 행에 대응한다. */
 @Getter
@@ -40,13 +43,21 @@ public class Skill extends BaseTimeEntity {
     @JoinColumn(name = "projectile_path_id")
     private SkillProjectilePath projectilePath;
 
+    /** 속성. 몬스터 속성 저항과 연결된다. 기존 데이터 이관 전까지는 비워둘 수 있다. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "element_id")
+    private SkillElement element;
+
     @Column(nullable = false)
     private int maxLevel;
 
     @Column(nullable = false)
     private boolean childOnly;
 
-    @Embedded private SkillBaseStats baseStats;
+    /** 그룹별 기본 전투 수치. 그룹.필드 구성이 스킬마다 다르고 자주 바뀌어 JSON으로 그대로 저장한다. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "base_stats")
+    private Map<String, Map<String, Double>> baseStats;
 
     @ColumnDefault("1")
     @Column(nullable = false)
@@ -62,6 +73,7 @@ public class Skill extends BaseTimeEntity {
      * @param desc 설명.
      * @param castType 시전 방식
      * @param projectilePath 투사체 경로
+     * @param element 속성. 없으면 null
      * @param maxLevel 최대 강화 횟수
      * @param childOnly 자식 전용 여부
      * @param baseStats 기본 전투 수치.
@@ -73,15 +85,17 @@ public class Skill extends BaseTimeEntity {
             String desc,
             SkillCastType castType,
             SkillProjectilePath projectilePath,
+            SkillElement element,
             int maxLevel,
             boolean childOnly,
-            SkillBaseStats baseStats,
+            Map<String, Map<String, Double>> baseStats,
             Integer unlockLevel,
             String progressionId) {
         this.name = name;
         this.desc = desc;
         this.castType = castType;
         this.projectilePath = projectilePath;
+        this.element = element;
         this.maxLevel = maxLevel;
         this.childOnly = childOnly;
         this.baseStats = baseStats;
@@ -96,6 +110,7 @@ public class Skill extends BaseTimeEntity {
      * @param desc 설명.
      * @param castType 시전 방식
      * @param projectilePath 투사체 경로
+     * @param element 속성. 없으면 null
      * @param maxLevel 최대 강화 횟수
      * @param childOnly 자식 전용 여부
      * @param baseStats 기본 전투 수치.
@@ -107,15 +122,17 @@ public class Skill extends BaseTimeEntity {
             String desc,
             SkillCastType castType,
             SkillProjectilePath projectilePath,
+            SkillElement element,
             int maxLevel,
             boolean childOnly,
-            SkillBaseStats baseStats,
+            Map<String, Map<String, Double>> baseStats,
             Integer unlockLevel,
             String progressionId) {
         this.name = name;
         this.desc = desc;
         this.castType = castType;
         this.projectilePath = projectilePath;
+        this.element = element;
         this.maxLevel = maxLevel;
         this.childOnly = childOnly;
         this.baseStats = baseStats;

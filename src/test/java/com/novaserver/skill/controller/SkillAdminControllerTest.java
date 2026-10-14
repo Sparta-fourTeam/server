@@ -38,6 +38,7 @@ class SkillAdminControllerTest {
                 "설명",
                 new SkillDetailResponse.NamedRef(10L, "Melee"),
                 new SkillDetailResponse.NamedRef(20L, "Straight"),
+                null,
                 5,
                 false,
                 null,
@@ -51,7 +52,7 @@ class SkillAdminControllerTest {
                 .thenReturn(
                         List.of(
                                 new SkillSummaryResponse(
-                                        1L, "파이어볼", "Melee", "Straight", List.of("cast"))));
+                                        1L, "파이어볼", "Melee", "Straight", null, List.of("cast"))));
 
         mockMvc.perform(get("/api/admin/skill/list"))
                 .andExpect(status().isOk())

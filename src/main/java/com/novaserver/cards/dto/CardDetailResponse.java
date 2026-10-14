@@ -18,6 +18,7 @@ public record CardDetailResponse(
         int minPermanentLevel,
         List<RequiredCardCountResponse> requiredCardCounts,
         List<CardExclusionResponse> exclusions,
+        List<RequiredSkillResponse> requiredSkills,
         String sharedId,
         List<CardEffectResponse> effects,
         List<CardVariantResponse> variants) {
@@ -39,6 +40,7 @@ public record CardDetailResponse(
                 card.getMinPermanentLevel(),
                 card.getRequiredCardCounts().stream().map(RequiredCardCountResponse::from).toList(),
                 card.getExclusions().stream().map(CardExclusionResponse::from).toList(),
+                card.getRequiredSkills().stream().map(RequiredSkillResponse::from).toList(),
                 card.getSharedId(),
                 card.getEffects().stream().map(CardEffectResponse::from).toList(),
                 card.getVariants().stream().map(CardVariantResponse::from).toList());
