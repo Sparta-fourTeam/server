@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 /** 카드 효과 적용 조건 저장소. */
 public interface MirroredCardRepository extends JpaRepository<MirroredCard, Long> {
 
-    List<MirroredCard> findAllBySkill_Id(Long skillId);
+    List<MirroredCard> findAllBySkillId(Long skillId);
 
-    boolean existsBySkill_IdAndCard_Id(Long skillId, Long cardId);
+    boolean existsBySkillIdAndCardId(Long skillId, Long cardId);
 }

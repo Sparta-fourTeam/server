@@ -21,10 +21,11 @@ public class MirroredCardService {
     private final SkillService skillService;
     private final CardService cardService;
 
+    /** 카드 효과 적용 조건 목록을 조회한다. */
     @Transactional(readOnly = true)
     public List<MirroredCardResponse> getMirroredCards(Long skillId) {
         skillService.findSkill(skillId);
-        return mirroredCardRepository.findAllBySkill_Id(skillId).stream()
+        return mirroredCardRepository.findAllBySkillId(skillId).stream()
                 .map(MirroredCardResponse::from)
                 .toList();
     }
@@ -34,7 +35,7 @@ public class MirroredCardService {
     public MirroredCardResponse createMirroredCard(Long skillId, MirroredCardRequest request) {
         Skill skill = skillService.findSkill(skillId);
         UpgradeCard card = cardService.findCard(request.getCardId());
-        if (mirroredCardRepository.existsBySkill_IdAndCard_Id(skillId, request.getCardId())) {
+        if (mirroredCardRepository.existsBySkillIdAndCardId(skillId, request.getCardId())) {
             throw ErrorCode.MIRRORED_CARD_DUPLICATED.exception(request.getCardId());
         }
         MirroredCard saved = mirroredCardRepository.save(new MirroredCard(skill, card));

@@ -21,10 +21,11 @@ public class RequiredSkillService {
     private final CardService cardService;
     private final SkillRepository skillRepository;
 
+    /** 필요 스킬 조건 목록을 조회한다. */
     @Transactional(readOnly = true)
     public List<RequiredSkillResponse> getRequiredSkills(Long cardId) {
         cardService.findCard(cardId);
-        return requiredSkillRepository.findAllByCard_Id(cardId).stream()
+        return requiredSkillRepository.findAllByCardId(cardId).stream()
                 .map(RequiredSkillResponse::from)
                 .toList();
     }
@@ -34,7 +35,7 @@ public class RequiredSkillService {
     public RequiredSkillResponse createRequiredSkill(Long cardId, RequiredSkillRequest request) {
         UpgradeCard card = cardService.findCard(cardId);
         Skill skill = findSkill(request.getSkillId());
-        if (requiredSkillRepository.existsByCard_IdAndSkill_Id(cardId, request.getSkillId())) {
+        if (requiredSkillRepository.existsByCardIdAndSkillId(cardId, request.getSkillId())) {
             throw ErrorCode.REQUIRED_SKILL_DUPLICATED.exception(request.getSkillId());
         }
         RequiredSkill saved = requiredSkillRepository.save(new RequiredSkill(card, skill));

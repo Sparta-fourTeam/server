@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 /** 필요 스킬 조건 저장소. */
 public interface RequiredSkillRepository extends JpaRepository<RequiredSkill, Long> {
 
-    List<RequiredSkill> findAllByCard_Id(Long cardId);
+    List<RequiredSkill> findAllByCardId(Long cardId);
 
-    boolean existsByCard_IdAndSkill_Id(Long cardId, Long skillId);
+    boolean existsByCardIdAndSkillId(Long cardId, Long skillId);
 }

@@ -12,6 +12,7 @@ public class SkillElementResponse {
     private final String label;
     private final LocalDateTime updatedAt;
 
+    /** 엔티티로부터 응답을 만든다. */
     public SkillElementResponse(SkillElement element) {
         this.id = element.getId();
         this.name = element.getName();
