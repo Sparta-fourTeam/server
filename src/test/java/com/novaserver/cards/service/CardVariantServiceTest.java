@@ -60,7 +60,7 @@ class CardVariantServiceTest {
         UpgradeCard card = card(1L);
         CardVariant variant = variant(1L, card, 5, "상위형");
         when(cardService.findCard(1L)).thenReturn(card);
-        when(cardVariantRepository.findAllByCard_IdOrderByMinPermanentLevelAsc(1L))
+        when(cardVariantRepository.findAllByCardIdOrderByMinPermanentLevelAsc(1L))
                 .thenReturn(List.of(variant));
 
         List<CardVariantResponse> responses = cardVariantService.getVariants(1L);
@@ -73,7 +73,7 @@ class CardVariantServiceTest {
     void throwsConflictWhenMinPermanentLevelDuplicatedOnCreate() {
         UpgradeCard card = card(1L);
         when(cardService.findCard(1L)).thenReturn(card);
-        when(cardVariantRepository.existsByCard_IdAndMinPermanentLevel(1L, 5)).thenReturn(true);
+        when(cardVariantRepository.existsByCardIdAndMinPermanentLevel(1L, 5)).thenReturn(true);
         CardVariantRequest request = request(5, "상위형");
 
         assertThatThrownBy(() -> cardVariantService.createVariant(1L, request))
@@ -88,7 +88,7 @@ class CardVariantServiceTest {
         UpgradeCard card = card(1L);
         CardVariant saved = variant(1L, card, 5, "상위형");
         when(cardService.findCard(1L)).thenReturn(card);
-        when(cardVariantRepository.existsByCard_IdAndMinPermanentLevel(1L, 5)).thenReturn(false);
+        when(cardVariantRepository.existsByCardIdAndMinPermanentLevel(1L, 5)).thenReturn(false);
         when(cardVariantRepository.save(any())).thenReturn(saved);
         CardVariantRequest request = request(5, "상위형");
 
@@ -112,7 +112,7 @@ class CardVariantServiceTest {
         UpgradeCard card = card(1L);
         CardVariant existing = variant(1L, card, 5, "상위형");
         when(cardVariantRepository.findById(1L)).thenReturn(Optional.of(existing));
-        when(cardVariantRepository.existsByCard_IdAndMinPermanentLevelAndIdNot(1L, 9, 1L))
+        when(cardVariantRepository.existsByCardIdAndMinPermanentLevelAndIdNot(1L, 9, 1L))
                 .thenReturn(true);
         CardVariantRequest request = request(9, "변경됨");
 
@@ -126,7 +126,7 @@ class CardVariantServiceTest {
         UpgradeCard card = card(1L);
         CardVariant existing = variant(1L, card, 5, "상위형");
         when(cardVariantRepository.findById(1L)).thenReturn(Optional.of(existing));
-        when(cardVariantRepository.existsByCard_IdAndMinPermanentLevelAndIdNot(1L, 9, 1L))
+        when(cardVariantRepository.existsByCardIdAndMinPermanentLevelAndIdNot(1L, 9, 1L))
                 .thenReturn(false);
         CardVariantRequest request = request(9, "변경됨");
 

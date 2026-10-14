@@ -22,6 +22,7 @@ import com.novaserver.auth.repository.RefreshTokenRepository;
 import com.novaserver.auth.social.SocialTokenVerifier;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.user.Provider;
+import com.novaserver.user.Role;
 import com.novaserver.user.entity.User;
 import com.novaserver.user.repository.UserRepository;
 import com.novaserver.user.service.UserService;
@@ -177,13 +178,16 @@ class AuthServiceTest {
     void shouldRotateTokens_whenRefreshTokenMatches() {
         // given
         when(jwtProvider.parse(OLD_REFRESH))
-                .thenReturn(new TokenInfo(USER_ID, ClientType.GAME, TokenType.REFRESH, "old-jti"));
+                .thenReturn(
+                        new TokenInfo(
+                                USER_ID, Role.USER, ClientType.GAME, TokenType.REFRESH, "old-jti"));
         when(refreshTokenRepository.findTokenId(USER_ID, ClientType.GAME))
                 .thenReturn(Optional.of("old-jti"));
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(storedUser(Role.USER)));
         stubTokens();
 
         // when
-        TokenResponse response = authService.refresh(OLD_REFRESH);
+        TokenResponse response = authService.refresh(OLD_REFRESH, ClientType.GAME);
 
         // then
         assertThat(response.getAccessToken()).isEqualTo("access-token");
@@ -193,19 +197,23 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("토큰의 clientType 그대로 재발급한다")
+    @DisplayName("WEB 경로에서는 WEB refresh로 WEB 토큰을 재발급한다")
     void shouldKeepClientType_onRefresh() {
         // given
         when(jwtProvider.parse(OLD_REFRESH))
-                .thenReturn(new TokenInfo(USER_ID, ClientType.WEB, TokenType.REFRESH, "old-jti"));
+                .thenReturn(
+                        new TokenInfo(
+                                USER_ID, Role.USER, ClientType.WEB, TokenType.REFRESH, "old-jti"));
         when(refreshTokenRepository.findTokenId(USER_ID, ClientType.WEB))
                 .thenReturn(Optional.of("old-jti"));
-        when(jwtProvider.createAccessToken(USER_ID, ClientType.WEB)).thenReturn("web-access");
-        when(jwtProvider.createRefreshToken(USER_ID, ClientType.WEB))
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(storedUser(Role.USER)));
+        when(jwtProvider.createAccessToken(USER_ID, ClientType.WEB, Role.USER))
+                .thenReturn("web-access");
+        when(jwtProvider.createRefreshToken(USER_ID, ClientType.WEB, Role.USER))
                 .thenReturn(new IssuedToken("web-refresh", "web-jti"));
 
         // when
-        TokenResponse response = authService.refresh(OLD_REFRESH);
+        TokenResponse response = authService.refresh(OLD_REFRESH, ClientType.WEB);
 
         // then
         assertThat(response.getAccessToken()).isEqualTo("web-access");
@@ -217,15 +225,17 @@ class AuthServiceTest {
     void shouldThrowInvalidToken_whenAccessTokenUsed() {
         // given
         when(jwtProvider.parse(OLD_REFRESH))
-                .thenReturn(new TokenInfo(USER_ID, ClientType.GAME, TokenType.ACCESS, "jti"));
+                .thenReturn(
+                        new TokenInfo(
+                                USER_ID, Role.USER, ClientType.GAME, TokenType.ACCESS, "jti"));
 
         // when & then
         assertStatus(
-                () -> authService.refresh(OLD_REFRESH),
+                () -> authService.refresh(OLD_REFRESH, ClientType.GAME),
                 HttpStatus.UNAUTHORIZED,
                 ErrorCode.INVALID_TOKEN);
         verifyNoInteractions(refreshTokenRepository);
-        verify(jwtProvider, never()).createRefreshToken(anyLong(), any());
+        verify(jwtProvider, never()).createRefreshToken(anyLong(), any(), any());
     }
 
     @Test
@@ -233,17 +243,19 @@ class AuthServiceTest {
     void shouldThrowInvalidToken_whenNoStoredRefresh() {
         // given
         when(jwtProvider.parse(OLD_REFRESH))
-                .thenReturn(new TokenInfo(USER_ID, ClientType.GAME, TokenType.REFRESH, "old-jti"));
+                .thenReturn(
+                        new TokenInfo(
+                                USER_ID, Role.USER, ClientType.GAME, TokenType.REFRESH, "old-jti"));
         when(refreshTokenRepository.findTokenId(USER_ID, ClientType.GAME))
                 .thenReturn(Optional.empty());
 
         // when & then
         assertStatus(
-                () -> authService.refresh(OLD_REFRESH),
+                () -> authService.refresh(OLD_REFRESH, ClientType.GAME),
                 HttpStatus.UNAUTHORIZED,
                 ErrorCode.INVALID_TOKEN);
         verify(refreshTokenRepository, never()).save(anyLong(), any(), anyString());
-        verify(jwtProvider, never()).createAccessToken(anyLong(), any());
+        verify(jwtProvider, never()).createAccessToken(anyLong(), any(), any());
     }
 
     @Test
@@ -251,18 +263,20 @@ class AuthServiceTest {
     void shouldDeleteStoredRefresh_whenReusedTokenDetected() {
         // given
         when(jwtProvider.parse(OLD_REFRESH))
-                .thenReturn(new TokenInfo(USER_ID, ClientType.GAME, TokenType.REFRESH, "old-jti"));
+                .thenReturn(
+                        new TokenInfo(
+                                USER_ID, Role.USER, ClientType.GAME, TokenType.REFRESH, "old-jti"));
         when(refreshTokenRepository.findTokenId(USER_ID, ClientType.GAME))
                 .thenReturn(Optional.of("newer-jti"));
 
         // when & then
         assertStatus(
-                () -> authService.refresh(OLD_REFRESH),
+                () -> authService.refresh(OLD_REFRESH, ClientType.GAME),
                 HttpStatus.UNAUTHORIZED,
                 ErrorCode.INVALID_TOKEN);
         verify(refreshTokenRepository).delete(USER_ID, ClientType.GAME);
         verify(refreshTokenRepository, never()).save(anyLong(), any(), anyString());
-        verify(jwtProvider, never()).createAccessToken(anyLong(), any());
+        verify(jwtProvider, never()).createAccessToken(anyLong(), any(), any());
     }
 
     @Test
@@ -273,7 +287,7 @@ class AuthServiceTest {
 
         // when & then
         assertStatus(
-                () -> authService.refresh(OLD_REFRESH),
+                () -> authService.refresh(OLD_REFRESH, ClientType.GAME),
                 HttpStatus.UNAUTHORIZED,
                 ErrorCode.TOKEN_EXPIRED);
         verifyNoInteractions(refreshTokenRepository);
@@ -374,6 +388,131 @@ class AuthServiceTest {
         verifyNoInteractions(userRepository, jwtProvider, refreshTokenRepository);
     }
 
+    @Test
+    @DisplayName("경로의 clientType과 토큰의 clientType이 다르면 401이고 저장된 refresh는 건드리지 않는다")
+    void shouldThrowInvalidToken_whenClientTypeMismatches() {
+        // given
+        when(jwtProvider.parse(OLD_REFRESH))
+                .thenReturn(
+                        new TokenInfo(
+                                USER_ID, Role.USER, ClientType.GAME, TokenType.REFRESH, "old-jti"));
+
+        // when & then
+        assertStatus(
+                () -> authService.refresh(OLD_REFRESH, ClientType.WEB),
+                HttpStatus.UNAUTHORIZED,
+                ErrorCode.INVALID_TOKEN);
+        verifyNoInteractions(refreshTokenRepository);
+    }
+
+    @Test
+    @DisplayName("재발급하면 토큰의 role이 아니라 DB의 role로 새 토큰을 만든다")
+    void shouldUseRoleFromDatabase_onRefresh() {
+        // given
+        when(jwtProvider.parse(OLD_REFRESH))
+                .thenReturn(
+                        new TokenInfo(
+                                USER_ID, Role.USER, ClientType.WEB, TokenType.REFRESH, "old-jti"));
+        when(refreshTokenRepository.findTokenId(USER_ID, ClientType.WEB))
+                .thenReturn(Optional.of("old-jti"));
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(storedUser(Role.ADMIN)));
+        when(jwtProvider.createAccessToken(USER_ID, ClientType.WEB, Role.ADMIN))
+                .thenReturn("admin-access");
+        when(jwtProvider.createRefreshToken(USER_ID, ClientType.WEB, Role.ADMIN))
+                .thenReturn(new IssuedToken("admin-refresh", "admin-jti"));
+
+        // when
+        TokenResponse response = authService.refresh(OLD_REFRESH, ClientType.WEB);
+
+        // then
+        assertThat(response.getAccessToken()).isEqualTo("admin-access");
+    }
+
+    @Test
+    @DisplayName("refresh는 유효하지만 유저가 없으면 401 INVALID_TOKEN이고 토큰을 발급하지 않는다")
+    void shouldThrowInvalidToken_whenUserDeleted() {
+        // given
+        when(jwtProvider.parse(OLD_REFRESH))
+                .thenReturn(
+                        new TokenInfo(
+                                USER_ID, Role.USER, ClientType.GAME, TokenType.REFRESH, "old-jti"));
+        when(refreshTokenRepository.findTokenId(USER_ID, ClientType.GAME))
+                .thenReturn(Optional.of("old-jti"));
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
+
+        // when & then
+        assertStatus(
+                () -> authService.refresh(OLD_REFRESH, ClientType.GAME),
+                HttpStatus.UNAUTHORIZED,
+                ErrorCode.INVALID_TOKEN);
+        verify(jwtProvider, never()).createAccessToken(anyLong(), any(), any());
+    }
+
+    @Test
+    @DisplayName("refresh 토큰이 없으면(쿠키 없음) 401 INVALID_TOKEN")
+    void shouldThrowInvalidToken_whenRefreshTokenMissing() {
+        assertStatus(
+                () -> authService.refresh(null, ClientType.WEB),
+                HttpStatus.UNAUTHORIZED,
+                ErrorCode.INVALID_TOKEN);
+        verifyNoInteractions(jwtProvider, refreshTokenRepository);
+    }
+
+    @Test
+    @DisplayName("Web 로그아웃: 저장된 값과 같은 refresh면 Redis에서 지운다")
+    void shouldDeleteStoredRefresh_onWebLogOut() {
+        // given
+        when(jwtProvider.parse(OLD_REFRESH))
+                .thenReturn(
+                        new TokenInfo(
+                                USER_ID, Role.ADMIN, ClientType.WEB, TokenType.REFRESH, "old-jti"));
+        when(refreshTokenRepository.findTokenId(USER_ID, ClientType.WEB))
+                .thenReturn(Optional.of("old-jti"));
+
+        // when
+        authService.webLogOut(OLD_REFRESH);
+
+        // then
+        verify(refreshTokenRepository).delete(USER_ID, ClientType.WEB);
+    }
+
+    @Test
+    @DisplayName("Web 로그아웃: 예전 refresh면 현재 세션을 지우지 않는다")
+    void shouldKeepCurrentSession_whenLogOutWithOldRefresh() {
+        // given
+        when(jwtProvider.parse(OLD_REFRESH))
+                .thenReturn(
+                        new TokenInfo(
+                                USER_ID, Role.ADMIN, ClientType.WEB, TokenType.REFRESH, "old-jti"));
+        when(refreshTokenRepository.findTokenId(USER_ID, ClientType.WEB))
+                .thenReturn(Optional.of("newer-jti"));
+
+        // when
+        authService.webLogOut(OLD_REFRESH);
+
+        // then
+        verify(refreshTokenRepository, never()).delete(anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("Web 로그아웃: 토큰이 없거나 만료됐거나 GAME 토큰이면 예외 없이 아무것도 지우지 않는다")
+    void shouldDoNothing_whenLogOutWithoutValidWebRefresh() {
+        // given
+        when(jwtProvider.parse("expired")).thenThrow(ErrorCode.TOKEN_EXPIRED.exception());
+        when(jwtProvider.parse("game"))
+                .thenReturn(
+                        new TokenInfo(
+                                USER_ID, Role.USER, ClientType.GAME, TokenType.REFRESH, "jti"));
+
+        // when
+        authService.webLogOut(null);
+        authService.webLogOut("expired");
+        authService.webLogOut("game");
+
+        // then
+        verifyNoInteractions(refreshTokenRepository);
+    }
+
     private static void assertStatus(
             ThrowingCallable call, HttpStatus status, ErrorCode errorCode) {
         assertThatThrownBy(call)
@@ -387,9 +526,16 @@ class AuthServiceTest {
     }
 
     private void stubTokens() {
-        when(jwtProvider.createAccessToken(USER_ID, ClientType.GAME)).thenReturn("access-token");
-        when(jwtProvider.createRefreshToken(USER_ID, ClientType.GAME))
+        when(jwtProvider.createAccessToken(USER_ID, ClientType.GAME, Role.USER))
+                .thenReturn("access-token");
+        when(jwtProvider.createRefreshToken(USER_ID, ClientType.GAME, Role.USER))
                 .thenReturn(new IssuedToken("refresh-token", "refresh-jti"));
+    }
+
+    private static User storedUser(Role role) {
+        User user = withId(new User(Provider.GUEST, "hashed-guest-id"));
+        ReflectionTestUtils.setField(user, "role", role);
+        return user;
     }
 
     private static User withId(User user) {

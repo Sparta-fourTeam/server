@@ -1,10 +1,10 @@
 package com.novaserver.global.config;
 
-import com.novaserver.auth.jwt.ClientType;
 import com.novaserver.auth.jwt.JwtAccessDeniedHandler;
 import com.novaserver.auth.jwt.JwtAuthenticationEntryPoint;
 import com.novaserver.auth.jwt.JwtAuthenticationFilter;
 import com.novaserver.auth.jwt.JwtProvider;
+import com.novaserver.user.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -53,10 +53,10 @@ public class SecurityConfig {
                         auth ->
                                 auth.requestMatchers(PUBLIC_PATHS)
                                         .permitAll()
+                                        .requestMatchers("/api/admin/**")
+                                        .hasRole(Role.ADMIN.name())
                                         .requestMatchers(TEMP_PUBLIC_PATHS)
                                         .permitAll()
-                                        .requestMatchers("/api/admin/**")
-                                        .hasRole(ClientType.WEB.name())
                                         .anyRequest()
                                         .authenticated())
                 .exceptionHandling(

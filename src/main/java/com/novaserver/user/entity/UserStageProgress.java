@@ -1,7 +1,16 @@
 package com.novaserver.user.entity;
 
 import com.novaserver.stage.entity.Stage;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,6 +41,7 @@ public class UserStageProgress {
     @Column(nullable = false)
     private int claimedRating;
 
+    /** 클리어·보상 수령 등급이 0인 진행도를 만든다. */
     public UserStageProgress(User user, Stage stage) {
         this.user = user;
         this.stage = stage;
@@ -39,11 +49,17 @@ public class UserStageProgress {
         this.claimedRating = 0;
     }
 
+    /** 기존보다 높은 등급일 때만 클리어 등급을 갱신한다. */
     public void updateClearRating(int clearRating) {
-        if (clearRating > this.clearRating) this.clearRating = clearRating;
+        if (clearRating > this.clearRating) {
+            this.clearRating = clearRating;
+        }
     }
 
+    /** 기존보다 높은 등급일 때만 보상 수령 등급을 갱신한다. */
     public void updateClaimedRating(int claimedRating) {
-        if (claimedRating > this.claimedRating) this.claimedRating = claimedRating;
+        if (claimedRating > this.claimedRating) {
+            this.claimedRating = claimedRating;
+        }
     }
 }

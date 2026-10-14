@@ -9,5 +9,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface UserCodexRepository extends JpaRepository<UserCodex, Long> {
     /** 도감 정보를 함께 가져온다. */
     @EntityGraph(attributePaths = {"codex"})
-    List<UserCodex> findByUser_Id(Long userId);
+    List<UserCodex> findByUserId(Long userId);
 }

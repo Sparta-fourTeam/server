@@ -9,5 +9,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface UserUpgradeRepository extends JpaRepository<UserUpgrade, Long> {
     /** 강화 정보를 함께 가져온다. */
     @EntityGraph(attributePaths = {"upgrade"})
-    List<UserUpgrade> findByUser_Id(Long userId);
+    List<UserUpgrade> findByUserId(Long userId);
 }

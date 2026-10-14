@@ -18,8 +18,16 @@ spring:
 app:
   jwt:
     secret: test-only-secret-key-do-not-use-in-production-0123456789
-    access-token-validity-seconds: 900
-    refresh-token-validity-seconds: 2592000
+    validity:
+      game:
+        access: 15m
+        refresh: 30d
+      web:
+        access: 15m
+        refresh: 1h
+
+  cookie:
+    secure: false
 
   social:
     google:

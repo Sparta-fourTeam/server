@@ -21,10 +21,11 @@ public class CardExclusionService {
     private final CardService cardService;
     private final SkillRepository skillRepository;
 
+    /** 카드의 배제 조건을 조회한다. */
     @Transactional(readOnly = true)
     public List<CardExclusionResponse> getExclusions(Long cardId) {
         cardService.findCard(cardId);
-        return cardExclusionRepository.findAllByCard_Id(cardId).stream()
+        return cardExclusionRepository.findAllByCardId(cardId).stream()
                 .map(CardExclusionResponse::from)
                 .toList();
     }
@@ -37,7 +38,7 @@ public class CardExclusionService {
         }
         UpgradeCard card = cardService.findCard(cardId);
         UpgradeCard excludingCard = cardService.findCard(request.getExcludingCardId());
-        if (cardExclusionRepository.existsByCard_IdAndExcludingCard_Id(
+        if (cardExclusionRepository.existsByCardIdAndExcludingCardId(
                 cardId, request.getExcludingCardId())) {
             throw ErrorCode.CARD_EXCLUSION_DUPLICATED.exception(request.getExcludingCardId());
         }

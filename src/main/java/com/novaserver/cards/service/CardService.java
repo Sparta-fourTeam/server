@@ -36,7 +36,7 @@ public class CardService {
     /** 스킬 id별 유니티용 카드 데이터를 모아서 돌려준다. */
     @Transactional(readOnly = true)
     public Map<Long, List<CardDataResponse>> getCardDataBySkillIds(List<Long> skillIds) {
-        return upgradeCardRepository.findAllBySkill_IdIn(skillIds).stream()
+        return upgradeCardRepository.findAllBySkillIdIn(skillIds).stream()
                 .collect(
                         Collectors.groupingBy(
                                 card -> card.getSkill().getId(),

@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 /** 카드 배제 조건 저장소. */
 public interface CardExclusionRepository extends JpaRepository<CardExclusion, Long> {
 
-    List<CardExclusion> findAllByCard_Id(Long cardId);
+    List<CardExclusion> findAllByCardId(Long cardId);
 
-    boolean existsByCard_IdAndExcludingCard_Id(Long cardId, Long excludingCardId);
+    boolean existsByCardIdAndExcludingCardId(Long cardId, Long excludingCardId);
 }

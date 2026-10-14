@@ -14,8 +14,23 @@ import com.novaserver.stage.entity.Stage;
 import com.novaserver.tutorial.entity.Tutorials;
 import com.novaserver.upgrade.entity.Upgrade;
 import com.novaserver.user.dto.UserDataResponse;
-import com.novaserver.user.entity.*;
-import com.novaserver.user.repository.*;
+import com.novaserver.user.entity.User;
+import com.novaserver.user.entity.UserCodex;
+import com.novaserver.user.entity.UserData;
+import com.novaserver.user.entity.UserEnergy;
+import com.novaserver.user.entity.UserItem;
+import com.novaserver.user.entity.UserStageProgress;
+import com.novaserver.user.entity.UserTutorial;
+import com.novaserver.user.entity.UserUpgrade;
+import com.novaserver.user.entity.Wallet;
+import com.novaserver.user.repository.UserCodexRepository;
+import com.novaserver.user.repository.UserDataRepository;
+import com.novaserver.user.repository.UserEnergyRepository;
+import com.novaserver.user.repository.UserItemRepository;
+import com.novaserver.user.repository.UserStageProgressRepository;
+import com.novaserver.user.repository.UserTutorialRepository;
+import com.novaserver.user.repository.UserUpgradeRepository;
+import com.novaserver.user.repository.WalletRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -92,8 +107,6 @@ class UserServiceTest {
     @DisplayName("유저 id로 상태를 조회하면 재화·경험치·에너지와 목록들을 모두 합쳐 반환한다")
     void shouldReturnAggregatedStatus_onGetMe() {
         // given
-        UserData userData = new UserData(null, 120);
-        Wallet wallet = new Wallet(null, 500, 10);
         UserEnergy energy = new UserEnergy(null, 25);
         LocalDateTime energyUpdatedAt = LocalDateTime.of(2026, 10, 14, 12, 0);
         ReflectionTestUtils.setField(energy, "energyUpdatedAt", energyUpdatedAt);
@@ -127,14 +140,16 @@ class UserServiceTest {
         UserTutorial userTutorial = mock(UserTutorial.class);
         when(userTutorial.getTutorials()).thenReturn(tutorials);
 
-        when(userDataRepository.findByUser_Id(USER_ID)).thenReturn(Optional.of(userData));
-        when(walletRepository.findByUser_Id(USER_ID)).thenReturn(Optional.of(wallet));
-        when(userEnergyRepository.findByUser_Id(USER_ID)).thenReturn(Optional.of(energy));
-        when(userStageProgressRepository.findByUser_Id(USER_ID)).thenReturn(List.of(stageProgress));
-        when(userUpgradeRepository.findByUser_Id(USER_ID)).thenReturn(List.of(userUpgrade));
-        when(userItemRepository.findByUser_Id(USER_ID)).thenReturn(List.of(userItem));
-        when(userCodexRepository.findByUser_Id(USER_ID)).thenReturn(List.of(userCodex));
-        when(userTutorialRepository.findByUser_Id(USER_ID)).thenReturn(List.of(userTutorial));
+        UserData userData = new UserData(null, 120);
+        when(userDataRepository.findByUserId(USER_ID)).thenReturn(Optional.of(userData));
+        Wallet wallet = new Wallet(null, 500, 10);
+        when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+        when(userEnergyRepository.findByUserId(USER_ID)).thenReturn(Optional.of(energy));
+        when(userStageProgressRepository.findByUserId(USER_ID)).thenReturn(List.of(stageProgress));
+        when(userUpgradeRepository.findByUserId(USER_ID)).thenReturn(List.of(userUpgrade));
+        when(userItemRepository.findByUserId(USER_ID)).thenReturn(List.of(userItem));
+        when(userCodexRepository.findByUserId(USER_ID)).thenReturn(List.of(userCodex));
+        when(userTutorialRepository.findByUserId(USER_ID)).thenReturn(List.of(userTutorial));
 
         // when
         UserDataResponse response = userService.getMe(USER_ID);
@@ -170,7 +185,7 @@ class UserServiceTest {
     @DisplayName("유저 데이터가 없으면 404 USER_DATA_NOT_FOUND를 던지고 지갑·에너지는 조회하지 않는다")
     void shouldThrowNotFound_whenUserDataMissing() {
         // given
-        when(userDataRepository.findByUser_Id(USER_ID)).thenReturn(Optional.empty());
+        when(userDataRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
         // when & then
         assertStatus(
@@ -185,9 +200,9 @@ class UserServiceTest {
     @DisplayName("지갑이 없으면 404 WALLET_NOT_FOUND를 던지고 에너지는 조회하지 않는다")
     void shouldThrowNotFound_whenWalletMissing() {
         // given
-        when(userDataRepository.findByUser_Id(USER_ID))
+        when(userDataRepository.findByUserId(USER_ID))
                 .thenReturn(Optional.of(new UserData(null, 0)));
-        when(walletRepository.findByUser_Id(USER_ID)).thenReturn(Optional.empty());
+        when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
         // when & then
         assertStatus(
@@ -202,11 +217,11 @@ class UserServiceTest {
     @DisplayName("에너지가 없으면 404 ENERGY_NOT_FOUND를 던지고 나머지 목록은 조회하지 않는다")
     void shouldThrowNotFound_whenEnergyMissing() {
         // given
-        when(userDataRepository.findByUser_Id(USER_ID))
+        when(userDataRepository.findByUserId(USER_ID))
                 .thenReturn(Optional.of(new UserData(null, 0)));
-        when(walletRepository.findByUser_Id(USER_ID))
+        when(walletRepository.findByUserId(USER_ID))
                 .thenReturn(Optional.of(new Wallet(null, 0, 0)));
-        when(userEnergyRepository.findByUser_Id(USER_ID)).thenReturn(Optional.empty());
+        when(userEnergyRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
         // when & then
         assertStatus(

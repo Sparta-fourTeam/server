@@ -8,6 +8,7 @@ public record RequiredCardCountResponse(Long id, NamedRef requiredCard, NamedRef
     /** 연관 테이블 값. */
     public record NamedRef(Long id, String name) {}
 
+    /** 선행 카드 조건 엔티티를 응답으로 변환한다. */
     public static RequiredCardCountResponse from(RequiredCardCount requiredCardCount) {
         return new RequiredCardCountResponse(
                 requiredCardCount.getId(),

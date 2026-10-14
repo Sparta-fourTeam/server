@@ -1,12 +1,17 @@
 package com.novaserver.cards.entity;
 
 import com.novaserver.global.entity.BaseTimeEntity;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** onEvent 효과 발동 시점. */
+/** {@code onEvent} 효과 발동 시점. */
 @Getter
 @Entity
 @Table(name = "effect_trigger")

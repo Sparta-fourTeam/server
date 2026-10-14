@@ -9,5 +9,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface UserTutorialRepository extends JpaRepository<UserTutorial, Long> {
     /** 튜토리얼 정보를 함께 가져온다. */
     @EntityGraph(attributePaths = {"tutorials"})
-    List<UserTutorial> findByUser_Id(Long userId);
+    List<UserTutorial> findByUserId(Long userId);
 }

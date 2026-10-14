@@ -7,5 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 /** 강화 카드 저장소. */
 public interface UpgradeCardRepository extends JpaRepository<UpgradeCard, Long> {
 
-    List<UpgradeCard> findAllBySkill_IdIn(List<Long> skillIds);
+    List<UpgradeCard> findAllBySkillIdIn(List<Long> skillIds);
 }

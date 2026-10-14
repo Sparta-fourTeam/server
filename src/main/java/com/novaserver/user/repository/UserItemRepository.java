@@ -9,5 +9,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface UserItemRepository extends JpaRepository<UserItem, Long> {
     /** 아이템 정보를 함께 가져온다. */
     @EntityGraph(attributePaths = {"item"})
-    List<UserItem> findByUser_Id(Long userId);
+    List<UserItem> findByUserId(Long userId);
 }

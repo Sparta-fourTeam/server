@@ -62,7 +62,7 @@ class CardExclusionServiceTest {
         UpgradeCard excludingCard = card(2L, "배제카드");
         CardExclusion exclusion = exclusion(1L, excludingCard, 0);
         when(cardService.findCard(1L)).thenReturn(card);
-        when(cardExclusionRepository.findAllByCard_Id(1L)).thenReturn(List.of(exclusion));
+        when(cardExclusionRepository.findAllByCardId(1L)).thenReturn(List.of(exclusion));
 
         List<CardExclusionResponse> responses = cardExclusionService.getExclusions(1L);
 
@@ -87,7 +87,7 @@ class CardExclusionServiceTest {
         UpgradeCard excludingCard = card(2L, "배제카드");
         when(cardService.findCard(1L)).thenReturn(card);
         when(cardService.findCard(2L)).thenReturn(excludingCard);
-        when(cardExclusionRepository.existsByCard_IdAndExcludingCard_Id(1L, 2L)).thenReturn(true);
+        when(cardExclusionRepository.existsByCardIdAndExcludingCardId(1L, 2L)).thenReturn(true);
         CardExclusionRequest request = request(2L, 0);
 
         assertThatThrownBy(() -> cardExclusionService.createExclusion(1L, request))
@@ -104,7 +104,7 @@ class CardExclusionServiceTest {
         CardExclusion saved = exclusion(1L, excludingCard, 25);
         when(cardService.findCard(1L)).thenReturn(card);
         when(cardService.findCard(2L)).thenReturn(excludingCard);
-        when(cardExclusionRepository.existsByCard_IdAndExcludingCard_Id(1L, 2L)).thenReturn(false);
+        when(cardExclusionRepository.existsByCardIdAndExcludingCardId(1L, 2L)).thenReturn(false);
         when(cardExclusionRepository.save(any())).thenReturn(saved);
         CardExclusionRequest request = request(2L, 25);
 

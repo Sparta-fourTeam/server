@@ -12,6 +12,7 @@ public class EffectKindResponse {
     private final String label;
     private final LocalDateTime updatedAt;
 
+    /** 효과 종류 엔티티로 응답을 만든다. */
     public EffectKindResponse(EffectKind kind) {
         this.id = kind.getId();
         this.name = kind.getName();

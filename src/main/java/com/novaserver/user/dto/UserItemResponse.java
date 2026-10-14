@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+/** 유저 아이템 응답. */
 @Getter
 @RequiredArgsConstructor
 @Schema(description = "유저 아이템 응답")

@@ -1,12 +1,20 @@
 package com.novaserver.user.dto;
 
-import com.novaserver.user.entity.*;
+import com.novaserver.user.entity.UserCodex;
+import com.novaserver.user.entity.UserData;
+import com.novaserver.user.entity.UserEnergy;
+import com.novaserver.user.entity.UserItem;
+import com.novaserver.user.entity.UserStageProgress;
+import com.novaserver.user.entity.UserTutorial;
+import com.novaserver.user.entity.UserUpgrade;
+import com.novaserver.user.entity.Wallet;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+/** 유저 상태 정보 응답. */
 @Getter
 @RequiredArgsConstructor
 @Schema(description = "유저 상태 정보 응답")
@@ -41,6 +49,7 @@ public class UserDataResponse {
     @Schema(description = "완료한 튜토리얼 id 목록")
     private final List<Long> tutorials;
 
+    /** 유저의 상태 엔티티들을 하나의 응답으로 합친다. */
     public static UserDataResponse of(
             UserData userData,
             Wallet wallet,

@@ -5,6 +5,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.novaserver.auth.jwt.ClientType;
+import com.novaserver.auth.jwt.TokenValidityProperties;
+import com.novaserver.auth.jwt.TokenValidityProperties.Validity;
 import java.time.Duration;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,7 +21,12 @@ import org.springframework.data.redis.core.ValueOperations;
 @ExtendWith(MockitoExtension.class)
 class RefreshTokenRepositoryTest {
 
-    private static final long REFRESH_VALIDITY_SECONDS = 2592000;
+    private static final Duration GAME_REFRESH = Duration.ofDays(30);
+    private static final Duration WEB_REFRESH = Duration.ofHours(1);
+    private static final TokenValidityProperties VALIDITY =
+            new TokenValidityProperties(
+                    new Validity(Duration.ofMinutes(15), GAME_REFRESH),
+                    new Validity(Duration.ofMinutes(15), WEB_REFRESH));
 
     @Mock private StringRedisTemplate redisTemplate;
     @Mock private ValueOperations<String, String> valueOperations;
@@ -28,12 +35,11 @@ class RefreshTokenRepositoryTest {
 
     @BeforeEach
     void setUp() {
-        refreshTokenRepository =
-                new RefreshTokenRepository(redisTemplate, REFRESH_VALIDITY_SECONDS);
+        refreshTokenRepository = new RefreshTokenRepository(redisTemplate, VALIDITY);
     }
 
     @Test
-    @DisplayName("저장하면 refresh:{clientType}:{userId} 키에 jti를 refresh 유효기간 TTL로 넣는다")
+    @DisplayName("저장하면 refresh:{clientType}:{userId} 키에 jti를 GAME refresh 유효기간 TTL로 넣는다")
     void shouldSaveTokenId_withKeyAndTtl() {
         // given
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
@@ -42,8 +48,20 @@ class RefreshTokenRepositoryTest {
         refreshTokenRepository.save(42L, ClientType.GAME, "jti-1");
 
         // then
-        verify(valueOperations)
-                .set("refresh:GAME:42", "jti-1", Duration.ofSeconds(REFRESH_VALIDITY_SECONDS));
+        verify(valueOperations).set("refresh:GAME:42", "jti-1", GAME_REFRESH);
+    }
+
+    @Test
+    @DisplayName("WEB refresh는 WEB refresh 유효기간을 TTL로 쓴다")
+    void shouldUseWebTtl_whenClientTypeIsWeb() {
+        // given
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+
+        // when
+        refreshTokenRepository.save(7L, ClientType.WEB, "jti-1");
+
+        // then
+        verify(valueOperations).set("refresh:WEB:7", "jti-1", WEB_REFRESH);
     }
 
     @Test

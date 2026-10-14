@@ -6,7 +6,14 @@ import com.novaserver.user.entity.User;
 import com.novaserver.user.entity.UserData;
 import com.novaserver.user.entity.UserEnergy;
 import com.novaserver.user.entity.Wallet;
-import com.novaserver.user.repository.*;
+import com.novaserver.user.repository.UserCodexRepository;
+import com.novaserver.user.repository.UserDataRepository;
+import com.novaserver.user.repository.UserEnergyRepository;
+import com.novaserver.user.repository.UserItemRepository;
+import com.novaserver.user.repository.UserStageProgressRepository;
+import com.novaserver.user.repository.UserTutorialRepository;
+import com.novaserver.user.repository.UserUpgradeRepository;
+import com.novaserver.user.repository.WalletRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,28 +49,28 @@ public class UserService {
                 userData,
                 wallet,
                 energy,
-                userStageProgressRepository.findByUser_Id(userId),
-                userUpgradeRepository.findByUser_Id(userId),
-                userItemRepository.findByUser_Id(userId),
-                userCodexRepository.findByUser_Id(userId),
-                userTutorialRepository.findByUser_Id(userId));
+                userStageProgressRepository.findByUserId(userId),
+                userUpgradeRepository.findByUserId(userId),
+                userItemRepository.findByUserId(userId),
+                userCodexRepository.findByUserId(userId),
+                userTutorialRepository.findByUserId(userId));
     }
 
     private UserData findUserData(Long userId) {
         return userDataRepository
-                .findByUser_Id(userId)
+                .findByUserId(userId)
                 .orElseThrow(() -> ErrorCode.USER_DATA_NOT_FOUND.exception(userId));
     }
 
     private Wallet findWallet(Long userId) {
         return walletRepository
-                .findByUser_Id(userId)
+                .findByUserId(userId)
                 .orElseThrow(() -> ErrorCode.WALLET_NOT_FOUND.exception(userId));
     }
 
     private UserEnergy findEnergy(Long userId) {
         return userEnergyRepository
-                .findByUser_Id(userId)
+                .findByUserId(userId)
                 .orElseThrow(() -> ErrorCode.ENERGY_NOT_FOUND.exception(userId));
     }
 }

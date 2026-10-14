@@ -9,5 +9,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface UserStageProgressRepository extends JpaRepository<UserStageProgress, Long> {
     /** 스테이지를 함께 가져온다. */
     @EntityGraph(attributePaths = {"stage"})
-    List<UserStageProgress> findByUser_Id(Long userId);
+    List<UserStageProgress> findByUserId(Long userId);
 }
