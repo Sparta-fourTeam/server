@@ -3,8 +3,7 @@ package com.novaserver.cards.dto;
 import com.novaserver.cards.entity.CardExclusion;
 
 /** 카드 배제 조건 응답. */
-public record CardExclusionResponse(
-        Long id, NamedRef excludingCard, NamedRef skill, int belowPermanentLevel) {
+public record CardExclusionResponse(Long id, NamedRef excludingCard, int belowPermanentLevel) {
 
     /** 연관 테이블 값. */
     public record NamedRef(Long id, String name) {}
@@ -16,9 +15,6 @@ public record CardExclusionResponse(
                 new NamedRef(
                         exclusion.getExcludingCard().getId(),
                         exclusion.getExcludingCard().getName()),
-                exclusion.getSkill() != null
-                        ? new NamedRef(exclusion.getSkill().getId(), exclusion.getSkill().getName())
-                        : null,
                 exclusion.getBelowPermanentLevel());
     }
 }

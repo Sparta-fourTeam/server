@@ -10,8 +10,6 @@ public class RequiredCardCountRequest {
     @NotNull(message = "requiredCardId는 필수값입니다.")
     private Long requiredCardId;
 
-    private Long skillId;
-
     @Min(value = 1, message = "count는 1 이상입니다.")
     private Integer count;
 }

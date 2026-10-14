@@ -8,11 +8,8 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record CardDataResponse(
         Long id,
-        String name,
-        String desc,
         int maxPickCount,
         boolean enabled,
-        String disabledReason,
         int minBattleLevel,
         int minPermanentLevel,
         List<RequiredCardCountDataResponse> requiredCardCounts,
@@ -26,11 +23,8 @@ public record CardDataResponse(
     public static CardDataResponse from(UpgradeCard card) {
         return new CardDataResponse(
                 card.getId(),
-                card.getName(),
-                card.getDesc(),
                 card.getMaxPickCount(),
                 card.isEnabled(),
-                card.getDisabledReason(),
                 card.getMinBattleLevel(),
                 card.getMinPermanentLevel(),
                 card.getRequiredCardCounts().stream()

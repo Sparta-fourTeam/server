@@ -10,8 +10,6 @@ import java.util.Map;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record SkillDataResponse(
         Long id,
-        String name,
-        String desc,
         String castType,
         String projectilePath,
         String element,
@@ -27,8 +25,6 @@ public record SkillDataResponse(
     public static SkillDataResponse from(Skill skill, List<CardDataResponse> upgrades) {
         return new SkillDataResponse(
                 skill.getId(),
-                skill.getName(),
-                skill.getDesc(),
                 skill.getCastType().getName(),
                 skill.getProjectilePath().getName(),
                 skill.getElement() != null ? skill.getElement().getName() : null,

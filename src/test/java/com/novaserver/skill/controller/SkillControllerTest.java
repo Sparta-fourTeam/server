@@ -30,8 +30,6 @@ class SkillControllerTest {
                         List.of(
                                 new SkillDataResponse(
                                         1L,
-                                        "파이어볼",
-                                        "설명",
                                         "Melee",
                                         "Straight",
                                         null,
@@ -45,7 +43,6 @@ class SkillControllerTest {
 
         mockMvc.perform(get("/api/skill"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("파이어볼"))
                 .andExpect(jsonPath("$[0].castType").value("Melee"));
     }
 }

@@ -6,8 +6,6 @@ import com.novaserver.cards.entity.CardExclusion;
 import com.novaserver.cards.entity.UpgradeCard;
 import com.novaserver.cards.repository.CardExclusionRepository;
 import com.novaserver.global.error.ErrorCode;
-import com.novaserver.skill.entity.Skill;
-import com.novaserver.skill.repository.SkillRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class CardExclusionService {
     private final CardExclusionRepository cardExclusionRepository;
     private final CardService cardService;
-    private final SkillRepository skillRepository;
 
     /** 카드의 배제 조건을 조회한다. */
     @Transactional(readOnly = true)
@@ -42,11 +39,9 @@ public class CardExclusionService {
                 cardId, request.getExcludingCardId())) {
             throw ErrorCode.CARD_EXCLUSION_DUPLICATED.exception(request.getExcludingCardId());
         }
-        Skill skill = request.getSkillId() != null ? findSkill(request.getSkillId()) : null;
         CardExclusion saved =
                 cardExclusionRepository.save(
-                        new CardExclusion(
-                                card, skill, excludingCard, request.getBelowPermanentLevel()));
+                        new CardExclusion(card, excludingCard, request.getBelowPermanentLevel()));
         return CardExclusionResponse.from(saved);
     }
 
@@ -59,11 +54,5 @@ public class CardExclusionService {
         return cardExclusionRepository
                 .findById(id)
                 .orElseThrow(() -> ErrorCode.CARD_EXCLUSION_NOT_FOUND.exception(id));
-    }
-
-    private Skill findSkill(Long id) {
-        return skillRepository
-                .findById(id)
-                .orElseThrow(() -> ErrorCode.SKILL_NOT_FOUND.exception(id));
     }
 }

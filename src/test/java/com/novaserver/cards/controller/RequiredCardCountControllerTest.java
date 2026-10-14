@@ -31,7 +31,7 @@ class RequiredCardCountControllerTest {
 
     private RequiredCardCountResponse response(Long id, int count) {
         return new RequiredCardCountResponse(
-                id, new RequiredCardCountResponse.NamedRef(2L, "선행카드"), null, count);
+                id, new RequiredCardCountResponse.NamedRef(2L, "선행카드"), count);
     }
 
     @Test

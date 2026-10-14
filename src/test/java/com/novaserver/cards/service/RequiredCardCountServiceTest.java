@@ -14,7 +14,6 @@ import com.novaserver.cards.dto.RequiredCardCountResponse;
 import com.novaserver.cards.entity.RequiredCardCount;
 import com.novaserver.cards.entity.UpgradeCard;
 import com.novaserver.cards.repository.RequiredCardCountRepository;
-import com.novaserver.skill.repository.SkillRepository;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -30,7 +29,6 @@ class RequiredCardCountServiceTest {
 
     @Mock private RequiredCardCountRepository requiredCardCountRepository;
     @Mock private CardService cardService;
-    @Mock private SkillRepository skillRepository;
 
     @InjectMocks private RequiredCardCountService requiredCardCountService;
 
@@ -45,7 +43,6 @@ class RequiredCardCountServiceTest {
         RequiredCardCount requiredCardCount = mock(RequiredCardCount.class);
         lenient().when(requiredCardCount.getId()).thenReturn(id);
         lenient().when(requiredCardCount.getRequiredCard()).thenReturn(requiredCard);
-        lenient().when(requiredCardCount.getSkill()).thenReturn(null);
         lenient().when(requiredCardCount.getCount()).thenReturn(count);
         return requiredCardCount;
     }

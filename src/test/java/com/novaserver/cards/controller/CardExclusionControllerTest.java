@@ -31,7 +31,7 @@ class CardExclusionControllerTest {
 
     private CardExclusionResponse response(Long id, int belowPermanentLevel) {
         return new CardExclusionResponse(
-                id, new CardExclusionResponse.NamedRef(2L, "배제카드"), null, belowPermanentLevel);
+                id, new CardExclusionResponse.NamedRef(2L, "배제카드"), belowPermanentLevel);
     }
 
     @Test
