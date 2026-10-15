@@ -1,11 +1,6 @@
 package com.novaserver.auth.controller;
 
-import com.novaserver.auth.dto.AccessTokenResponse;
-import com.novaserver.auth.dto.GuestLogInRequest;
-import com.novaserver.auth.dto.GuestSignUpResponse;
-import com.novaserver.auth.dto.RefreshRequest;
-import com.novaserver.auth.dto.SocialLogInRequest;
-import com.novaserver.auth.dto.TokenResponse;
+import com.novaserver.auth.dto.*;
 import com.novaserver.auth.jwt.ClientType;
 import com.novaserver.auth.jwt.RefreshCookieFactory;
 import com.novaserver.auth.service.AuthService;
@@ -16,12 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.CookieValue;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /** 게스트·소셜 로그인, 토큰 재발급, Web 로그인·로그아웃 API. */
 @Tag(name = "인증", description = "게스트·소셜 로그인, 토큰 재발급, Web 로그인·로그아웃 API")
@@ -82,6 +72,15 @@ public class AuthController {
     @PostMapping("/refresh")
     public TokenResponse refresh(@Valid @RequestBody RefreshRequest request) {
         return authService.refresh(request.getRefreshToken(), ClientType.GAME);
+    }
+
+    @Operation(
+            summary = "게임쪽 로그아웃",
+            description = "저장된 refresh 토큰을 무효로 합니다. 토큰이 없거나 만료됐거나 이미 사용한 토큰이어도 항상 204를 반환합니다.")
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logOut(@Valid @RequestBody RefreshRequest request) {
+        authService.logOut(request.getRefreshToken(), ClientType.GAME);
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(

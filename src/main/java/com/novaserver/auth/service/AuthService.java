@@ -206,14 +206,24 @@ public class AuthService {
     }
 
     /**
-     * Web refresh 토큰을 무효로 만든다. 저장된 값과 같은 refresh일 때만 Redis에서 지운다.
-     *
-     * <p>로그아웃은 실패할 이유가 없는 요청이라 예외를 던지지 않는다. 토큰이 없거나 만료됐거나 잘못된 토큰이면 지울 것이 없으므로 그냥 끝낸다. access 토큰은
-     * 서버가 저장하지 않으므로 남은 수명 동안 유효하다.
+     * Web refresh 토큰을 무효로 만든다.
      *
      * @param refreshToken 쿠키에서 꺼낸 refresh 토큰. 없으면 null
      */
     public void webLogOut(String refreshToken) {
+        logOut(refreshToken, ClientType.WEB);
+    }
+
+    /**
+     * Refresh 토큰을 무효로 만든다. 저장된 값과 같은 refresh일 때만 Redis에서 지운다.
+     *
+     * <p>로그아웃은 실패할 이유가 없는 요청이라 예외를 던지지 않는다. 토큰이 없거나 만료됐거나 clientType이 다르거나 잘못된 토큰이면 지울 것이 없으므로 그냥
+     * 끝낸다. access 토큰은 서버가 저장하지 않으므로 남은 수명 동안 유효하다.
+     *
+     * @param refreshToken 클라이언트가 보관하던 refresh 토큰. 없으면 null
+     * @param clientType 로그아웃하는 클라이언트 종류
+     */
+    public void logOut(String refreshToken, ClientType clientType) {
         if (refreshToken == null) {
             return;
         }
@@ -224,15 +234,14 @@ public class AuthService {
         } catch (ResponseStatusException e) {
             return;
         }
-        if (parsed.tokenType() != TokenType.REFRESH || parsed.clientType() != ClientType.WEB) {
+        if (parsed.tokenType() != TokenType.REFRESH || parsed.clientType() != clientType) {
             return;
         }
 
         refreshTokenRepository
-                .findTokenId(parsed.userId(), ClientType.WEB)
+                .findTokenId(parsed.userId(), clientType)
                 .filter(parsed.tokenId()::equals)
-                .ifPresent(
-                        tokenId -> refreshTokenRepository.delete(parsed.userId(), ClientType.WEB));
+                .ifPresent(tokenId -> refreshTokenRepository.delete(parsed.userId(), clientType));
     }
 
     /**
