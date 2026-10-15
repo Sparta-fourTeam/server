@@ -10,10 +10,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.util.Map;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /** 카드 선택 시 적용하는 개별 효과. */
 @Getter
@@ -83,6 +86,11 @@ public class CardEffect {
     @Column(name = "interval_seconds")
     private Double interval;
 
+    /** 대상 스킬에 승계할 수치 비율. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "inherit_stats")
+    private Map<String, Double> inherit;
+
     /** 효과를 생성한다. */
     public CardEffect(
             UpgradeCard card,
@@ -99,7 +107,8 @@ public class CardEffect {
             Integer count,
             SkillForm onlyForm,
             Boolean excludeHit,
-            Double interval) {
+            Double interval,
+            Map<String, Double> inherit) {
         this.card = card;
         this.variant = variant;
         this.sortOrder = sortOrder;
@@ -115,6 +124,7 @@ public class CardEffect {
         this.onlyForm = onlyForm;
         this.excludeHit = excludeHit != null && excludeHit;
         this.interval = interval;
+        this.inherit = inherit;
     }
 
     /** 효과 내용을 수정한다. */
@@ -131,7 +141,8 @@ public class CardEffect {
             Integer count,
             SkillForm onlyForm,
             Boolean excludeHit,
-            Double interval) {
+            Double interval,
+            Map<String, Double> inherit) {
         this.sortOrder = sortOrder;
         this.kind = kind;
         this.value = value != null ? value : 0;
@@ -145,5 +156,6 @@ public class CardEffect {
         this.onlyForm = onlyForm;
         this.excludeHit = excludeHit != null && excludeHit;
         this.interval = interval;
+        this.inherit = inherit;
     }
 }

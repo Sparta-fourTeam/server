@@ -68,6 +68,9 @@ public class UpgradeCard extends BaseTimeEntity {
     private List<CardExclusion> exclusions = new ArrayList<>();
 
     @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<RequiredSkill> requiredSkills = new ArrayList<>();
+
+    @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sortOrder ASC")
     private List<CardEffect> effects = new ArrayList<>();
 

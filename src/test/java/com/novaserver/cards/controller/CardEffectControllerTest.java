@@ -33,7 +33,7 @@ class CardEffectControllerTest {
     private CardEffectResponse response(Long id, String kind) {
         return new CardEffectResponse(
                 id, 0, kind, 10.0, null, null, null, null, 1.0, 1.0, null, null, 1, null, false,
-                null);
+                null, null);
     }
 
     @Test

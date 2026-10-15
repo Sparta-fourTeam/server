@@ -14,7 +14,6 @@ import com.novaserver.cards.dto.CardExclusionResponse;
 import com.novaserver.cards.entity.CardExclusion;
 import com.novaserver.cards.entity.UpgradeCard;
 import com.novaserver.cards.repository.CardExclusionRepository;
-import com.novaserver.skill.repository.SkillRepository;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -30,7 +29,6 @@ class CardExclusionServiceTest {
 
     @Mock private CardExclusionRepository cardExclusionRepository;
     @Mock private CardService cardService;
-    @Mock private SkillRepository skillRepository;
 
     @InjectMocks private CardExclusionService cardExclusionService;
 

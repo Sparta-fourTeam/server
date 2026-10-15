@@ -44,6 +44,7 @@ class CardAdminControllerTest {
                 0,
                 List.of(),
                 List.of(),
+                List.of(),
                 null,
                 List.of(),
                 List.of());

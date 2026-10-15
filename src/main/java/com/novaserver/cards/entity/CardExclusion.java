@@ -1,6 +1,5 @@
 package com.novaserver.cards.entity;
 
-import com.novaserver.skill.entity.Skill;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -30,10 +29,6 @@ public class CardExclusion {
     @JoinColumn(name = "upgrade_card_id")
     private UpgradeCard card;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "skill_id")
-    private Skill skill;
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "excluding_card_id")
     private UpgradeCard excludingCard;
@@ -43,10 +38,8 @@ public class CardExclusion {
     private int belowPermanentLevel;
 
     /** 배제 조건을 생성한다. */
-    public CardExclusion(
-            UpgradeCard card, Skill skill, UpgradeCard excludingCard, Integer belowPermanentLevel) {
+    public CardExclusion(UpgradeCard card, UpgradeCard excludingCard, Integer belowPermanentLevel) {
         this.card = card;
-        this.skill = skill;
         this.excludingCard = excludingCard;
         this.belowPermanentLevel = belowPermanentLevel != null ? belowPermanentLevel : 0;
     }

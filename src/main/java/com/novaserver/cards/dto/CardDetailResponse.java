@@ -18,6 +18,7 @@ public record CardDetailResponse(
         int minPermanentLevel,
         List<RequiredCardCountResponse> requiredCardCounts,
         List<CardExclusionResponse> exclusions,
+        List<RequiredSkillResponse> requiredSkills,
         String sharedId,
         List<CardEffectResponse> effects,
         List<CardVariantResponse> variants) {
@@ -25,7 +26,7 @@ public record CardDetailResponse(
     /** 연관 테이블 값. */
     public record NamedRef(Long id, String name) {}
 
-    /** 카드 엔티티를 상세 응답으로 변환한다. */
+    /** 엔티티로부터 응답을 만든다. */
     public static CardDetailResponse from(UpgradeCard card) {
         return new CardDetailResponse(
                 card.getId(),
@@ -39,6 +40,7 @@ public record CardDetailResponse(
                 card.getMinPermanentLevel(),
                 card.getRequiredCardCounts().stream().map(RequiredCardCountResponse::from).toList(),
                 card.getExclusions().stream().map(CardExclusionResponse::from).toList(),
+                card.getRequiredSkills().stream().map(RequiredSkillResponse::from).toList(),
                 card.getSharedId(),
                 card.getEffects().stream().map(CardEffectResponse::from).toList(),
                 card.getVariants().stream().map(CardVariantResponse::from).toList());

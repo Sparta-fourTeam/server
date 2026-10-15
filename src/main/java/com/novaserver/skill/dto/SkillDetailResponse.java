@@ -2,6 +2,8 @@ package com.novaserver.skill.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.novaserver.skill.entity.Skill;
+import java.util.List;
+import java.util.Map;
 
 /** 웹용 스킬 상세 응답. */
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -11,11 +13,13 @@ public record SkillDetailResponse(
         String desc,
         NamedRef castType,
         NamedRef projectilePath,
+        NamedRef element,
         Integer maxLevel,
         Boolean childOnly,
-        SkillBaseStatsResponse baseStats,
+        Map<String, Map<String, Double>> baseStats,
         Integer unlockLevel,
-        String progressionId) {
+        String progressionId,
+        List<MirroredCardResponse> mirroredCards) {
 
     /** 연관 테이블 값. */
     public record NamedRef(Long id, String name) {}
@@ -29,10 +33,14 @@ public record SkillDetailResponse(
                 new NamedRef(skill.getCastType().getId(), skill.getCastType().getName()),
                 new NamedRef(
                         skill.getProjectilePath().getId(), skill.getProjectilePath().getName()),
+                skill.getElement() != null
+                        ? new NamedRef(skill.getElement().getId(), skill.getElement().getName())
+                        : null,
                 skill.getMaxLevel(),
                 skill.isChildOnly(),
-                SkillBaseStatsResponse.from(skill.getBaseStats()),
+                skill.getBaseStats(),
                 skill.getUnlockLevel(),
-                skill.getProgressionId());
+                skill.getProgressionId(),
+                skill.getMirroredCards().stream().map(MirroredCardResponse::from).toList());
     }
 }

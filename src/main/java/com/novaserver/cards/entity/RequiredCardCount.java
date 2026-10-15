@@ -1,6 +1,5 @@
 package com.novaserver.cards.entity;
 
-import com.novaserver.skill.entity.Skill;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -30,10 +29,6 @@ public class RequiredCardCount {
     @JoinColumn(name = "upgrade_card_id")
     private UpgradeCard card;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "skill_id")
-    private Skill skill;
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "required_card_id")
     private UpgradeCard requiredCard;
@@ -43,10 +38,8 @@ public class RequiredCardCount {
     private int count;
 
     /** 선행 카드 조건을 생성한다. */
-    public RequiredCardCount(
-            UpgradeCard card, Skill skill, UpgradeCard requiredCard, Integer count) {
+    public RequiredCardCount(UpgradeCard card, UpgradeCard requiredCard, Integer count) {
         this.card = card;
-        this.skill = skill;
         this.requiredCard = requiredCard;
         this.count = count != null ? count : 1;
     }

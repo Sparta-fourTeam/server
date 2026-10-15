@@ -9,6 +9,7 @@ import com.novaserver.skill.dto.SkillRequest;
 import com.novaserver.skill.dto.SkillSummaryResponse;
 import com.novaserver.skill.entity.Skill;
 import com.novaserver.skill.entity.SkillCastType;
+import com.novaserver.skill.entity.SkillElement;
 import com.novaserver.skill.entity.SkillProjectilePath;
 import com.novaserver.skill.repository.SkillRepository;
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ public class SkillService {
 
     private final SkillCastTypeService skillCastTypeService;
     private final SkillProjectilePathService skillProjectilePathService;
+    private final SkillElementService skillElementService;
     private final CardService cardService;
 
     /** 스킬 목록을 요약해서 조회한다. */
@@ -74,6 +76,7 @@ public class SkillService {
         SkillCastType castType = skillCastTypeService.findCastType(request.getCastTypeId());
         SkillProjectilePath path =
                 skillProjectilePathService.findProjectilePath(request.getProjectilePathId());
+        SkillElement element = findElement(request.getElementId());
         try {
             Skill saved =
                     skillRepository.save(
@@ -82,11 +85,10 @@ public class SkillService {
                                     request.getDesc(),
                                     castType,
                                     path,
+                                    element,
                                     request.getMaxLevel(),
                                     request.isChildOnly(),
-                                    request.getBaseStats() == null
-                                            ? null
-                                            : request.getBaseStats().toEntity(),
+                                    validatedBaseStats(request.getBaseStats()),
                                     request.getUnlockLevel(),
                                     request.getProgressionId()));
             return SkillDetailResponse.from(saved);
@@ -105,14 +107,16 @@ public class SkillService {
         SkillCastType castType = skillCastTypeService.findCastType(request.getCastTypeId());
         SkillProjectilePath path =
                 skillProjectilePathService.findProjectilePath(request.getProjectilePathId());
+        SkillElement element = findElement(request.getElementId());
         skill.update(
                 request.getName(),
                 request.getDesc(),
                 castType,
                 path,
+                element,
                 request.getMaxLevel(),
                 request.isChildOnly(),
-                request.getBaseStats() == null ? null : request.getBaseStats().toEntity(),
+                validatedBaseStats(request.getBaseStats()),
                 request.getUnlockLevel(),
                 request.getProgressionId());
         try {
@@ -133,5 +137,25 @@ public class SkillService {
         return skillRepository
                 .findById(id)
                 .orElseThrow(() -> ErrorCode.SKILL_NOT_FOUND.exception(id));
+    }
+
+    private SkillElement findElement(Long elementId) {
+        return elementId != null ? skillElementService.findElement(elementId) : null;
+    }
+
+    /** 모든 baseStats 값이 유한한 숫자인지 확인한다. 아니면 400을 던진다. */
+    private Map<String, Map<String, Double>> validatedBaseStats(
+            Map<String, Map<String, Double>> baseStats) {
+        if (baseStats == null) {
+            return null;
+        }
+        for (Map<String, Double> group : baseStats.values()) {
+            for (Double value : group.values()) {
+                if (value == null || !Double.isFinite(value)) {
+                    throw ErrorCode.SKILL_BASE_STAT_VALUE_INVALID.exception(value);
+                }
+            }
+        }
+        return baseStats;
     }
 }

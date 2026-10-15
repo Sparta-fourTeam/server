@@ -10,8 +10,6 @@ public class CardExclusionRequest {
     @NotNull(message = "excludingCardId는 필수값입니다.")
     private Long excludingCardId;
 
-    private Long skillId;
-
     @Min(value = 0, message = "belowPermanentLevel은 0 이상입니다.")
     private Integer belowPermanentLevel;
 }

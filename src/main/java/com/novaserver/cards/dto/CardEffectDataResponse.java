@@ -2,6 +2,7 @@ package com.novaserver.cards.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.novaserver.cards.entity.CardEffect;
+import java.util.Map;
 
 /** 유니티용 카드 효과 데이터 응답. */
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -17,7 +18,8 @@ public record CardEffectDataResponse(
         int count,
         String onlyForm,
         boolean excludeHit,
-        Double interval) {
+        Double interval,
+        Map<String, Double> inherit) {
 
     /** 효과 엔티티를 유니티용 효과 데이터로 변환한다. */
     public static CardEffectDataResponse from(CardEffect effect) {
@@ -33,6 +35,7 @@ public record CardEffectDataResponse(
                 effect.getCount(),
                 effect.getOnlyForm() != null ? effect.getOnlyForm().getName() : null,
                 effect.isExcludeHit(),
-                effect.getInterval());
+                effect.getInterval(),
+                effect.getInherit());
     }
 }

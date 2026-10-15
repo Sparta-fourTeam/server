@@ -8,34 +8,32 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record CardDataResponse(
         Long id,
-        String name,
-        String desc,
         int maxPickCount,
         boolean enabled,
-        String disabledReason,
         int minBattleLevel,
         int minPermanentLevel,
         List<RequiredCardCountDataResponse> requiredCardCounts,
         List<CardExclusionDataResponse> exclusions,
+        List<Long> requiredSkillIds,
         String sharedId,
         List<CardEffectDataResponse> effects,
         List<CardVariantDataResponse> variants) {
 
-    /** 카드 엔티티를 유니티용 카드 데이터로 변환한다. */
+    /** 엔티티로부터 응답을 만든다. */
     public static CardDataResponse from(UpgradeCard card) {
         return new CardDataResponse(
                 card.getId(),
-                card.getName(),
-                card.getDesc(),
                 card.getMaxPickCount(),
                 card.isEnabled(),
-                card.getDisabledReason(),
                 card.getMinBattleLevel(),
                 card.getMinPermanentLevel(),
                 card.getRequiredCardCounts().stream()
                         .map(RequiredCardCountDataResponse::from)
                         .toList(),
                 card.getExclusions().stream().map(CardExclusionDataResponse::from).toList(),
+                card.getRequiredSkills().stream()
+                        .map(requiredSkill -> requiredSkill.getSkill().getId())
+                        .toList(),
                 card.getSharedId(),
                 card.getEffects().stream().map(CardEffectDataResponse::from).toList(),
                 card.getVariants().stream().map(CardVariantDataResponse::from).toList());
