@@ -14,6 +14,14 @@ services:
     container_name: redis
     ports:
       - "${REDIS_PORT:-6379}:6379"
+      
+  spring-blue:
+    environment:
+      GOOGLE_CLIENT_IDS: ${GOOGLE_CLIENT_IDS:?GOOGLE_CLIENT_IDS must be set}
+  
+  spring-green:
+    environment:
+      GOOGLE_CLIENT_IDS: ${GOOGLE_CLIENT_IDS:?GOOGLE_CLIENT_IDS must be set}
 
 volumes:
   mysql-data:
