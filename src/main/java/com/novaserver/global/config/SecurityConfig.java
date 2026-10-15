@@ -4,10 +4,12 @@ import com.novaserver.auth.jwt.JwtAccessDeniedHandler;
 import com.novaserver.auth.jwt.JwtAuthenticationEntryPoint;
 import com.novaserver.auth.jwt.JwtAuthenticationFilter;
 import com.novaserver.auth.jwt.JwtProvider;
+import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.user.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -35,6 +37,7 @@ public class SecurityConfig {
     };
 
     private final JwtProvider jwtProvider;
+    private final TokenBlocklistRepository tokenBlocklistRepository;
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
     private final JwtAccessDeniedHandler accessDeniedHandler;
 
@@ -48,7 +51,11 @@ public class SecurityConfig {
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(
                         auth ->
-                                auth.requestMatchers(PUBLIC_PATHS)
+                                auth.requestMatchers(HttpMethod.DELETE, "/api/auth/me")
+                                        .authenticated()
+                                        .requestMatchers(HttpMethod.POST, "/api/auth/social/link")
+                                        .authenticated()
+                                        .requestMatchers(PUBLIC_PATHS)
                                         .permitAll()
                                         .requestMatchers("/api/admin/**")
                                         .hasRole(Role.ADMIN.name())
@@ -60,7 +67,7 @@ public class SecurityConfig {
                                         .authenticationEntryPoint(authenticationEntryPoint)
                                         .accessDeniedHandler(accessDeniedHandler))
                 .addFilterBefore(
-                        new JwtAuthenticationFilter(jwtProvider),
+                        new JwtAuthenticationFilter(jwtProvider, tokenBlocklistRepository),
                         UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

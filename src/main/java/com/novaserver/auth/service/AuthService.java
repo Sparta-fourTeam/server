@@ -8,6 +8,7 @@ import com.novaserver.auth.jwt.JwtProvider;
 import com.novaserver.auth.jwt.TokenInfo;
 import com.novaserver.auth.jwt.TokenType;
 import com.novaserver.auth.repository.RefreshTokenRepository;
+import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.auth.social.SocialTokenVerifier;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.user.Provider;
@@ -35,6 +36,7 @@ public class AuthService {
     private final UserService userService;
     private final JwtProvider jwtProvider;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final TokenBlocklistRepository tokenBlocklistRepository;
     private final SocialTokenVerifier socialTokenVerifier;
 
     /**
@@ -168,14 +170,60 @@ public class AuthService {
     }
 
     /**
-     * Web refresh 토큰을 무효로 만든다. 저장된 값과 같은 refresh일 때만 Redis에서 지운다.
+     * 게스트 계정에 소셜 계정을 연동한다. 이미 소셜 계정이 연동된 유저거나, 연동하려는 소셜 계정이 이미 다른 유저에 연동되어 있으면 예외를 던진다.
      *
-     * <p>로그아웃은 실패할 이유가 없는 요청이라 예외를 던지지 않는다. 토큰이 없거나 만료됐거나 잘못된 토큰이면 지울 것이 없으므로 그냥 끝낸다. access 토큰은
-     * 서버가 저장하지 않으므로 남은 수명 동안 유효하다.
+     * @param userId 연동할 게스트 유저 ID
+     * @param idToken 연동할 Google·Apple ID 토큰 원문
+     * @param provider ID 토큰을 발급한 소셜 provider
+     * @throws org.springframework.web.server.ResponseStatusException 유저가 없으면 USER_DATA_NOT_FOUND,
+     *     이미 소셜 계정이 연동되어 있으면 ALREADY_LINKED_PROVIDER, 연동하려는 소셜 계정이 이미 다른 유저에 연동되어 있으면
+     *     SOCIAL_ACCOUNT_ALREADY_LINKED
+     */
+    @Transactional
+    public void linkSocialAccount(Long userId, String idToken, Provider provider) {
+        if (userId == null) {
+            throw ErrorCode.UNAUTHORIZED.exception();
+        }
+        User user =
+                userRepository
+                        .findById(userId)
+                        .orElseThrow(() -> ErrorCode.USER_DATA_NOT_FOUND.exception(userId));
+        if (user.getProvider() != Provider.GUEST) {
+            throw ErrorCode.ALREADY_LINKED_PROVIDER.exception();
+        }
+
+        String sub = socialTokenVerifier.verify(provider, idToken);
+        if (userRepository.findByProviderAndAccountId(provider, sub).isPresent()) {
+            throw ErrorCode.SOCIAL_ACCOUNT_ALREADY_LINKED.exception();
+        }
+
+        user.linkSocialAccount(provider, sub);
+        try {
+            userRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw ErrorCode.SOCIAL_ACCOUNT_ALREADY_LINKED.exception();
+        }
+    }
+
+    /**
+     * Web refresh 토큰을 무효로 만든다.
      *
      * @param refreshToken 쿠키에서 꺼낸 refresh 토큰. 없으면 null
      */
     public void webLogOut(String refreshToken) {
+        logOut(refreshToken, ClientType.WEB);
+    }
+
+    /**
+     * Refresh 토큰을 무효로 만든다. 저장된 값과 같은 refresh일 때만 Redis에서 지운다.
+     *
+     * <p>로그아웃은 실패할 이유가 없는 요청이라 예외를 던지지 않는다. 토큰이 없거나 만료됐거나 clientType이 다르거나 잘못된 토큰이면 지울 것이 없으므로 그냥
+     * 끝낸다. access 토큰은 서버가 저장하지 않으므로 남은 수명 동안 유효하다.
+     *
+     * @param refreshToken 클라이언트가 보관하던 refresh 토큰. 없으면 null
+     * @param clientType 로그아웃하는 클라이언트 종류
+     */
+    public void logOut(String refreshToken, ClientType clientType) {
         if (refreshToken == null) {
             return;
         }
@@ -186,14 +234,32 @@ public class AuthService {
         } catch (ResponseStatusException e) {
             return;
         }
-        if (parsed.tokenType() != TokenType.REFRESH || parsed.clientType() != ClientType.WEB) {
+        if (parsed.tokenType() != TokenType.REFRESH || parsed.clientType() != clientType) {
             return;
         }
 
         refreshTokenRepository
-                .findTokenId(parsed.userId(), ClientType.WEB)
+                .findTokenId(parsed.userId(), clientType)
                 .filter(parsed.tokenId()::equals)
-                .ifPresent(
-                        tokenId -> refreshTokenRepository.delete(parsed.userId(), ClientType.WEB));
+                .ifPresent(tokenId -> refreshTokenRepository.delete(parsed.userId(), clientType));
+    }
+
+    /**
+     * 계정을 탈퇴 처리한다. 유저와 유저의 모든 데이터를 즉시 삭제하고, 남아있는 refresh 토큰을 지운 뒤 아직 만료되지 않은 access 토큰도 막는다.
+     *
+     * <p>데이터 삭제는 {@link UserService#deleteAccount}의 트랜잭션으로 원자적으로 처리된다. 그 트랜잭션이 커밋된 뒤에 Redis 정리를
+     * 하므로, 삭제가 실패하면 토큰은 그대로 유효하다.
+     *
+     * @param userId 탈퇴할 유저 ID
+     * @throws org.springframework.web.server.ResponseStatusException 로그인하지 않았으면 UNAUTHORIZED
+     */
+    public void deleteUser(Long userId) {
+        if (userId == null) {
+            throw ErrorCode.UNAUTHORIZED.exception();
+        }
+        userService.deleteAccount(userId);
+        refreshTokenRepository.delete(userId, ClientType.GAME);
+        refreshTokenRepository.delete(userId, ClientType.WEB);
+        tokenBlocklistRepository.block(userId);
     }
 }

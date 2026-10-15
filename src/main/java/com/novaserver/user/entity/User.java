@@ -61,4 +61,15 @@ public class User {
         this.provider = provider;
         this.accountId = accountId;
     }
+
+    /**
+     * 소셜 계정을 연동한다. provider·accountId를 통째로 교체한다.
+     *
+     * @param provider 연동할 소셜 provider
+     * @param accountId 연동할 소셜 ID 토큰의 sub
+     */
+    public void linkSocialAccount(Provider provider, String accountId) {
+        this.provider = provider;
+        this.accountId = accountId;
+    }
 }

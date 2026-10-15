@@ -1,5 +1,6 @@
 package com.novaserver.user.service;
 
+import com.novaserver.battle.repository.BattleRepository;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.user.dto.UserDataResponse;
 import com.novaserver.user.entity.User;
@@ -10,6 +11,7 @@ import com.novaserver.user.repository.UserCodexRepository;
 import com.novaserver.user.repository.UserDataRepository;
 import com.novaserver.user.repository.UserEnergyRepository;
 import com.novaserver.user.repository.UserItemRepository;
+import com.novaserver.user.repository.UserRepository;
 import com.novaserver.user.repository.UserStageProgressRepository;
 import com.novaserver.user.repository.UserTutorialRepository;
 import com.novaserver.user.repository.UserUpgradeRepository;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class UserService {
+    private final UserRepository userRepository;
     private final UserDataRepository userDataRepository;
     private final WalletRepository walletRepository;
     private final UserEnergyRepository userEnergyRepository;
@@ -30,6 +33,7 @@ public class UserService {
     private final UserItemRepository userItemRepository;
     private final UserCodexRepository userCodexRepository;
     private final UserTutorialRepository userTutorialRepository;
+    private final BattleRepository battleRepository;
 
     /** 가입 직후 유저의 기본 상태(경험치·재화는 0, 에너지는 최대치)를 만든다. */
     @Transactional
@@ -54,6 +58,21 @@ public class UserService {
                 userItemRepository.findByUserId(userId),
                 userCodexRepository.findByUserId(userId),
                 userTutorialRepository.findByUserId(userId));
+    }
+
+    /** 유저와 유저에 속한 모든 데이터를 삭제한다. */
+    @Transactional
+    public void deleteAccount(Long userId) {
+        userDataRepository.deleteByUserId(userId);
+        walletRepository.deleteByUserId(userId);
+        userEnergyRepository.deleteByUserId(userId);
+        userStageProgressRepository.deleteByUserId(userId);
+        userUpgradeRepository.deleteByUserId(userId);
+        userItemRepository.deleteByUserId(userId);
+        userCodexRepository.deleteByUserId(userId);
+        userTutorialRepository.deleteByUserId(userId);
+        battleRepository.deleteById(userId);
+        userRepository.deleteById(userId);
     }
 
     private UserData findUserData(Long userId) {

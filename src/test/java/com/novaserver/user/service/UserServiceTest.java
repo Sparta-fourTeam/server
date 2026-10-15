@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.novaserver.battle.repository.BattleRepository;
 import com.novaserver.condex.entity.Codex;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.item.entity.Item;
@@ -27,6 +28,7 @@ import com.novaserver.user.repository.UserCodexRepository;
 import com.novaserver.user.repository.UserDataRepository;
 import com.novaserver.user.repository.UserEnergyRepository;
 import com.novaserver.user.repository.UserItemRepository;
+import com.novaserver.user.repository.UserRepository;
 import com.novaserver.user.repository.UserStageProgressRepository;
 import com.novaserver.user.repository.UserTutorialRepository;
 import com.novaserver.user.repository.UserUpgradeRepository;
@@ -51,6 +53,7 @@ class UserServiceTest {
 
     private static final Long USER_ID = 1L;
 
+    @Mock private UserRepository userRepository;
     @Mock private UserDataRepository userDataRepository;
     @Mock private WalletRepository walletRepository;
     @Mock private UserEnergyRepository userEnergyRepository;
@@ -59,6 +62,7 @@ class UserServiceTest {
     @Mock private UserItemRepository userItemRepository;
     @Mock private UserCodexRepository userCodexRepository;
     @Mock private UserTutorialRepository userTutorialRepository;
+    @Mock private BattleRepository battleRepository;
 
     @InjectMocks private UserService userService;
 
@@ -101,6 +105,25 @@ class UserServiceTest {
                 userItemRepository,
                 userCodexRepository,
                 userTutorialRepository);
+    }
+
+    @Test
+    @DisplayName("계정을 삭제하면 유저에 속한 모든 데이터와 유저 자신을 지운다")
+    void shouldDeleteAllUserDataAndUser_onDeleteAccount() {
+        // when
+        userService.deleteAccount(USER_ID);
+
+        // then
+        verify(userDataRepository).deleteByUserId(USER_ID);
+        verify(walletRepository).deleteByUserId(USER_ID);
+        verify(userEnergyRepository).deleteByUserId(USER_ID);
+        verify(userStageProgressRepository).deleteByUserId(USER_ID);
+        verify(userUpgradeRepository).deleteByUserId(USER_ID);
+        verify(userItemRepository).deleteByUserId(USER_ID);
+        verify(userCodexRepository).deleteByUserId(USER_ID);
+        verify(userTutorialRepository).deleteByUserId(USER_ID);
+        verify(battleRepository).deleteById(USER_ID);
+        verify(userRepository).deleteById(USER_ID);
     }
 
     @Test

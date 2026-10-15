@@ -15,7 +15,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -59,6 +61,19 @@ public class AuthController {
     }
 
     @Operation(
+            summary = "소셜 계정 연동",
+            description =
+                    "로그인한 게스트 계정에 Google·Apple 계정을 연동합니다. "
+                            + "로그인하지 않았으면 401, 이미 소셜 계정이 연동된 유저면 409, "
+                            + "연동하려는 소셜 계정이 이미 다른 유저에 연동되어 있으면 409를 반환합니다.")
+    @PostMapping("/social/link")
+    public ResponseEntity<Void> linkSocialAccount(
+            @AuthenticationPrincipal Long userId, @Valid @RequestBody SocialLogInRequest request) {
+        authService.linkSocialAccount(userId, request.getIdToken(), request.getProvider());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
             summary = "토큰 재발급",
             description =
                     "refresh 토큰으로 새 access·refresh 토큰을 발급하고 기존 refresh는 무효로 합니다. "
@@ -67,6 +82,15 @@ public class AuthController {
     @PostMapping("/refresh")
     public TokenResponse refresh(@Valid @RequestBody RefreshRequest request) {
         return authService.refresh(request.getRefreshToken(), ClientType.GAME);
+    }
+
+    @Operation(
+            summary = "게임쪽 로그아웃",
+            description = "저장된 refresh 토큰을 무효로 합니다. 토큰이 없거나 만료됐거나 이미 사용한 토큰이어도 항상 204를 반환합니다.")
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logOut(@Valid @RequestBody RefreshRequest request) {
+        authService.logOut(request.getRefreshToken(), ClientType.GAME);
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(
@@ -108,6 +132,17 @@ public class AuthController {
         return ResponseEntity.noContent()
                 .header(HttpHeaders.SET_COOKIE, refreshCookieFactory.expire().toString())
                 .build();
+    }
+
+    @Operation(
+            summary = "회원 탈퇴",
+            description =
+                    "계정과 계정에 속한 모든 데이터를 즉시 삭제합니다. 발급된 모든 refresh 토큰을 무효로 하고, "
+                            + "남은 access 토큰도 만료 전까지 차단합니다. 로그인하지 않았으면 401을 반환합니다.")
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> deleteUser(@AuthenticationPrincipal Long userId) {
+        authService.deleteUser(userId);
+        return ResponseEntity.noContent().build();
     }
 
     private ResponseEntity<AccessTokenResponse> withRefreshCookie(TokenResponse tokens) {
