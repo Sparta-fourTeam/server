@@ -52,6 +52,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         TokenInfo tokenInfo;
         try {
             tokenInfo = jwtProvider.parse(token);
+            
+            log.info("JWT userId: {}", tokenInfo.userId());
+            log.info("JWT role: {}", tokenInfo.role());
+            log.info("JWT tokenType: {}", tokenInfo.tokenType());
+            
         } catch (ResponseStatusException e) {
             request.setAttribute(ERROR_ATTRIBUTE, e);
             return;
