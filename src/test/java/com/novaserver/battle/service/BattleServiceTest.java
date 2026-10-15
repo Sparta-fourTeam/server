@@ -5,11 +5,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.novaserver.battle.dto.BattleResponse;
 import com.novaserver.battle.repository.BattleRepository;
+import com.novaserver.global.error.ErrorCode;
+import com.novaserver.user.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -21,6 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 class BattleServiceTest {
 
     @Mock private BattleRepository battleRepository;
+    @Mock private UserService userService;
 
     @InjectMocks private BattleService battleService;
 
@@ -30,6 +35,23 @@ class BattleServiceTest {
 
         assertThat(response.getBattleId()).isNotBlank();
         verify(battleRepository).upsert(eq(1L), eq(response.getBattleId()), any());
+    }
+
+    @Test
+    void consumesEnergyWhenCreatingBattle() {
+        battleService.createBattle(1L);
+
+        verify(userService).useEnergy(1L, 5);
+    }
+
+    @Test
+    void doesNotIssueBattleIdWhenEnergyInsufficient() {
+        doThrow(ErrorCode.INSUFFICIENT_ENERGY.exception()).when(userService).useEnergy(1L, 5);
+
+        assertThatThrownBy(() -> battleService.createBattle(1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("에너지가 부족합니다");
+        verify(battleRepository, never()).upsert(any(), any(), any());
     }
 
     @Test
