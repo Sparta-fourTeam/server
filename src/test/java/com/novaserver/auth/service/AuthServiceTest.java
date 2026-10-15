@@ -437,18 +437,34 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("소셜 연동: 이미 소셜 계정이 연동된 유저면 409 ALREADY_LINKED_PROVIDER이고 소셜 토큰은 검증하지 않는다")
+    @DisplayName("소셜 연동: 다른 소셜 계정이 이미 연동된 유저면 409 ALREADY_LINKED_PROVIDER를 던진다")
     void shouldThrowConflict_whenUserAlreadyLinkedToProvider() {
         // given
         when(userRepository.findById(USER_ID))
                 .thenReturn(Optional.of(withId(new User(Provider.GOOGLE, "already-linked-sub"))));
+        when(socialTokenVerifier.verify(Provider.GOOGLE, ID_TOKEN)).thenReturn(SUB);
 
         // when & then
         assertStatus(
                 () -> authService.linkSocialAccount(USER_ID, ID_TOKEN, Provider.GOOGLE),
                 HttpStatus.CONFLICT,
                 ErrorCode.ALREADY_LINKED_PROVIDER);
-        verifyNoInteractions(socialTokenVerifier);
+    }
+
+    @Test
+    @DisplayName("소셜 연동: 이미 연동된 것과 같은 계정으로 재시도하면 예외 없이 성공 처리한다")
+    void shouldSucceed_whenRetryingSameLinkedAccount() {
+        // given
+        when(userRepository.findById(USER_ID))
+                .thenReturn(Optional.of(withId(new User(Provider.GOOGLE, SUB))));
+        when(socialTokenVerifier.verify(Provider.GOOGLE, ID_TOKEN)).thenReturn(SUB);
+
+        // when
+        authService.linkSocialAccount(USER_ID, ID_TOKEN, Provider.GOOGLE);
+
+        // then
+        verify(userRepository, never()).findByProviderAndAccountId(any(), any());
+        verify(userRepository, never()).flush();
     }
 
     @Test

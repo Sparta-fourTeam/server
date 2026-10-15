@@ -176,7 +176,7 @@ public class AuthService {
      * @param idToken 연동할 Google·Apple ID 토큰 원문
      * @param provider ID 토큰을 발급한 소셜 provider
      * @throws org.springframework.web.server.ResponseStatusException 유저가 없으면 USER_DATA_NOT_FOUND,
-     *     이미 소셜 계정이 연동되어 있으면 ALREADY_LINKED_PROVIDER, 연동하려는 소셜 계정이 이미 다른 유저에 연동되어 있으면
+     *     다른 소셜 계정이 이미 연동되어 있으면 ALREADY_LINKED_PROVIDER, 연동하려는 소셜 계정이 이미 다른 유저에 연동되어 있으면
      *     SOCIAL_ACCOUNT_ALREADY_LINKED
      */
     @Transactional
@@ -188,11 +188,14 @@ public class AuthService {
                 userRepository
                         .findById(userId)
                         .orElseThrow(() -> ErrorCode.USER_DATA_NOT_FOUND.exception(userId));
+
+        String sub = socialTokenVerifier.verify(provider, idToken);
+        if (user.getProvider() == provider && user.getAccountId().equals(sub)) {
+            return;
+        }
         if (user.getProvider() != Provider.GUEST) {
             throw ErrorCode.ALREADY_LINKED_PROVIDER.exception();
         }
-
-        String sub = socialTokenVerifier.verify(provider, idToken);
         if (userRepository.findByProviderAndAccountId(provider, sub).isPresent()) {
             throw ErrorCode.SOCIAL_ACCOUNT_ALREADY_LINKED.exception();
         }
