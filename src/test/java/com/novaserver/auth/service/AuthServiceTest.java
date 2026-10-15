@@ -662,6 +662,17 @@ class AuthServiceTest {
         verify(tokenBlocklistRepository).block(USER_ID);
     }
 
+    @Test
+    @DisplayName("탈퇴: 로그인하지 않았으면 401 UNAUTHORIZED이고 아무것도 지우지 않는다")
+    void shouldThrowUnauthorized_whenDeletingWithoutLogin() {
+        // when & then
+        assertStatus(
+                () -> authService.deleteUser(null),
+                HttpStatus.UNAUTHORIZED,
+                ErrorCode.UNAUTHORIZED);
+        verifyNoInteractions(userService, refreshTokenRepository, tokenBlocklistRepository);
+    }
+
     private static void assertStatus(
             ThrowingCallable call, HttpStatus status, ErrorCode errorCode, Object... args) {
         assertThatThrownBy(call)

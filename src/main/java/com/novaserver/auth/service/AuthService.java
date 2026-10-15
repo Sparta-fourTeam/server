@@ -251,8 +251,12 @@ public class AuthService {
      * 하므로, 삭제가 실패하면 토큰은 그대로 유효하다.
      *
      * @param userId 탈퇴할 유저 ID
+     * @throws org.springframework.web.server.ResponseStatusException 로그인하지 않았으면 UNAUTHORIZED
      */
     public void deleteUser(Long userId) {
+        if (userId == null) {
+            throw ErrorCode.UNAUTHORIZED.exception();
+        }
         userService.deleteAccount(userId);
         refreshTokenRepository.delete(userId, ClientType.GAME);
         refreshTokenRepository.delete(userId, ClientType.WEB);
