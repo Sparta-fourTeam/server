@@ -3,6 +3,7 @@ package com.novaserver.battle.service;
 import com.novaserver.battle.dto.BattleResponse;
 import com.novaserver.battle.repository.BattleRepository;
 import com.novaserver.global.error.ErrorCode;
+import com.novaserver.user.service.UserService;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class BattleService {
+    public static final int BATTLE_ENERGY_COST = 5;
+
+    private final UserService userService;
+
     private final BattleRepository battleRepository;
 
     /**
@@ -23,8 +28,11 @@ public class BattleService {
      */
     @Transactional
     public BattleResponse createBattle(Long userId) {
+        userService.useEnergy(userId, BATTLE_ENERGY_COST);
+
         String battleId = UUID.randomUUID().toString();
         battleRepository.upsert(userId, battleId, LocalDateTime.now());
+
         return new BattleResponse(battleId);
     }
 

@@ -7,15 +7,9 @@ import com.novaserver.user.entity.User;
 import com.novaserver.user.entity.UserData;
 import com.novaserver.user.entity.UserEnergy;
 import com.novaserver.user.entity.Wallet;
-import com.novaserver.user.repository.UserCodexRepository;
-import com.novaserver.user.repository.UserDataRepository;
-import com.novaserver.user.repository.UserEnergyRepository;
-import com.novaserver.user.repository.UserItemRepository;
-import com.novaserver.user.repository.UserRepository;
-import com.novaserver.user.repository.UserStageProgressRepository;
-import com.novaserver.user.repository.UserTutorialRepository;
-import com.novaserver.user.repository.UserUpgradeRepository;
-import com.novaserver.user.repository.WalletRepository;
+import com.novaserver.user.repository.*;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +29,8 @@ public class UserService {
     private final UserTutorialRepository userTutorialRepository;
     private final BattleRepository battleRepository;
 
+    private final Clock clock;
+
     /** 가입 직후 유저의 기본 상태(경험치·재화는 0, 에너지는 최대치)를 만든다. */
     @Transactional
     public void createInitialState(User user) {
@@ -49,6 +45,9 @@ public class UserService {
         UserData userData = findUserData(userId);
         Wallet wallet = findWallet(userId);
         UserEnergy energy = findEnergy(userId);
+
+        energy.recover(LocalDateTime.now(clock));
+
         return UserDataResponse.of(
                 userData,
                 wallet,
@@ -75,6 +74,25 @@ public class UserService {
         userRepository.deleteById(userId);
     }
 
+    /** 해당 유저가 에너지를 소모한다. */
+    @Transactional
+    public void useEnergy(Long userId, int amount) {
+        UserEnergy energy = findEnergyForUpdate(userId);
+        LocalDateTime now = LocalDateTime.now(clock);
+
+        energy.recover(now);
+        energy.consume(amount, now);
+    }
+
+    @Transactional
+    public void grantEnergy(Long userId, int amount) {
+        UserEnergy energy = findEnergyForUpdate(userId);
+        LocalDateTime now = LocalDateTime.now(clock);
+
+        energy.recover(now);
+        energy.addEnergy(amount, now);
+    }
+
     private UserData findUserData(Long userId) {
         return userDataRepository
                 .findByUserId(userId)
@@ -90,6 +108,12 @@ public class UserService {
     private UserEnergy findEnergy(Long userId) {
         return userEnergyRepository
                 .findByUserId(userId)
+                .orElseThrow(() -> ErrorCode.ENERGY_NOT_FOUND.exception(userId));
+    }
+
+    private UserEnergy findEnergyForUpdate(Long userId) {
+        return userEnergyRepository
+                .findByUserIdForUpdate(userId)
                 .orElseThrow(() -> ErrorCode.ENERGY_NOT_FOUND.exception(userId));
     }
 }
