@@ -20,6 +20,7 @@ import com.novaserver.auth.jwt.JwtProvider;
 import com.novaserver.auth.jwt.TokenInfo;
 import com.novaserver.auth.jwt.TokenType;
 import com.novaserver.auth.repository.RefreshTokenRepository;
+import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.auth.social.SocialTokenVerifier;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.user.Provider;
@@ -59,6 +60,7 @@ class AuthServiceTest {
     @Mock private UserService userService;
     @Mock private JwtProvider jwtProvider;
     @Mock private RefreshTokenRepository refreshTokenRepository;
+    @Mock private TokenBlocklistRepository tokenBlocklistRepository;
     @Mock private SocialTokenVerifier socialTokenVerifier;
 
     @InjectMocks private AuthService authService;
@@ -559,6 +561,40 @@ class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("게임 로그아웃: 저장된 값과 같은 refresh면 Redis에서 지운다")
+    void shouldDeleteStoredRefresh_onGameLogOut() {
+        // given
+        when(jwtProvider.parse(OLD_REFRESH))
+                .thenReturn(
+                        new TokenInfo(
+                                USER_ID, Role.USER, ClientType.GAME, TokenType.REFRESH, "old-jti"));
+        when(refreshTokenRepository.findTokenId(USER_ID, ClientType.GAME))
+                .thenReturn(Optional.of("old-jti"));
+
+        // when
+        authService.logOut(OLD_REFRESH, ClientType.GAME);
+
+        // then
+        verify(refreshTokenRepository).delete(USER_ID, ClientType.GAME);
+    }
+
+    @Test
+    @DisplayName("게임 로그아웃: WEB 토큰으로 요청하면 지우지 않는다")
+    void shouldDoNothing_whenGameLogOutWithWebToken() {
+        // given
+        when(jwtProvider.parse(OLD_REFRESH))
+                .thenReturn(
+                        new TokenInfo(
+                                USER_ID, Role.USER, ClientType.WEB, TokenType.REFRESH, "old-jti"));
+
+        // when
+        authService.logOut(OLD_REFRESH, ClientType.GAME);
+
+        // then
+        verifyNoInteractions(refreshTokenRepository);
+    }
+
+    @Test
     @DisplayName("Web 로그아웃: 저장된 값과 같은 refresh면 Redis에서 지운다")
     void shouldDeleteStoredRefresh_onWebLogOut() {
         // given
@@ -611,6 +647,19 @@ class AuthServiceTest {
 
         // then
         verifyNoInteractions(refreshTokenRepository);
+    }
+
+    @Test
+    @DisplayName("탈퇴: 유저 데이터를 삭제하고 GAME·WEB refresh 토큰을 지운 뒤 블록리스트에 등록한다")
+    void shouldDeleteDataAndRevokeTokens_onDeleteUser() {
+        // when
+        authService.deleteUser(USER_ID);
+
+        // then
+        verify(userService).deleteAccount(USER_ID);
+        verify(refreshTokenRepository).delete(USER_ID, ClientType.GAME);
+        verify(refreshTokenRepository).delete(USER_ID, ClientType.WEB);
+        verify(tokenBlocklistRepository).block(USER_ID);
     }
 
     private static void assertStatus(
