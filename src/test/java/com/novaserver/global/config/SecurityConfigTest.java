@@ -3,6 +3,7 @@ package com.novaserver.global.config;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -30,6 +31,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.ResultMatcher;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @WebMvcTest(controllers = SecurityConfigTest.TestController.class)
@@ -160,6 +162,32 @@ class SecurityConfigTest {
     }
 
     @Test
+    @DisplayName("토큰 없이 POST /api/auth/social/link를 호출하면 401 '로그인이 필요합니다'")
+    void shouldReturnUnauthorized_whenLinkingSocialWithoutToken() throws Exception {
+        // when
+        ResultActions result = mockMvc.perform(post("/api/auth/social/link"));
+
+        // then
+        result.andExpect(error(ErrorCode.UNAUTHORIZED));
+    }
+
+    @Test
+    @DisplayName("유효한 토큰으로 POST /api/auth/social/link를 호출하면 통과한다")
+    void shouldPass_whenLinkingSocialWithValidToken() throws Exception {
+        // given
+        String token = jwtProvider.createAccessToken(42L, ClientType.GAME, Role.USER);
+
+        // when
+        ResultActions result =
+                mockMvc.perform(
+                        post("/api/auth/social/link")
+                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+
+        // then
+        result.andExpect(status().isOk());
+    }
+
+    @Test
     @DisplayName("관리자 경로에 USER 토큰이면 403 '권한이 없습니다'")
     void shouldReturnForbidden_whenUserAccessesAdminPath() throws Exception {
         // given
@@ -222,6 +250,11 @@ class SecurityConfigTest {
 
         @DeleteMapping("/auth/me")
         String deleteMe() {
+            return "ok";
+        }
+
+        @PostMapping("/auth/social/link")
+        String linkSocial() {
             return "ok";
         }
 

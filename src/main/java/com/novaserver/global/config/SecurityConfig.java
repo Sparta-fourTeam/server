@@ -56,6 +56,8 @@ public class SecurityConfig {
                         auth ->
                                 auth.requestMatchers(HttpMethod.DELETE, "/api/auth/me")
                                         .authenticated()
+                                        .requestMatchers(HttpMethod.POST, "/api/auth/social/link")
+                                        .authenticated()
                                         .requestMatchers(PUBLIC_PATHS)
                                         .permitAll()
                                         .requestMatchers("/api/admin/**")
