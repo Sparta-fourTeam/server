@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 /** 유저 에너지 저장소. */
 public interface UserEnergyRepository extends JpaRepository<UserEnergy, Long> {
     Optional<UserEnergy> findByUserId(Long userId);
+
+    void deleteByUserId(Long userId);
 }

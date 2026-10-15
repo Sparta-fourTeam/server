@@ -10,4 +10,6 @@ public interface UserStageProgressRepository extends JpaRepository<UserStageProg
     /** 스테이지를 함께 가져온다. */
     @EntityGraph(attributePaths = {"stage"})
     List<UserStageProgress> findByUserId(Long userId);
+
+    void deleteByUserId(Long userId);
 }

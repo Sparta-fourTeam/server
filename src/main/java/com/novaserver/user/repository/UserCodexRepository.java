@@ -10,4 +10,6 @@ public interface UserCodexRepository extends JpaRepository<UserCodex, Long> {
     /** 도감 정보를 함께 가져온다. */
     @EntityGraph(attributePaths = {"codex"})
     List<UserCodex> findByUserId(Long userId);
+
+    void deleteByUserId(Long userId);
 }

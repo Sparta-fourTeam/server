@@ -8,6 +8,7 @@ import com.novaserver.auth.jwt.JwtProvider;
 import com.novaserver.auth.jwt.TokenInfo;
 import com.novaserver.auth.jwt.TokenType;
 import com.novaserver.auth.repository.RefreshTokenRepository;
+import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.auth.social.SocialTokenVerifier;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.user.Provider;
@@ -35,6 +36,7 @@ public class AuthService {
     private final UserService userService;
     private final JwtProvider jwtProvider;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final TokenBlocklistRepository tokenBlocklistRepository;
     private final SocialTokenVerifier socialTokenVerifier;
 
     /**
@@ -231,5 +233,20 @@ public class AuthService {
                 .filter(parsed.tokenId()::equals)
                 .ifPresent(
                         tokenId -> refreshTokenRepository.delete(parsed.userId(), ClientType.WEB));
+    }
+
+    /**
+     * 계정을 탈퇴 처리한다. 유저와 유저의 모든 데이터를 즉시 삭제하고, 남아있는 refresh 토큰을 지운 뒤 아직 만료되지 않은 access 토큰도 막는다.
+     *
+     * <p>데이터 삭제는 {@link UserService#deleteAccount}의 트랜잭션으로 원자적으로 처리된다. 그 트랜잭션이 커밋된 뒤에 Redis 정리를
+     * 하므로, 삭제가 실패하면 토큰은 그대로 유효하다.
+     *
+     * @param userId 탈퇴할 유저 ID
+     */
+    public void deleteUser(Long userId) {
+        userService.deleteAccount(userId);
+        refreshTokenRepository.delete(userId, ClientType.GAME);
+        refreshTokenRepository.delete(userId, ClientType.WEB);
+        tokenBlocklistRepository.block(userId);
     }
 }

@@ -4,6 +4,7 @@ import com.novaserver.auth.jwt.JwtAccessDeniedHandler;
 import com.novaserver.auth.jwt.JwtAuthenticationEntryPoint;
 import com.novaserver.auth.jwt.JwtAuthenticationFilter;
 import com.novaserver.auth.jwt.JwtProvider;
+import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.user.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -38,6 +39,7 @@ public class SecurityConfig {
     private static final String[] TEMP_PUBLIC_PATHS = {"/api/**"};
 
     private final JwtProvider jwtProvider;
+    private final TokenBlocklistRepository tokenBlocklistRepository;
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
     private final JwtAccessDeniedHandler accessDeniedHandler;
 
@@ -65,7 +67,7 @@ public class SecurityConfig {
                                         .authenticationEntryPoint(authenticationEntryPoint)
                                         .accessDeniedHandler(accessDeniedHandler))
                 .addFilterBefore(
-                        new JwtAuthenticationFilter(jwtProvider),
+                        new JwtAuthenticationFilter(jwtProvider, tokenBlocklistRepository),
                         UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

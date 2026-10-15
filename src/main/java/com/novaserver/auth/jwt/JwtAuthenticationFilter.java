@@ -1,5 +1,6 @@
 package com.novaserver.auth.jwt;
 
+import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.global.error.ErrorCode;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -34,6 +35,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtProvider jwtProvider;
+    private final TokenBlocklistRepository tokenBlocklistRepository;
 
     @Override
     protected void doFilterInternal(
@@ -57,6 +59,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (tokenInfo.tokenType() != TokenType.ACCESS) {
             request.setAttribute(ERROR_ATTRIBUTE, ErrorCode.INVALID_TOKEN.exception());
+            return;
+        }
+
+        if (tokenBlocklistRepository.isBlocked(tokenInfo.userId())) {
+            request.setAttribute(ERROR_ATTRIBUTE, ErrorCode.ACCOUNT_DELETED.exception());
             return;
         }
 

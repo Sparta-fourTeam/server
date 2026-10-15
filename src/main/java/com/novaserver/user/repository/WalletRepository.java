@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 /** 유저 재화 저장소. */
 public interface WalletRepository extends JpaRepository<Wallet, Long> {
     Optional<Wallet> findByUserId(Long userId);
+
+    void deleteByUserId(Long userId);
 }

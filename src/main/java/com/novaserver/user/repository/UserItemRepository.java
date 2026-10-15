@@ -10,4 +10,6 @@ public interface UserItemRepository extends JpaRepository<UserItem, Long> {
     /** 아이템 정보를 함께 가져온다. */
     @EntityGraph(attributePaths = {"item"})
     List<UserItem> findByUserId(Long userId);
+
+    void deleteByUserId(Long userId);
 }

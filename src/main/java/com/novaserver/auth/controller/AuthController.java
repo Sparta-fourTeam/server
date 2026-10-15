@@ -17,6 +17,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -122,6 +123,17 @@ public class AuthController {
         return ResponseEntity.noContent()
                 .header(HttpHeaders.SET_COOKIE, refreshCookieFactory.expire().toString())
                 .build();
+    }
+
+    @Operation(
+            summary = "회원 탈퇴",
+            description =
+                    "계정과 계정에 속한 모든 데이터를 즉시 삭제합니다. 발급된 모든 refresh 토큰을 무효로 하고, "
+                            + "남은 access 토큰도 만료 전까지 차단합니다. 로그인하지 않았으면 401을 반환합니다.")
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> deleteUser(@AuthenticationPrincipal Long userId) {
+        authService.deleteUser(userId);
+        return ResponseEntity.noContent().build();
     }
 
     private ResponseEntity<AccessTokenResponse> withRefreshCookie(TokenResponse tokens) {
