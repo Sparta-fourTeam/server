@@ -33,15 +33,17 @@ import com.novaserver.user.repository.UserStageProgressRepository;
 import com.novaserver.user.repository.UserTutorialRepository;
 import com.novaserver.user.repository.UserUpgradeRepository;
 import com.novaserver.user.repository.WalletRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
@@ -52,6 +54,7 @@ import org.springframework.web.server.ResponseStatusException;
 class UserServiceTest {
 
     private static final Long USER_ID = 1L;
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 14, 12, 0);
 
     @Mock private UserRepository userRepository;
     @Mock private UserDataRepository userDataRepository;
@@ -64,7 +67,27 @@ class UserServiceTest {
     @Mock private UserTutorialRepository userTutorialRepository;
     @Mock private BattleRepository battleRepository;
 
-    @InjectMocks private UserService userService;
+    private UserService userService;
+
+    @BeforeEach
+    void setUp() {
+        ZoneId zone = ZoneId.systemDefault();
+        Clock clock = Clock.fixed(NOW.atZone(zone).toInstant(), zone);
+
+        userService =
+                new UserService(
+                        userRepository,
+                        userDataRepository,
+                        walletRepository,
+                        userEnergyRepository,
+                        userStageProgressRepository,
+                        userUpgradeRepository,
+                        userItemRepository,
+                        userCodexRepository,
+                        userTutorialRepository,
+                        battleRepository,
+                        clock);
+    }
 
     @Test
     @DisplayName("가입 직후 유저 데이터·지갑·에너지를 초기값으로 저장한다")
@@ -131,7 +154,7 @@ class UserServiceTest {
     void shouldReturnAggregatedStatus_onGetMe() {
         // given
         UserEnergy energy = new UserEnergy(null, 25);
-        LocalDateTime energyUpdatedAt = LocalDateTime.of(2026, 10, 14, 12, 0);
+        LocalDateTime energyUpdatedAt = NOW;
         ReflectionTestUtils.setField(energy, "energyUpdatedAt", energyUpdatedAt);
 
         Stage stage = mock(Stage.class);
@@ -258,6 +281,148 @@ class UserServiceTest {
                 userItemRepository,
                 userCodexRepository,
                 userTutorialRepository);
+    }
+
+    @Test
+    @DisplayName("상태를 조회하면 지난 시간만큼 회복된 에너지를 반영한다")
+    void shouldReflectRecoveredEnergy_onGetMe() {
+        // given
+        UserEnergy energy = energyOf(10, NOW.minusMinutes(5));
+        when(userDataRepository.findByUserId(USER_ID))
+                .thenReturn(Optional.of(new UserData(null, 0)));
+        when(walletRepository.findByUserId(USER_ID))
+                .thenReturn(Optional.of(new Wallet(null, 0, 0)));
+        when(userEnergyRepository.findByUserId(USER_ID)).thenReturn(Optional.of(energy));
+
+        // when
+        UserDataResponse response = userService.getMe(USER_ID);
+
+        // then
+        assertThat(response.getEnergyStored()).isEqualTo(15);
+        assertThat(response.getEnergyUpdatedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    @DisplayName("에너지를 소모하면 회복분을 먼저 반영한 뒤 차감한다")
+    void shouldRecoverThenConsume_onUseEnergy() {
+        // given
+        UserEnergy energy = energyOf(10, NOW.minusMinutes(5));
+        when(userEnergyRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(energy));
+
+        // when
+        userService.useEnergy(USER_ID, 5);
+
+        // then: 10 + 회복 5 - 소모 5
+        assertThat(energy.getEnergyStored()).isEqualTo(10);
+        assertThat(energy.getEnergyUpdatedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    @DisplayName("최대치에서 에너지를 소모하면 회복 타이머가 지금부터 시작된다")
+    void shouldStartRecoveryTimerNow_whenConsumeFromFull() {
+        // given
+        UserEnergy energy = energyOf(UserEnergy.MAX_ENERGY, NOW.minusDays(3));
+        when(userEnergyRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(energy));
+
+        // when
+        userService.useEnergy(USER_ID, 5);
+
+        // then
+        assertThat(energy.getEnergyStored()).isEqualTo(UserEnergy.MAX_ENERGY - 5);
+        assertThat(energy.getEnergyUpdatedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    @DisplayName("에너지가 부족하면 409 INSUFFICIENT_ENERGY를 던지고 에너지는 그대로다")
+    void shouldThrowConflict_whenEnergyInsufficient() {
+        // given
+        UserEnergy energy = energyOf(3, NOW);
+        when(userEnergyRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(energy));
+
+        // when & then
+        assertStatus(
+                () -> userService.useEnergy(USER_ID, 5),
+                HttpStatus.CONFLICT,
+                ErrorCode.INSUFFICIENT_ENERGY);
+        assertThat(energy.getEnergyStored()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("에너지 소모 시 에너지가 없으면 404 ENERGY_NOT_FOUND를 던진다")
+    void shouldThrowNotFound_onUseEnergy_whenEnergyMissing() {
+        // given
+        when(userEnergyRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.empty());
+
+        // when & then
+        assertStatus(
+                () -> userService.useEnergy(USER_ID, 5),
+                HttpStatus.NOT_FOUND,
+                ErrorCode.ENERGY_NOT_FOUND,
+                USER_ID);
+    }
+
+    @Test
+    @DisplayName("에너지 보상을 지급하면 에너지가 늘어난다")
+    void shouldIncreaseEnergy_onGrantEnergy() {
+        // given
+        UserEnergy energy = energyOf(10, NOW);
+        when(userEnergyRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(energy));
+
+        // when
+        userService.grantEnergy(USER_ID, 7);
+
+        // then
+        assertThat(energy.getEnergyStored()).isEqualTo(17);
+    }
+
+    @Test
+    @DisplayName("최대치 미만이면 보상을 받아도 회복 타이머는 초기화되지 않는다")
+    void shouldKeepRecoveryTimer_onGrantEnergy_whenBelowMax() {
+        // given: 5분 30초 경과
+        UserEnergy energy = energyOf(10, NOW.minusMinutes(5).minusSeconds(30));
+        when(userEnergyRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(energy));
+
+        // when
+        userService.grantEnergy(USER_ID, 7);
+
+        // then: 10 + 회복 5 + 보상 7, 남은 30초는 그대로 보존
+        assertThat(energy.getEnergyStored()).isEqualTo(22);
+        assertThat(energy.getEnergyUpdatedAt()).isEqualTo(NOW.minusSeconds(30));
+    }
+
+    @Test
+    @DisplayName("보상으로 최대치를 넘겨도 밀려 있던 회복분이 사라지지 않는다")
+    void shouldKeepPendingRecovery_onGrantEnergy_whenExceedMax() {
+        // given
+        UserEnergy energy = energyOf(20, NOW.minusMinutes(5));
+        when(userEnergyRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(energy));
+
+        // when
+        userService.grantEnergy(USER_ID, 15);
+
+        // then: 20 + 회복 5 + 보상 15
+        assertThat(energy.getEnergyStored()).isEqualTo(40);
+        assertThat(energy.getEnergyUpdatedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    @DisplayName("보상 지급 시 에너지가 없으면 404 ENERGY_NOT_FOUND를 던진다")
+    void shouldThrowNotFound_onGrantEnergy_whenEnergyMissing() {
+        // given
+        when(userEnergyRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.empty());
+
+        // when & then
+        assertStatus(
+                () -> userService.grantEnergy(USER_ID, 5),
+                HttpStatus.NOT_FOUND,
+                ErrorCode.ENERGY_NOT_FOUND,
+                USER_ID);
+    }
+
+    private static UserEnergy energyOf(int stored, LocalDateTime updatedAt) {
+        UserEnergy energy = new UserEnergy(null, stored);
+        ReflectionTestUtils.setField(energy, "energyUpdatedAt", updatedAt);
+        return energy;
     }
 
     private static void assertStatus(

@@ -7,7 +7,15 @@ import com.novaserver.user.entity.User;
 import com.novaserver.user.entity.UserData;
 import com.novaserver.user.entity.UserEnergy;
 import com.novaserver.user.entity.Wallet;
-import com.novaserver.user.repository.*;
+import com.novaserver.user.repository.UserCodexRepository;
+import com.novaserver.user.repository.UserDataRepository;
+import com.novaserver.user.repository.UserEnergyRepository;
+import com.novaserver.user.repository.UserItemRepository;
+import com.novaserver.user.repository.UserRepository;
+import com.novaserver.user.repository.UserStageProgressRepository;
+import com.novaserver.user.repository.UserTutorialRepository;
+import com.novaserver.user.repository.UserUpgradeRepository;
+import com.novaserver.user.repository.WalletRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -84,6 +92,7 @@ public class UserService {
         energy.consume(amount, now);
     }
 
+    /** 해당 유저에게 에너지 보상을 지급한다. */
     @Transactional
     public void grantEnergy(Long userId, int amount) {
         UserEnergy energy = findEnergyForUpdate(userId);
