@@ -1,11 +1,14 @@
 package com.novaserver.battle.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.novaserver.battle.dto.BattleEndRequest;
 import com.novaserver.battle.dto.BattleResponse;
 import com.novaserver.battle.service.BattleService;
 import java.util.List;
@@ -63,10 +66,12 @@ class BattleControllerTest {
                         post("/api/battle/end")
                                 .with(asUser(1L))
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"battleId\":\"battle-1\"}"))
+                                .content(
+                                        "{\"battleId\":\"battle-1\",\"stageId\":1,"
+                                                + "\"clearedWave\":10,\"rating\":3}"))
                 .andExpect(status().isOk());
 
-        verify(battleService).endBattle(1L, "battle-1");
+        verify(battleService).endBattle(eq(1L), any(BattleEndRequest.class));
     }
 
     @Test
@@ -75,7 +80,7 @@ class BattleControllerTest {
                         post("/api/battle/end")
                                 .with(asUser(1L))
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content("{}"))
+                                .content("{\"stageId\":1,\"clearedWave\":10,\"rating\":3}"))
                 .andExpect(status().isBadRequest());
     }
 

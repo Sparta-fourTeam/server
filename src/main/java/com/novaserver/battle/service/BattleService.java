@@ -1,8 +1,19 @@
 package com.novaserver.battle.service;
 
+import com.novaserver.battle.dto.BattleEndRequest;
 import com.novaserver.battle.dto.BattleResponse;
+import com.novaserver.battle.entity.BattleSession;
 import com.novaserver.battle.repository.BattleRepository;
 import com.novaserver.global.error.ErrorCode;
+import com.novaserver.stage.dto.ClearRewardResult;
+import com.novaserver.stage.entity.Stage;
+import com.novaserver.stage.service.StageRewardService;
+import com.novaserver.stage.service.StageService;
+import com.novaserver.user.entity.User;
+import com.novaserver.user.entity.UserStageProgress;
+import com.novaserver.user.repository.UserRepository;
+import com.novaserver.user.repository.UserStageProgressRepository;
+import com.novaserver.user.service.UserRewardService;
 import com.novaserver.user.service.UserService;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -17,6 +28,11 @@ public class BattleService {
     public static final int BATTLE_ENERGY_COST = 5;
 
     private final UserService userService;
+    private final UserRepository userRepository;
+    private final UserRewardService userRewardService;
+    private final UserStageProgressRepository userStageProgressRepository;
+    private final StageRewardService stageRewardService;
+    private final StageService stageService;
 
     private final BattleRepository battleRepository;
 
@@ -63,19 +79,39 @@ public class BattleService {
     }
 
     /**
-     * Todo: 추후에 보상 획득 부분 추가해야 함. 배틀 ID가 일치하면 배틀 세션을 삭제한다.
+     * 배틀 ID가 일치하면 기본 보상(경험치·골드·아이템)을 지급하고, 스테이지 클리어 등급을 갱신한 뒤 배틀 세션을 삭제한다. 배틀을 포기(cancel)하면 이 메서드를
+     * 거치지 않으므로 보상을 받지 못한다.
      *
      * @param userId 유저 ID
-     * @param battleId 종료할 배틀 ID
+     * @param request 종료할 배틀 ID와 이번 배틀의 클리어 결과
      */
     @Transactional
-    public void endBattle(Long userId, String battleId) {
-        int deleted = battleRepository.deleteByUserIdAndBattleId(userId, battleId);
-        if (deleted == 0) {
-            if (!battleRepository.existsById(userId)) {
-                throw ErrorCode.BATTLE_NOT_FOUND.exception();
-            }
+    public void endBattle(Long userId, BattleEndRequest request) {
+        BattleSession session =
+                battleRepository
+                        .findById(userId)
+                        .orElseThrow(ErrorCode.BATTLE_NOT_FOUND::exception);
+        if (!session.getBattleId().equals(request.getBattleId())) {
             throw ErrorCode.BATTLE_ID_MISMATCH.exception();
         }
+
+        ClearRewardResult reward =
+                stageRewardService.calculateClearReward(
+                        request.getStageId(), request.getClearedWave(), request.getRating());
+        userRewardService.grant(userId, reward.exp(), reward.gold(), reward.items());
+
+        UserStageProgress progress =
+                userStageProgressRepository
+                        .findByUserIdAndStageId(userId, request.getStageId())
+                        .orElseGet(
+                                () -> {
+                                    User user = userRepository.getReferenceById(userId);
+                                    Stage stage = stageService.findStage(request.getStageId());
+                                    return userStageProgressRepository.save(
+                                            new UserStageProgress(user, stage));
+                                });
+        progress.updateClearRating(request.getRating());
+
+        battleRepository.deleteByUserIdAndBattleId(userId, request.getBattleId());
     }
 }
