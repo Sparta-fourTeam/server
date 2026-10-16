@@ -111,7 +111,7 @@ class UserServiceTest {
         assertThat(dataCaptor.getValue().getExp()).isZero();
         assertThat(walletCaptor.getValue().getUser()).isEqualTo(user);
         assertThat(walletCaptor.getValue().getGold()).isZero();
-        assertThat(walletCaptor.getValue().getJem()).isZero();
+        assertThat(walletCaptor.getValue().getGem()).isZero();
         assertThat(energyCaptor.getValue().getUser()).isEqualTo(user);
         assertThat(energyCaptor.getValue().getEnergyStored()).isEqualTo(UserEnergy.MAX_ENERGY);
     }
@@ -203,7 +203,7 @@ class UserServiceTest {
 
         // then
         assertThat(response.getGold()).isEqualTo(500);
-        assertThat(response.getJem()).isEqualTo(10);
+        assertThat(response.getGem()).isEqualTo(10);
         assertThat(response.getExp()).isEqualTo(120);
         assertThat(response.getEnergyStored()).isEqualTo(25);
         assertThat(response.getEnergyUpdatedAt()).isEqualTo(energyUpdatedAt);

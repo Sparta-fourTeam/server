@@ -23,7 +23,7 @@ public class UserDataResponse {
     private final int gold;
 
     @Schema(description = "젬")
-    private final int jem;
+    private final int gem;
 
     @Schema(description = "경험치")
     private final Integer exp;
@@ -61,7 +61,7 @@ public class UserDataResponse {
             List<UserTutorial> tutorials) {
         return new UserDataResponse(
                 wallet.getGold(),
-                wallet.getJem(),
+                wallet.getGem(),
                 userData.getExp(),
                 energy.getEnergyStored(),
                 energy.getEnergyUpdatedAt(),

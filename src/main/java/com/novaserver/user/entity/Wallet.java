@@ -1,15 +1,6 @@
 package com.novaserver.user.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,12 +23,17 @@ public class Wallet {
     private int gold;
 
     @Column(nullable = false)
-    private int jem;
+    private int gem;
 
     /** 주어진 골드·젬으로 지갑을 만든다. */
-    public Wallet(User user, int gold, int jem) {
+    public Wallet(User user, int gold, int gem) {
         this.user = user;
         this.gold = gold;
-        this.jem = jem;
+        this.gem = gem;
+    }
+
+    /** 골드를 차감한다. 충분한지는 호출하는 쪽에서 미리 확인한다. */
+    public void useGold(int amount) {
+        this.gold -= amount;
     }
 }

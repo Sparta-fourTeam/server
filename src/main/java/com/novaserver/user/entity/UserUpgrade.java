@@ -1,16 +1,7 @@
 package com.novaserver.user.entity;
 
 import com.novaserver.upgrade.entity.Upgrade;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -37,4 +28,16 @@ public class UserUpgrade {
 
     @Column(name = "level", nullable = false)
     private Integer level;
+
+    /** 유저가 처음 강화를 시작할 때 레벨 1로 만든다. */
+    public UserUpgrade(User user, Upgrade upgrade, int level) {
+        this.user = user;
+        this.upgrade = upgrade;
+        this.level = level;
+    }
+
+    /** 강화 레벨을 한 단계 올린다. */
+    public void levelUp() {
+        this.level++;
+    }
 }
