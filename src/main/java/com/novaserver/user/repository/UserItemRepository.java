@@ -1,10 +1,12 @@
 package com.novaserver.user.repository;
 
 import com.novaserver.user.entity.UserItem;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,5 +26,10 @@ public interface UserItemRepository extends JpaRepository<UserItem, Long> {
 
     @Query("select i from UserItem i where i.user.id = :userId and i.item.itemId = :itemId")
     Optional<UserItem> findByUserIdAndItemId(
+            @Param("userId") Long userId, @Param("itemId") String itemId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select i from UserItem i where i.user.id = :userId and i.item.itemId = :itemId")
+    Optional<UserItem> findByUserIdAndItemIdForUpdate(
             @Param("userId") Long userId, @Param("itemId") String itemId);
 }

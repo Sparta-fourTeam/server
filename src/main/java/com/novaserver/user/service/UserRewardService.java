@@ -13,6 +13,7 @@ import com.novaserver.user.repository.UserRepository;
 import com.novaserver.user.repository.WalletRepository;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,7 +40,7 @@ public class UserRewardService {
         if (exp > 0) {
             UserData userData =
                     userDataRepository
-                            .findByUserId(userId)
+                            .findByUserIdForUpdate(userId)
                             .orElseThrow(() -> ErrorCode.USER_DATA_NOT_FOUND.exception(userId));
             userData.addExp(exp);
         }
@@ -52,7 +53,9 @@ public class UserRewardService {
             wallet.addGold(gold);
         }
 
-        items.forEach((itemId, amount) -> grantItem(userId, itemId, amount));
+        if (items != null) {
+            items.forEach((itemId, amount) -> grantItem(userId, itemId, amount));
+        }
     }
 
     private void grantItem(Long userId, String itemId, int amount) {
@@ -60,7 +63,8 @@ public class UserRewardService {
             return;
         }
 
-        UserItem userItem = userItemRepository.findByUserIdAndItemId(userId, itemId).orElse(null);
+        UserItem userItem =
+                userItemRepository.findByUserIdAndItemIdForUpdate(userId, itemId).orElse(null);
         if (userItem != null) {
             userItem.addQuantity(amount);
             return;
@@ -71,6 +75,13 @@ public class UserRewardService {
                         .findById(itemId)
                         .orElseThrow(() -> ErrorCode.ITEM_NOT_FOUND.exception(itemId));
         User user = userRepository.getReferenceById(userId);
-        userItemRepository.save(new UserItem(user, item, amount));
+        try {
+            userItemRepository.save(new UserItem(user, item, amount));
+        } catch (DataIntegrityViolationException e) {
+            userItemRepository
+                    .findByUserIdAndItemIdForUpdate(userId, itemId)
+                    .orElseThrow(() -> e)
+                    .addQuantity(amount);
+        }
     }
 }
