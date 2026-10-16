@@ -216,6 +216,21 @@ class UserUpgradeServiceTest {
     }
 
     @Test
+    @DisplayName("costStep이 없으면 0으로 취급해 costBase만큼만 차감한다")
+    void shouldTreatNullCostStepAsZero() {
+        Upgrade upgrade = new Upgrade(UPGRADE_ID, 5, 1, null, 100, null, null, null, null);
+        givenNoExistingRequestOrProgress(upgrade);
+        Wallet wallet = new Wallet(mock(User.class), 150, 0);
+        when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+        when(userRepository.getReferenceById(USER_ID)).thenReturn(mock(User.class));
+        when(userUpgradeRepository.save(any())).thenReturn(mock(UserUpgrade.class));
+
+        userUpgradeService.levelUp(USER_ID, request(UPGRADE_ID, CREATE_ID));
+
+        assertThat(wallet.getGold()).isEqualTo(50);
+    }
+
+    @Test
     @DisplayName("처음 강화하면 골드·재료를 차감하고 레벨 1의 유저 강화를 새로 만든다")
     void shouldDeductGoldAndMaterialAndCreateUserUpgrade_onFirstLevelUp() {
         Item material = new Item("mat.wood", null);

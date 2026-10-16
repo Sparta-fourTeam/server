@@ -23,6 +23,7 @@ import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -198,6 +199,22 @@ class UpgradeServiceTest {
     }
 
     @Test
+    @DisplayName("unlockLevel이 없으면 1로 등록한다")
+    void shouldDefaultUnlockLevelToOne_whenCreatingWithoutUnlockLevel() {
+        when(upgradeRepository.existsById("atk")).thenReturn(false);
+        when(upgradeRepository.saveAndFlush(any()))
+                .thenReturn(new Upgrade("atk", 10, 1, null, null, null, null, null, null));
+        UpgradeCreateRequest request = createRequest("atk", 10, null, null);
+        ReflectionTestUtils.setField(request, "unlockLevel", null);
+
+        upgradeService.createUpgrade(request);
+
+        ArgumentCaptor<Upgrade> captor = ArgumentCaptor.forClass(Upgrade.class);
+        verify(upgradeRepository).saveAndFlush(captor.capture());
+        assertThat(captor.getValue().getUnlockLevel()).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("저장 시점에 유니크 제약이 깨지면 409 UPGRADE_DUPLICATED를 던진다")
     void shouldThrowConflict_whenSaveViolatesUniqueConstraint() {
         when(upgradeRepository.existsById("atk")).thenReturn(false);
@@ -234,6 +251,19 @@ class UpgradeServiceTest {
                 upgradeService.updateUpgrade("atk", updateRequest(10, null, List.of(newEffect)));
 
         assertThat(response.effects()).containsExactly(newEffect);
+    }
+
+    @Test
+    @DisplayName("unlockLevel이 없으면 1로 수정한다")
+    void shouldDefaultUnlockLevelToOne_whenUpdatingWithoutUnlockLevel() {
+        Upgrade upgrade = new Upgrade("atk", 10, 5, null, 100, 10, null, null, null);
+        when(upgradeRepository.findById("atk")).thenReturn(Optional.of(upgrade));
+        UpgradeRequest request = updateRequest(10, null, null);
+        ReflectionTestUtils.setField(request, "unlockLevel", null);
+
+        UpgradeResponse response = upgradeService.updateUpgrade("atk", request);
+
+        assertThat(response.unlockLevel()).isEqualTo(1);
     }
 
     @Test

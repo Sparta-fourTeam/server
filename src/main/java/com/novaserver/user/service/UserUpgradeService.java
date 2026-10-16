@@ -58,7 +58,8 @@ public class UserUpgradeService {
         // 골드 차감
         Integer gold = null;
         if (upgrade.getCostBase() != null) {
-            int cost = upgrade.getCostBase() + upgrade.getCostStep() * currentLevel;
+            int costStep = upgrade.getCostStep() == null ? 0 : upgrade.getCostStep();
+            int cost = upgrade.getCostBase() + costStep * currentLevel;
             Wallet wallet =
                     walletRepository
                             .findByUserId(userId)

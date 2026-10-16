@@ -55,7 +55,7 @@ public class UpgradeService {
                             new Upgrade(
                                     request.getUpgradeId(),
                                     request.getMaxLevel(),
-                                    request.getUnlockLevel(),
+                                    resolveUnlockLevel(request.getUnlockLevel()),
                                     materialItem,
                                     request.getCostBase(),
                                     request.getCostStep(),
@@ -77,7 +77,7 @@ public class UpgradeService {
 
         upgrade.update(
                 request.getMaxLevel(),
-                request.getUnlockLevel(),
+                resolveUnlockLevel(request.getUnlockLevel()),
                 materialItem,
                 request.getCostBase(),
                 request.getCostStep(),
@@ -102,6 +102,11 @@ public class UpgradeService {
         return upgradeRepository
                 .findById(id)
                 .orElseThrow(() -> ErrorCode.UPGRADE_NOT_FOUND.exception(id));
+    }
+
+    /** 해금 레벨이 없으면 1로 취급한다. */
+    private Integer resolveUnlockLevel(Integer unlockLevel) {
+        return unlockLevel == null ? 1 : unlockLevel;
     }
 
     /** 재료 아이템을 materialItemId로 찾는다. id가 없으면 null, 없는 id면 404를 던진다. */
