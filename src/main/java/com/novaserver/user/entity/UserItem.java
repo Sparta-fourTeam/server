@@ -37,4 +37,16 @@ public class UserItem {
 
     @Column(nullable = false)
     private int quantity;
+
+    /** 유저가 처음 아이템을 얻을 때 만든다. */
+    public UserItem(User user, Item item, int quantity) {
+        this.user = user;
+        this.item = item;
+        this.quantity = quantity;
+    }
+
+    /** 아이템 수량을 사용한다. 충분한지는 호출하는 쪽에서 미리 확인한다. */
+    public void useQuantity(int amount) {
+        this.quantity -= amount;
+    }
 }

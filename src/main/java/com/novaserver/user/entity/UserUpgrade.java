@@ -37,4 +37,16 @@ public class UserUpgrade {
 
     @Column(name = "level", nullable = false)
     private Integer level;
+
+    /** 유저가 처음 강화를 시작할 때 레벨 1로 만든다. */
+    public UserUpgrade(User user, Upgrade upgrade, int level) {
+        this.user = user;
+        this.upgrade = upgrade;
+        this.level = level;
+    }
+
+    /** 강화 레벨을 한 단계 올린다. */
+    public void levelUp() {
+        this.level++;
+    }
 }

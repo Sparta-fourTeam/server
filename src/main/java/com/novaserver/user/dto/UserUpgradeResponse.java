@@ -17,6 +17,7 @@ public class UserUpgradeResponse {
     private final Integer level;
 
     public static UserUpgradeResponse from(UserUpgrade userUpgrade) {
-        return new UserUpgradeResponse(userUpgrade.getUpgrade().getId(), userUpgrade.getLevel());
+        return new UserUpgradeResponse(
+                userUpgrade.getUpgrade().getUpgradeId(), userUpgrade.getLevel());
     }
 }

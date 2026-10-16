@@ -32,6 +32,7 @@ import com.novaserver.user.repository.UserRepository;
 import com.novaserver.user.repository.UserStageProgressRepository;
 import com.novaserver.user.repository.UserTutorialRepository;
 import com.novaserver.user.repository.UserUpgradeRepository;
+import com.novaserver.user.repository.UserUpgradeRequestRepository;
 import com.novaserver.user.repository.WalletRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -63,6 +64,7 @@ class UserServiceTest {
     @Mock private UserEnergyRepository userEnergyRepository;
     @Mock private UserStageProgressRepository userStageProgressRepository;
     @Mock private UserUpgradeRepository userUpgradeRepository;
+    @Mock private UserUpgradeRequestRepository userUpgradeRequestRepository;
     @Mock private UserItemRepository userItemRepository;
     @Mock private UserCodexRepository userCodexRepository;
     @Mock private UserTutorialRepository userTutorialRepository;
@@ -83,6 +85,7 @@ class UserServiceTest {
                         userEnergyRepository,
                         userStageProgressRepository,
                         userUpgradeRepository,
+                        userUpgradeRequestRepository,
                         userItemRepository,
                         userCodexRepository,
                         userTutorialRepository,
@@ -111,7 +114,7 @@ class UserServiceTest {
         assertThat(dataCaptor.getValue().getExp()).isZero();
         assertThat(walletCaptor.getValue().getUser()).isEqualTo(user);
         assertThat(walletCaptor.getValue().getGold()).isZero();
-        assertThat(walletCaptor.getValue().getJem()).isZero();
+        assertThat(walletCaptor.getValue().getGem()).isZero();
         assertThat(energyCaptor.getValue().getUser()).isEqualTo(user);
         assertThat(energyCaptor.getValue().getEnergyStored()).isEqualTo(UserEnergy.MAX_ENERGY);
     }
@@ -126,6 +129,7 @@ class UserServiceTest {
         verifyNoInteractions(
                 userStageProgressRepository,
                 userUpgradeRepository,
+                userUpgradeRequestRepository,
                 userItemRepository,
                 userCodexRepository,
                 userTutorialRepository);
@@ -142,6 +146,7 @@ class UserServiceTest {
         verify(walletRepository).deleteByUserId(USER_ID);
         verify(userEnergyRepository).deleteByUserId(USER_ID);
         verify(userStageProgressRepository).deleteByUserId(USER_ID);
+        verify(userUpgradeRequestRepository).deleteByUserId(USER_ID);
         verify(userUpgradeRepository).deleteByUserId(USER_ID);
         verify(userItemRepository).deleteByUserId(USER_ID);
         verify(userCodexRepository).deleteByUserId(USER_ID);
@@ -165,13 +170,13 @@ class UserServiceTest {
         stageProgress.updateClaimedRating(2);
 
         Upgrade upgrade = mock(Upgrade.class);
-        when(upgrade.getId()).thenReturn("atk");
+        when(upgrade.getUpgradeId()).thenReturn("atk");
         UserUpgrade userUpgrade = mock(UserUpgrade.class);
         when(userUpgrade.getUpgrade()).thenReturn(upgrade);
         when(userUpgrade.getLevel()).thenReturn(3);
 
         Item item = mock(Item.class);
-        when(item.getId()).thenReturn(30L);
+        when(item.getItemId()).thenReturn("book.hat");
         UserItem userItem = mock(UserItem.class);
         when(userItem.getItem()).thenReturn(item);
         when(userItem.getQuantity()).thenReturn(5);
@@ -203,7 +208,7 @@ class UserServiceTest {
 
         // then
         assertThat(response.getGold()).isEqualTo(500);
-        assertThat(response.getJem()).isEqualTo(10);
+        assertThat(response.getGem()).isEqualTo(10);
         assertThat(response.getExp()).isEqualTo(120);
         assertThat(response.getEnergyStored()).isEqualTo(25);
         assertThat(response.getEnergyUpdatedAt()).isEqualTo(energyUpdatedAt);
@@ -218,7 +223,7 @@ class UserServiceTest {
         assertThat(response.getUpgrades().get(0).getLevel()).isEqualTo(3);
 
         assertThat(response.getItems()).hasSize(1);
-        assertThat(response.getItems().get(0).getItemId()).isEqualTo(30L);
+        assertThat(response.getItems().get(0).getItemId()).isEqualTo("book.hat");
         assertThat(response.getItems().get(0).getQuantity()).isEqualTo(5);
 
         assertThat(response.getCodex()).hasSize(1);
@@ -279,6 +284,7 @@ class UserServiceTest {
         verifyNoInteractions(
                 userStageProgressRepository,
                 userUpgradeRepository,
+                userUpgradeRequestRepository,
                 userItemRepository,
                 userCodexRepository,
                 userTutorialRepository);

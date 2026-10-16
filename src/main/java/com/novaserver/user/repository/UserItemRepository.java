@@ -2,6 +2,7 @@ package com.novaserver.user.repository;
 
 import com.novaserver.user.entity.UserItem;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -17,4 +18,11 @@ public interface UserItemRepository extends JpaRepository<UserItem, Long> {
     @Modifying
     @Query("delete from UserItem i where i.user.id = :userId")
     void deleteByUserId(@Param("userId") Long userId);
+
+    @Query("select count(i) > 0 from UserItem i where i.item.itemId = :itemId")
+    boolean existsByItemId(@Param("itemId") String itemId);
+
+    @Query("select i from UserItem i where i.user.id = :userId and i.item.itemId = :itemId")
+    Optional<UserItem> findByUserIdAndItemId(
+            @Param("userId") Long userId, @Param("itemId") String itemId);
 }
