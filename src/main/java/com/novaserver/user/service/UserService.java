@@ -16,7 +16,10 @@ import com.novaserver.user.repository.UserStageProgressRepository;
 import com.novaserver.user.repository.UserTutorialRepository;
 import com.novaserver.user.repository.UserUpgradeRepository;
 import com.novaserver.user.repository.WalletRepository;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,12 +38,15 @@ public class UserService {
     private final UserTutorialRepository userTutorialRepository;
     private final BattleRepository battleRepository;
 
+    private final Clock clock;
+
     /** 가입 직후 유저의 기본 상태(경험치·재화는 0, 에너지는 최대치)를 만든다. */
     @Transactional
     public void createInitialState(User user) {
         userDataRepository.save(new UserData(user, 0));
         walletRepository.save(new Wallet(user, 0, 0));
-        userEnergyRepository.save(new UserEnergy(user, UserEnergy.MAX_ENERGY));
+        userEnergyRepository.save(
+                new UserEnergy(user, UserEnergy.MAX_ENERGY, LocalDateTime.now(clock)));
     }
 
     /** 토큰의 유저 id로 유저 상태 정보를 조회한다. */
@@ -49,6 +55,9 @@ public class UserService {
         UserData userData = findUserData(userId);
         Wallet wallet = findWallet(userId);
         UserEnergy energy = findEnergy(userId);
+
+        energy.recover(LocalDateTime.now(clock));
+
         return UserDataResponse.of(
                 userData,
                 wallet,
@@ -75,6 +84,26 @@ public class UserService {
         userRepository.deleteById(userId);
     }
 
+    /** 해당 유저가 에너지를 소모한다. */
+    @Transactional
+    public void useEnergy(Long userId, int amount) {
+        UserEnergy energy = findEnergyForUpdate(userId);
+        LocalDateTime now = LocalDateTime.now(clock);
+
+        energy.recover(now);
+        energy.consume(amount, now);
+    }
+
+    /** 해당 유저에게 에너지 보상을 지급한다. */
+    @Transactional
+    public void grantEnergy(Long userId, int amount) {
+        UserEnergy energy = findEnergyForUpdate(userId);
+        LocalDateTime now = LocalDateTime.now(clock);
+
+        energy.recover(now);
+        energy.addEnergy(amount, now);
+    }
+
     private UserData findUserData(Long userId) {
         return userDataRepository
                 .findByUserId(userId)
@@ -91,5 +120,15 @@ public class UserService {
         return userEnergyRepository
                 .findByUserId(userId)
                 .orElseThrow(() -> ErrorCode.ENERGY_NOT_FOUND.exception(userId));
+    }
+
+    private UserEnergy findEnergyForUpdate(Long userId) {
+        try {
+            return userEnergyRepository
+                    .findByUserIdForUpdate(userId)
+                    .orElseThrow(() -> ErrorCode.ENERGY_NOT_FOUND.exception(userId));
+        } catch (PessimisticLockingFailureException e) {
+            throw ErrorCode.ENERGY_LOCK_CONFLICT.exception();
+        }
     }
 }

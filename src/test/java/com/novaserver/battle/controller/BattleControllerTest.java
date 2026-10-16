@@ -8,13 +8,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.novaserver.battle.dto.BattleResponse;
 import com.novaserver.battle.service.BattleService;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @WebMvcTest(BattleController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -24,22 +29,29 @@ class BattleControllerTest {
 
     @MockitoBean private BattleService battleService;
 
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
     @Test
     void startsBattleSuccessfully() throws Exception {
-        when(battleService.createBattle(1L)).thenReturn(new BattleResponse("battle-1"));
+        when(battleService.createBattle(1L, "key-1")).thenReturn(new BattleResponse("battle-1"));
 
         mockMvc.perform(
                         post("/api/battle/start")
+                                .with(asUser(1L))
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"userId\":1}"))
+                                .content("{\"createId\":\"key-1\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.battleId").value("battle-1"));
     }
 
     @Test
-    void returnsBadRequestWhenUserIdMissing() throws Exception {
+    void returnsBadRequestWhenCreateIdMissing() throws Exception {
         mockMvc.perform(
                         post("/api/battle/start")
+                                .with(asUser(1L))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -49,8 +61,9 @@ class BattleControllerTest {
     void delegatesEndRequestToService() throws Exception {
         mockMvc.perform(
                         post("/api/battle/end")
+                                .with(asUser(1L))
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"userId\":1,\"battleId\":\"battle-1\"}"))
+                                .content("{\"battleId\":\"battle-1\"}"))
                 .andExpect(status().isOk());
 
         verify(battleService).endBattle(1L, "battle-1");
@@ -60,8 +73,18 @@ class BattleControllerTest {
     void returnsBadRequestWhenBattleIdMissingOnEnd() throws Exception {
         mockMvc.perform(
                         post("/api/battle/end")
+                                .with(asUser(1L))
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"userId\":1}"))
+                                .content("{}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    private static RequestPostProcessor asUser(Long userId) {
+        return request -> {
+            SecurityContextHolder.getContext()
+                    .setAuthentication(
+                            new UsernamePasswordAuthenticationToken(userId, null, List.of()));
+            return request;
+        };
     }
 }

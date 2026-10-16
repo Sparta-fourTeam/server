@@ -17,13 +17,15 @@ public interface BattleRepository extends JpaRepository<BattleSession, Long> {
     @Modifying
     @Query(
             value =
-                    "INSERT INTO battle_session (user_id, battle_id, created_at) "
-                            + "VALUES (:userId, :battleId, :createdAt) "
+                    "INSERT INTO battle_session (user_id, battle_id, create_id, created_at) "
+                            + "VALUES (:userId, :battleId, :createId, :createdAt) "
                             + "ON DUPLICATE KEY UPDATE battle_id = :battleId, "
+                            + "create_id = :createId, "
                             + "created_at = :createdAt",
             nativeQuery = true)
     int upsert(
             @Param("userId") Long userId,
             @Param("battleId") String battleId,
+            @Param("createId") String createId,
             @Param("createdAt") LocalDateTime createdAt);
 }

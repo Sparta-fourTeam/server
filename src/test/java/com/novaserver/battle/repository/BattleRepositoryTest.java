@@ -17,7 +17,7 @@ class BattleRepositoryTest {
 
     @Test
     void createsNewRowOnFirstUpsert() {
-        int affected = battleRepository.upsert(1L, "battle-1", LocalDateTime.now());
+        int affected = battleRepository.upsert(1L, "battle-1", "key-1", LocalDateTime.now());
 
         assertThat(affected).isGreaterThan(0);
         assertThat(battleRepository.findById(1L))
@@ -28,9 +28,9 @@ class BattleRepositoryTest {
 
     @Test
     void overwritesBattleIdWhenRowExists() {
-        battleRepository.upsert(1L, "battle-1", LocalDateTime.now());
+        battleRepository.upsert(1L, "battle-1", "key-1", LocalDateTime.now());
 
-        battleRepository.upsert(1L, "battle-2", LocalDateTime.now());
+        battleRepository.upsert(1L, "battle-2", "key-2", LocalDateTime.now());
 
         assertThat(battleRepository.findAll()).hasSize(1);
         assertThat(battleRepository.findById(1L))
@@ -41,7 +41,7 @@ class BattleRepositoryTest {
 
     @Test
     void deletesWhenUserAndBattleIdMatch() {
-        battleRepository.upsert(1L, "battle-1", LocalDateTime.now());
+        battleRepository.upsert(1L, "battle-1", "key-1", LocalDateTime.now());
 
         int deleted = battleRepository.deleteByUserIdAndBattleId(1L, "battle-1");
 
@@ -51,7 +51,7 @@ class BattleRepositoryTest {
 
     @Test
     void doesNotDeleteWhenBattleIdMismatches() {
-        battleRepository.upsert(1L, "battle-1", LocalDateTime.now());
+        battleRepository.upsert(1L, "battle-1", "key-1", LocalDateTime.now());
 
         int deleted = battleRepository.deleteByUserIdAndBattleId(1L, "wrong-id");
 
