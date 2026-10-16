@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,19 +24,30 @@ public class BattleController {
 
     @Operation(
             summary = "배틀 ID 발급",
-            description = "유저에게 새 배틀 ID를 발급합니다. 진행 중인 배틀이 있으면 새 ID로 덮어씁니다.")
+            description =
+                    "토큰의 유저 id로 새 배틀 ID를 발급합니다. 같은 멱등성 키로 재요청하면 기존 배틀 ID를 그대로 돌려줍니다. "
+                            + "새 요청이고 진행 중인 배틀이 있으면 새 ID로 덮어씁니다.")
     @PostMapping("/start")
-    public BattleResponse startBattle(@Valid @RequestBody BattleStartRequest request) {
-        // TODO: JWT 적용 후 토큰에서 userId를 꺼내도록 변경
-        return battleService.createBattle(request.getUserId());
+    public BattleResponse startBattle(
+            @AuthenticationPrincipal Long userId, @Valid @RequestBody BattleStartRequest request) {
+        return battleService.createBattle(userId, request.getCreateId());
+    }
+
+    @Operation(
+            summary = "배틀 포기",
+            description = "배틀 ID가 일치하면 삭제합니다. 불일치 시 400, 진행 중인 배틀이 없으면 404를 반환합니다.")
+    @PostMapping("/cancel")
+    public void cancelBattle(
+            @AuthenticationPrincipal Long userId, @Valid @RequestBody BattleRequest request) {
+        battleService.cancelBattle(userId, request.getBattleId());
     }
 
     @Operation(
             summary = "배틀 종료",
             description = "배틀 ID가 일치하면 삭제합니다. 불일치 시 400, 진행 중인 배틀이 없으면 404를 반환합니다.")
     @PostMapping("/end")
-    public void endBattle(@Valid @RequestBody BattleRequest request) {
-        // TODO: JWT 적용 후 토큰에서 userId를 꺼내도록 변경
-        battleService.endBattle(request.getUserId(), request.getBattleId());
+    public void endBattle(
+            @AuthenticationPrincipal Long userId, @Valid @RequestBody BattleRequest request) {
+        battleService.endBattle(userId, request.getBattleId());
     }
 }

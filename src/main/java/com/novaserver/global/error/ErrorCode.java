@@ -105,7 +105,8 @@ public enum ErrorCode {
     ENERGY_NOT_FOUND(HttpStatus.NOT_FOUND, "유저 에너지가 없습니다: %s"),
 
     // 에너지
-    INSUFFICIENT_ENERGY(HttpStatus.CONFLICT, "해당 유저의 에너지가 부족합니다.");
+    INSUFFICIENT_ENERGY(HttpStatus.CONFLICT, "해당 유저의 에너지가 부족합니다."),
+    ENERGY_LOCK_CONFLICT(HttpStatus.CONFLICT, "잠시 후 다시 시도해주세요.");
 
     private final HttpStatus status;
     private final String message;

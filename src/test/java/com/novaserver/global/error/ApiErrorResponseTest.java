@@ -32,7 +32,7 @@ class ApiErrorResponseTest {
         HttpResponse<String> response = post("/api/battle/start", "{}");
 
         assertThat(response.statusCode()).isEqualTo(400);
-        assertThat(response.body()).contains("\"message\":\"유저 ID는 필수입니다\"");
+        assertThat(response.body()).contains("\"message\":\"멱등성 키는 필수입니다\"");
         assertThat(response.body()).doesNotContain("timestamp");
     }
 

@@ -19,6 +19,7 @@ import com.novaserver.user.repository.WalletRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,7 +45,8 @@ public class UserService {
     public void createInitialState(User user) {
         userDataRepository.save(new UserData(user, 0));
         walletRepository.save(new Wallet(user, 0, 0));
-        userEnergyRepository.save(new UserEnergy(user, UserEnergy.MAX_ENERGY));
+        userEnergyRepository.save(
+                new UserEnergy(user, UserEnergy.MAX_ENERGY, LocalDateTime.now(clock)));
     }
 
     /** 토큰의 유저 id로 유저 상태 정보를 조회한다. */
@@ -121,8 +123,12 @@ public class UserService {
     }
 
     private UserEnergy findEnergyForUpdate(Long userId) {
-        return userEnergyRepository
-                .findByUserIdForUpdate(userId)
-                .orElseThrow(() -> ErrorCode.ENERGY_NOT_FOUND.exception(userId));
+        try {
+            return userEnergyRepository
+                    .findByUserIdForUpdate(userId)
+                    .orElseThrow(() -> ErrorCode.ENERGY_NOT_FOUND.exception(userId));
+        } catch (PessimisticLockingFailureException e) {
+            throw ErrorCode.ENERGY_LOCK_CONFLICT.exception();
+        }
     }
 }

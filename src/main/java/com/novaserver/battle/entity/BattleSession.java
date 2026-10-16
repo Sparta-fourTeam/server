@@ -20,6 +20,9 @@ public class BattleSession {
     @Column(nullable = false, unique = true)
     private String battleId;
 
+    @Column(nullable = false, unique = true)
+    private String createId;
+
     private LocalDateTime createdAt;
 
     /**
@@ -27,10 +30,12 @@ public class BattleSession {
      *
      * @param userId 유저 ID
      * @param battleId 발급한 배틀 ID
+     * @param createId 발급 요청에 사용된 멱등성 키
      */
-    public BattleSession(Long userId, String battleId) {
+    public BattleSession(Long userId, String battleId, String createId) {
         this.userId = userId;
         this.battleId = battleId;
+        this.createId = createId;
         this.createdAt = LocalDateTime.now();
     }
 }

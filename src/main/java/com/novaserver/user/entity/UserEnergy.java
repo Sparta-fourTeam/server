@@ -44,10 +44,10 @@ public class UserEnergy {
     private LocalDateTime energyUpdatedAt;
 
     /** 유저와 초기 에너지로 에너지 정보를 만든다. */
-    public UserEnergy(User user, int energyStored) {
+    public UserEnergy(User user, int energyStored, LocalDateTime now) {
         this.user = user;
         this.energyStored = energyStored;
-        this.energyUpdatedAt = LocalDateTime.now();
+        this.energyUpdatedAt = now;
     }
 
     /** 에너지 소모. */

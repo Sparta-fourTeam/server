@@ -224,7 +224,7 @@ class UserEnergyTest {
     }
 
     private static UserEnergy energyOf(int stored, LocalDateTime updatedAt) {
-        UserEnergy energy = new UserEnergy(null, stored);
+        UserEnergy energy = new UserEnergy(null, stored, NOW);
         ReflectionTestUtils.setField(energy, "energyUpdatedAt", updatedAt);
         return energy;
     }

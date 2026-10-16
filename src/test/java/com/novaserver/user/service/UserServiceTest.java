@@ -46,6 +46,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
@@ -153,7 +154,7 @@ class UserServiceTest {
     @DisplayName("유저 id로 상태를 조회하면 재화·경험치·에너지와 목록들을 모두 합쳐 반환한다")
     void shouldReturnAggregatedStatus_onGetMe() {
         // given
-        UserEnergy energy = new UserEnergy(null, 25);
+        UserEnergy energy = new UserEnergy(null, 25, NOW);
         LocalDateTime energyUpdatedAt = NOW;
         ReflectionTestUtils.setField(energy, "energyUpdatedAt", energyUpdatedAt);
 
@@ -348,6 +349,20 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("다른 트랜잭션이 에너지 행을 잠그고 있으면 409 ENERGY_LOCK_CONFLICT를 던진다")
+    void shouldThrowConflict_whenEnergyRowLockedByAnotherTransaction() {
+        // given
+        when(userEnergyRepository.findByUserIdForUpdate(USER_ID))
+                .thenThrow(new CannotAcquireLockException("lock not available"));
+
+        // when & then
+        assertStatus(
+                () -> userService.useEnergy(USER_ID, 5),
+                HttpStatus.CONFLICT,
+                ErrorCode.ENERGY_LOCK_CONFLICT);
+    }
+
+    @Test
     @DisplayName("에너지 소모 시 에너지가 없으면 404 ENERGY_NOT_FOUND를 던진다")
     void shouldThrowNotFound_onUseEnergy_whenEnergyMissing() {
         // given
@@ -420,7 +435,7 @@ class UserServiceTest {
     }
 
     private static UserEnergy energyOf(int stored, LocalDateTime updatedAt) {
-        UserEnergy energy = new UserEnergy(null, stored);
+        UserEnergy energy = new UserEnergy(null, stored, NOW);
         ReflectionTestUtils.setField(energy, "energyUpdatedAt", updatedAt);
         return energy;
     }

@@ -15,8 +15,13 @@ import org.springframework.data.repository.query.Param;
 public interface UserEnergyRepository extends JpaRepository<UserEnergy, Long> {
     Optional<UserEnergy> findByUserId(Long userId);
 
+    /**
+     * MySQL 방언은 jakarta.persistence.lock.timeout을 0(NOWAIT)/-2(SKIP LOCKED)로만 해석한다. 그 외 값은 무시되고
+     * innodb_lock_wait_timeout(기본 50초)까지 그냥 대기하게 되므로, 요청 스레드가 오래 묶이는 것을 막기 위해 0(NOWAIT)으로 즉시 실패하도록
+     * 한다.
+     */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "3000"))
+    @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "0"))
     @Query("select e from UserEnergy e where e.user.id = :userId")
     Optional<UserEnergy> findByUserIdForUpdate(@Param("userId") Long userId);
 
