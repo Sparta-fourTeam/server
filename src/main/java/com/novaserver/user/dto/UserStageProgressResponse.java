@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 @Schema(description = "유저 스테이지 응답")
 public class UserStageProgressResponse {
     @Schema(description = "스테이지 id")
-    private final Long stageId;
+    private final Integer stageId;
 
     @Schema(description = "클리어 등급")
     private final int clearRating;
@@ -22,7 +22,7 @@ public class UserStageProgressResponse {
     /** 스테이지 진행도 엔티티를 응답으로 변환한다. */
     public static UserStageProgressResponse from(UserStageProgress userStageProgress) {
         return new UserStageProgressResponse(
-                userStageProgress.getStage().getId(),
+                userStageProgress.getStage().getStageId(),
                 userStageProgress.getClearRating(),
                 userStageProgress.getClaimedRating());
     }
