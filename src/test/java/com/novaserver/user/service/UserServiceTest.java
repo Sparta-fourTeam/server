@@ -85,6 +85,7 @@ class UserServiceTest {
                         userEnergyRepository,
                         userStageProgressRepository,
                         userUpgradeRepository,
+                        userUpgradeRequestRepository,
                         userItemRepository,
                         userCodexRepository,
                         userTutorialRepository,
