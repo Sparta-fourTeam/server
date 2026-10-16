@@ -2,14 +2,11 @@ package com.novaserver.user.service;
 
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.stage.entity.StageRatingReward;
-import com.novaserver.stage.entity.StageRewardItem;
 import com.novaserver.stage.repository.StageRatingRewardRepository;
 import com.novaserver.user.dto.UserStageProgressResponse;
 import com.novaserver.user.entity.UserStageProgress;
 import com.novaserver.user.repository.UserStageProgressRepository;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,16 +41,9 @@ public class UserStageProgressService {
                 stageRatingRewardRepository.findByStageIdAndRatingBetween(
                         stageId, progress.getClaimedRating() + 1, progress.getClearRating());
 
-        int exp = rewards.stream().mapToInt(StageRatingReward::getExp).sum();
         int gold = rewards.stream().mapToInt(StageRatingReward::getGold).sum();
-        Map<String, Integer> items = new HashMap<>();
-        for (StageRatingReward reward : rewards) {
-            for (StageRewardItem item : reward.getItems()) {
-                items.merge(item.itemId(), item.finalAmount(), Integer::sum);
-            }
-        }
 
-        userRewardService.grant(userId, exp, gold, items);
+        userRewardService.grant(userId, 0, gold, null);
         progress.updateClaimedRating(progress.getClearRating());
 
         return UserStageProgressResponse.from(progress);
