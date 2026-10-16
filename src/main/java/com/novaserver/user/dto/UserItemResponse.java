@@ -11,12 +11,12 @@ import lombok.RequiredArgsConstructor;
 @Schema(description = "유저 아이템 응답")
 public class UserItemResponse {
     @Schema(description = "아이템 id")
-    private final Long itemId;
+    private final String itemId;
 
     @Schema(description = "보유 수량")
     private final int quantity;
 
     public static UserItemResponse from(UserItem userItem) {
-        return new UserItemResponse(userItem.getItem().getId(), userItem.getQuantity());
+        return new UserItemResponse(userItem.getItem().getItemId(), userItem.getQuantity());
     }
 }

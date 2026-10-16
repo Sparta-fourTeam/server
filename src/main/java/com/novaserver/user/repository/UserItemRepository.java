@@ -17,4 +17,7 @@ public interface UserItemRepository extends JpaRepository<UserItem, Long> {
     @Modifying
     @Query("delete from UserItem i where i.user.id = :userId")
     void deleteByUserId(@Param("userId") Long userId);
+
+    @Query("select count(i) > 0 from UserItem i where i.item.itemId = :itemId")
+    boolean existsByItemId(@Param("itemId") String itemId);
 }

@@ -171,7 +171,7 @@ class UserServiceTest {
         when(userUpgrade.getLevel()).thenReturn(3);
 
         Item item = mock(Item.class);
-        when(item.getId()).thenReturn(30L);
+        when(item.getItemId()).thenReturn("book.hat");
         UserItem userItem = mock(UserItem.class);
         when(userItem.getItem()).thenReturn(item);
         when(userItem.getQuantity()).thenReturn(5);
@@ -218,7 +218,7 @@ class UserServiceTest {
         assertThat(response.getUpgrades().get(0).getLevel()).isEqualTo(3);
 
         assertThat(response.getItems()).hasSize(1);
-        assertThat(response.getItems().get(0).getItemId()).isEqualTo(30L);
+        assertThat(response.getItems().get(0).getItemId()).isEqualTo("book.hat");
         assertThat(response.getItems().get(0).getQuantity()).isEqualTo(5);
 
         assertThat(response.getCodex()).hasSize(1);

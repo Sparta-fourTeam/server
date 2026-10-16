@@ -107,6 +107,12 @@ public enum ErrorCode {
     UPGRADE_MAX_LEVEL(HttpStatus.CONFLICT, "이미 최대 레벨입니다: %s"),
     UPGRADE_REQUEST_DUPLICATED(HttpStatus.CONFLICT, "이미 처리 중인 요청입니다: %s"),
 
+    // 아이템
+    ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 아이템입니다: %s"),
+    ITEM_DUPLICATED(HttpStatus.CONFLICT, "이미 존재하는 아이템 id입니다: %s"),
+    ITEM_IN_USE(HttpStatus.CONFLICT, "사용 중인 유저 아이템이 있어 삭제할 수 없습니다: %s"),
+    ITEM_DATA_INVALID(HttpStatus.BAD_REQUEST, "아이템 데이터가 올바르지 않습니다: %s"),
+
     // 유저
     USER_DATA_NOT_FOUND(HttpStatus.NOT_FOUND, "유저 데이터가 없습니다: %s"),
     WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "유저 지갑이 없습니다: %s"),
