@@ -115,6 +115,26 @@ public enum ErrorCode {
     ITEM_QUANTITY_NOT_ENOUGH(HttpStatus.CONFLICT, "재료가 부족합니다: %s"),
     ITEM_LINKED_TO_UPGRADE(HttpStatus.CONFLICT, "강화에서 재료로 사용 중이어서 삭제할 수 없습니다: %s"),
 
+    // 스테이지
+    STAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 스테이지입니다: %s"),
+    STAGE_DUPLICATED(HttpStatus.CONFLICT, "이미 존재하는 스테이지 id입니다: %s"),
+    STAGE_REWARD_EXISTS(HttpStatus.CONFLICT, "등록된 보상이 있어 삭제할 수 없습니다: %s"),
+
+    // 스테이지 보상
+    STAGE_REWARD_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 스테이지 보상입니다: %s"),
+    STAGE_REWARD_DUPLICATED(HttpStatus.CONFLICT, "이미 등록된 스테이지 보상입니다: %s"),
+    STAGE_REWARD_ITEM_DUPLICATED(HttpStatus.BAD_REQUEST, "같은 아이템을 중복해서 넣을 수 없습니다: %s"),
+    STAGE_REWARD_ITEM_AMOUNT_INVALID(
+            HttpStatus.BAD_REQUEST, "스킬 재료는 finalAmount가 21 이상이어야 합니다: %s"),
+
+    // 스테이지 별등급 보상
+    STAGE_RATING_REWARD_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 별등급 보상입니다: stageId=%s, rating=%s"),
+    STAGE_RATING_REWARD_DUPLICATED(HttpStatus.CONFLICT, "이미 등록된 별등급 보상입니다: stageId=%s, rating=%s"),
+
+    // 유저 스테이지 진행도
+    STAGE_PROGRESS_NOT_FOUND(HttpStatus.NOT_FOUND, "스테이지 진행도가 없습니다: %s"),
+    STAGE_RATING_REWARD_NOTHING_TO_CLAIM(HttpStatus.CONFLICT, "받을 수 있는 보상이 없습니다: %s"),
+
     // 유저
     USER_DATA_NOT_FOUND(HttpStatus.NOT_FOUND, "유저 데이터가 없습니다: %s"),
     WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "유저 지갑이 없습니다: %s"),

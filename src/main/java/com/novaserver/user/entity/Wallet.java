@@ -45,4 +45,9 @@ public class Wallet {
     public void useGold(int amount) {
         this.gold -= amount;
     }
+
+    /** 골드를 지급한다. */
+    public void addGold(int amount) {
+        this.gold += amount;
+    }
 }

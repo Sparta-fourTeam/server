@@ -49,4 +49,9 @@ public class UserItem {
     public void useQuantity(int amount) {
         this.quantity -= amount;
     }
+
+    /** 아이템 수량을 지급한다. */
+    public void addQuantity(int amount) {
+        this.quantity += amount;
+    }
 }

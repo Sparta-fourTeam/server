@@ -35,4 +35,9 @@ public class UserData {
         this.user = user;
         this.exp = exp;
     }
+
+    /** 경험치를 지급한다. */
+    public void addExp(int amount) {
+        this.exp += amount;
+    }
 }

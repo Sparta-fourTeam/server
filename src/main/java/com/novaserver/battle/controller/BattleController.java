@@ -1,5 +1,6 @@
 package com.novaserver.battle.controller;
 
+import com.novaserver.battle.dto.BattleEndRequest;
 import com.novaserver.battle.dto.BattleRequest;
 import com.novaserver.battle.dto.BattleResponse;
 import com.novaserver.battle.dto.BattleStartRequest;
@@ -44,10 +45,12 @@ public class BattleController {
 
     @Operation(
             summary = "배틀 종료",
-            description = "배틀 ID가 일치하면 삭제합니다. 불일치 시 400, 진행 중인 배틀이 없으면 404를 반환합니다.")
+            description =
+                    "배틀 ID가 일치하면 클리어한 웨이브·등급에 따라 기본 보상을 지급하고 스테이지 진행도를 갱신한 뒤 배틀을 삭제합니다. "
+                            + "불일치 시 400, 진행 중인 배틀이 없으면 404를 반환합니다.")
     @PostMapping("/end")
     public void endBattle(
-            @AuthenticationPrincipal Long userId, @Valid @RequestBody BattleRequest request) {
-        battleService.endBattle(userId, request.getBattleId());
+            @AuthenticationPrincipal Long userId, @Valid @RequestBody BattleEndRequest request) {
+        battleService.endBattle(userId, request);
     }
 }

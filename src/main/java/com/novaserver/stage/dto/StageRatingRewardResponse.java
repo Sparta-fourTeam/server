@@ -1,0 +1,19 @@
+package com.novaserver.stage.dto;
+
+import com.novaserver.stage.entity.StageRatingReward;
+import java.util.List;
+
+/** 별등급 보상 응답. */
+public record StageRatingRewardResponse(
+        Integer stageId, int rating, int exp, int gold, List<StageRewardItemResponse> items) {
+
+    /** 별등급 보상 엔티티로부터 응답을 만든다. */
+    public static StageRatingRewardResponse from(StageRatingReward reward) {
+        return new StageRatingRewardResponse(
+                reward.getStage().getStageId(),
+                reward.getRating(),
+                reward.getExp(),
+                reward.getGold(),
+                reward.getItems().stream().map(StageRewardItemResponse::from).toList());
+    }
+}

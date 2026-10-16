@@ -164,7 +164,7 @@ class UserServiceTest {
         ReflectionTestUtils.setField(energy, "energyUpdatedAt", energyUpdatedAt);
 
         Stage stage = mock(Stage.class);
-        when(stage.getId()).thenReturn(10L);
+        when(stage.getStageId()).thenReturn(10);
         UserStageProgress stageProgress = new UserStageProgress(null, stage);
         stageProgress.updateClearRating(3);
         stageProgress.updateClaimedRating(2);
@@ -214,7 +214,7 @@ class UserServiceTest {
         assertThat(response.getEnergyUpdatedAt()).isEqualTo(energyUpdatedAt);
 
         assertThat(response.getStageProgress()).hasSize(1);
-        assertThat(response.getStageProgress().get(0).getStageId()).isEqualTo(10L);
+        assertThat(response.getStageProgress().get(0).getStageId()).isEqualTo(10);
         assertThat(response.getStageProgress().get(0).getClearRating()).isEqualTo(3);
         assertThat(response.getStageProgress().get(0).getClaimedRating()).isEqualTo(2);
 
