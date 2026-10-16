@@ -115,6 +115,7 @@ class BattleServiceTest {
     void grantsRewardAndDeletesWhenUserAndBattleIdMatch() {
         BattleSession existing = new BattleSession(1L, "battle-1", "key-1");
         when(battleRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(battleRepository.deleteByUserIdAndBattleId(1L, "battle-1")).thenReturn(1);
         when(stageRewardService.calculateClearReward(1, 10, 3))
                 .thenReturn(new ClearRewardResult(100, 50, Map.of("mat.wood", 5)));
         Stage stage = mock(Stage.class);

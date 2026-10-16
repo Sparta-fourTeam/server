@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class StageRatingRewardService {
     private final StageRatingRewardRepository stageRatingRewardRepository;
     private final StageService stageService;
+    private final StageRewardItemValidator itemValidator;
 
     /** 스테이지의 별등급 보상 목록을 조회한다. */
     @Transactional(readOnly = true)
@@ -41,7 +42,7 @@ public class StageRatingRewardService {
         if (stageRatingRewardRepository.existsByStageStageIdAndRating(stageId, rating)) {
             throw ErrorCode.STAGE_RATING_REWARD_DUPLICATED.exception(stageId, rating);
         }
-        List<StageRewardItem> items = StageRewardItemValidator.validate(request.getItems());
+        List<StageRewardItem> items = itemValidator.validate(request.getItems());
         try {
             StageRatingReward saved =
                     stageRatingRewardRepository.save(
@@ -58,7 +59,7 @@ public class StageRatingRewardService {
     public StageRatingRewardResponse updateStageRatingReward(
             Integer stageId, int rating, StageRatingRewardRequest request) {
         StageRatingReward reward = findStageRatingReward(stageId, rating);
-        List<StageRewardItem> items = StageRewardItemValidator.validate(request.getItems());
+        List<StageRewardItem> items = itemValidator.validate(request.getItems());
         reward.update(request.getExp(), request.getGold(), items);
         return StageRatingRewardResponse.from(reward);
     }

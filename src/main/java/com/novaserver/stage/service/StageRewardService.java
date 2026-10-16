@@ -14,6 +14,7 @@ import com.novaserver.stage.repository.StageRewardRepository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,7 @@ public class StageRewardService {
     private final StageRewardRepository stageRewardRepository;
     private final StageService stageService;
     private final ItemRepository itemRepository;
+    private final StageRewardItemValidator itemValidator;
 
     /** 스테이지 보상 목록을 조회한다. */
     @Transactional(readOnly = true)
@@ -63,7 +65,7 @@ public class StageRewardService {
         if (stageRewardRepository.existsById(stageId)) {
             throw ErrorCode.STAGE_REWARD_DUPLICATED.exception(stageId);
         }
-        List<StageRewardItem> items = StageRewardItemValidator.validate(request.getItems());
+        List<StageRewardItem> items = itemValidator.validate(request.getItems());
         try {
             StageReward saved =
                     stageRewardRepository.save(
@@ -83,7 +85,7 @@ public class StageRewardService {
     @Transactional
     public StageRewardResponse updateStageReward(Integer stageId, StageRewardRequest request) {
         StageReward reward = findStageReward(stageId);
-        List<StageRewardItem> items = StageRewardItemValidator.validate(request.getItems());
+        List<StageRewardItem> items = itemValidator.validate(request.getItems());
         reward.update(
                 request.getBaseExp(),
                 request.getThreeStarBonusExp(),
@@ -127,9 +129,18 @@ public class StageRewardService {
             gold += reward.getFinalCoin() - COIN_START - COIN_INCREMENT * TOTAL_WAVES;
         }
 
+        List<String> itemIds = reward.getItems().stream().map(StageRewardItem::itemId).toList();
+        Map<String, Item> catalogItems =
+                itemRepository.findAllById(itemIds).stream()
+                        .collect(Collectors.toMap(Item::getItemId, item -> item));
+
         Map<String, Integer> items = new HashMap<>();
         for (StageRewardItem item : reward.getItems()) {
-            int amount = calculateItemAmount(item, clearedWave);
+            Item catalogItem = catalogItems.get(item.itemId());
+            if (catalogItem == null) {
+                throw ErrorCode.ITEM_NOT_FOUND.exception(item.itemId());
+            }
+            int amount = calculateItemAmount(item, catalogItem, clearedWave);
             if (amount > 0) {
                 items.put(item.itemId(), amount);
             }
@@ -139,12 +150,7 @@ public class StageRewardService {
     }
 
     /** 스킬 재료(Item.targetId 있음)는 웨이브마다 누적 증가, 장비 재료는 지정 웨이브 클리어 시 전량 지급된다. */
-    private int calculateItemAmount(StageRewardItem item, int clearedWave) {
-        Item catalogItem =
-                itemRepository
-                        .findById(item.itemId())
-                        .orElseThrow(() -> ErrorCode.ITEM_NOT_FOUND.exception(item.itemId()));
-
+    private int calculateItemAmount(StageRewardItem item, Item catalogItem, int clearedWave) {
         if (catalogItem.getTargetId() != null) {
             int amount = MATERIAL_START + MATERIAL_INCREMENT * (clearedWave - 1);
             if (clearedWave >= SKILL_MATERIAL_BONUS_WAVE) {

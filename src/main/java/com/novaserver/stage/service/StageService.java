@@ -4,6 +4,7 @@ import com.novaserver.global.error.ErrorCode;
 import com.novaserver.stage.dto.StageRequest;
 import com.novaserver.stage.dto.StageResponse;
 import com.novaserver.stage.entity.Stage;
+import com.novaserver.stage.repository.StageRatingRewardRepository;
 import com.novaserver.stage.repository.StageRepository;
 import com.novaserver.stage.repository.StageRewardRepository;
 import java.util.List;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class StageService {
     private final StageRepository stageRepository;
     private final StageRewardRepository stageRewardRepository;
+    private final StageRatingRewardRepository stageRatingRewardRepository;
 
     /** 스테이지 목록을 조회한다. */
     @Transactional(readOnly = true)
@@ -44,11 +46,14 @@ public class StageService {
         }
     }
 
-    /** 스테이지를 삭제한다. 없는 stageId면 404, 등록된 보상이 있으면 409를 던진다. */
+    /** 스테이지를 삭제한다. 없는 stageId면 404, 등록된 보상(기본 보상·별등급 보상)이 있으면 409를 던진다. */
     @Transactional
     public void deleteStage(Integer stageId) {
         Stage stage = findStage(stageId);
         if (stageRewardRepository.existsById(stageId)) {
+            throw ErrorCode.STAGE_REWARD_EXISTS.exception(stageId);
+        }
+        if (stageRatingRewardRepository.existsByStageStageId(stageId)) {
             throw ErrorCode.STAGE_REWARD_EXISTS.exception(stageId);
         }
         stageRepository.delete(stage);

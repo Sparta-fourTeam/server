@@ -33,7 +33,7 @@ public class UserStageProgressService {
     public UserStageProgressResponse claimRatingReward(Long userId, Integer stageId) {
         UserStageProgress progress =
                 userStageProgressRepository
-                        .findByUserIdAndStageId(userId, stageId)
+                        .findByUserIdAndStageIdForUpdate(userId, stageId)
                         .orElseThrow(() -> ErrorCode.STAGE_PROGRESS_NOT_FOUND.exception(stageId));
 
         if (progress.getClaimedRating() >= progress.getClearRating()) {

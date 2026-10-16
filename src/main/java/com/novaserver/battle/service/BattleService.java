@@ -79,8 +79,8 @@ public class BattleService {
     }
 
     /**
-     * 배틀 ID가 일치하면 기본 보상(경험치·골드·아이템)을 지급하고, 스테이지 클리어 등급을 갱신한 뒤 배틀 세션을 삭제한다. 배틀을 포기(cancel)하면 이 메서드를
-     * 거치지 않으므로 보상을 받지 못한다.
+     * 배틀 ID가 일치하면 배틀 세션을 먼저 삭제해 선점한 뒤, 기본 보상(경험치·골드·아이템)을 지급하고 스테이지 클리어 등급을 갱신한다. 같은 배틀을 동시에 두 번 종료
+     * 요청해도 삭제에 성공한 요청만 보상을 받는다. 배틀을 포기(cancel)하면 이 메서드를 거치지 않으므로 보상을 받지 못한다.
      *
      * @param userId 유저 ID
      * @param request 종료할 배틀 ID와 이번 배틀의 클리어 결과
@@ -93,6 +93,12 @@ public class BattleService {
                         .orElseThrow(ErrorCode.BATTLE_NOT_FOUND::exception);
         if (!session.getBattleId().equals(request.getBattleId())) {
             throw ErrorCode.BATTLE_ID_MISMATCH.exception();
+        }
+
+        int deleted = battleRepository.deleteByUserIdAndBattleId(userId, request.getBattleId());
+        if (deleted == 0) {
+            // 동시에 들어온 다른 종료 요청이 이미 세션을 선점해 삭제했다.
+            throw ErrorCode.BATTLE_NOT_FOUND.exception();
         }
 
         ClearRewardResult reward =
@@ -111,7 +117,5 @@ public class BattleService {
                                             new UserStageProgress(user, stage));
                                 });
         progress.updateClearRating(request.getRating());
-
-        battleRepository.deleteByUserIdAndBattleId(userId, request.getBattleId());
     }
 }

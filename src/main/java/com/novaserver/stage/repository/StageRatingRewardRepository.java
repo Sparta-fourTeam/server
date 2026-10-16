@@ -13,6 +13,8 @@ public interface StageRatingRewardRepository extends JpaRepository<StageRatingRe
 
     boolean existsByStageStageIdAndRating(Integer stageId, int rating);
 
+    boolean existsByStageStageId(Integer stageId);
+
     List<StageRatingReward> findByStageStageIdOrderByRating(Integer stageId);
 
     @Query(
