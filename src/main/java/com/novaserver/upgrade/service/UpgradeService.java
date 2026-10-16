@@ -46,8 +46,7 @@ public class UpgradeService {
         if (upgradeRepository.existsById(request.getUpgradeId())) {
             throw ErrorCode.UPGRADE_DUPLICATED.exception(request.getUpgradeId());
         }
-        validate(request);
-        Item materialItem = findMaterialItem(request.getMaterialItemId());
+        Item materialItem = validateAndResolveMaterialItem(request, null);
 
         try {
             Upgrade saved =
@@ -72,8 +71,7 @@ public class UpgradeService {
     @Transactional
     public UpgradeResponse updateUpgrade(String id, UpgradeRequest request) {
         Upgrade upgrade = findUpgrade(id);
-        validate(request);
-        Item materialItem = findMaterialItem(request.getMaterialItemId());
+        Item materialItem = validateAndResolveMaterialItem(request, id);
 
         upgrade.update(
                 request.getMaxLevel(),
@@ -119,8 +117,26 @@ public class UpgradeService {
                 .orElseThrow(() -> ErrorCode.ITEM_NOT_FOUND.exception(materialItemId));
     }
 
-    /** 효과 값의 형태와 레벨별 배열의 길이가 올바른지 확인한다. */
+    /** 재료·효과 값이 올바른지 검증하고, 재료 아이템을 조회해서 다른 강화에 이미 연결돼 있지 않은지 확인한다. */
+    private Item validateAndResolveMaterialItem(UpgradeRequest request, String excludeUpgradeId) {
+        validate(request);
+        Item materialItem = findMaterialItem(request.getMaterialItemId());
+        validateMaterialItemNotLinked(request.getMaterialItemId(), excludeUpgradeId);
+        return materialItem;
+    }
+
+    /** 효과 값의 형태와 레벨별 배열의 길이, unlockLevel이 올바른지 확인한다. */
     private void validate(UpgradeRequest request) {
+        boolean hasMaterialItem = request.getMaterialItemId() != null;
+        boolean hasMaterialBase = request.getMaterialBase() != null;
+        if (hasMaterialItem != hasMaterialBase) {
+            throw ErrorCode.UPGRADE_DATA_INVALID.exception(
+                    "materialItemId와 materialBase는 둘 다 있거나 둘 다 없어야 합니다");
+        }
+        if (request.getUnlockLevel() != null && request.getUnlockLevel() > request.getMaxLevel()) {
+            throw ErrorCode.UPGRADE_DATA_INVALID.exception(
+                    "unlockLevel은 maxLevel(%d)보다 클 수 없습니다".formatted(request.getMaxLevel()));
+        }
         if (request.getEffects() == null) {
             return;
         }
@@ -144,6 +160,22 @@ public class UpgradeService {
         if (hasLevelValues && effect.levelValues().size() != maxLevel) {
             throw ErrorCode.UPGRADE_DATA_INVALID.exception(
                     "effects.levelValues 길이는 maxLevel(%d)과 같아야 합니다".formatted(maxLevel));
+        }
+    }
+
+    /** 하나의 재료 아이템은 하나의 강화에만 연결될 수 있다. */
+    private void validateMaterialItemNotLinked(String materialItemId, String excludeUpgradeId) {
+        if (materialItemId == null) {
+            return;
+        }
+        boolean linked =
+                excludeUpgradeId == null
+                        ? upgradeRepository.existsByMaterialItemId(materialItemId)
+                        : upgradeRepository.existsByMaterialItemIdAndUpgradeIdNot(
+                                materialItemId, excludeUpgradeId);
+        if (linked) {
+            throw ErrorCode.ITEM_DATA_INVALID.exception(
+                    "하나의 재료는 하나의 강화에만 연결되어야 합니다: " + materialItemId);
         }
     }
 }

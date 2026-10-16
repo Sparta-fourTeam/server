@@ -15,7 +15,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** 유저 강화 레벨업 요청 기록. 같은 createId로 다시 요청하면 이 결과를 그대로 돌려줘 중복 처리를 막는다. */
+/** 유저 강화 레벨업 요청 기록. */
 @Entity
 @Table(
         name = "user_upgrade_request",

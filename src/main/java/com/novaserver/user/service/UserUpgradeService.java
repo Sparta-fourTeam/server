@@ -46,6 +46,12 @@ public class UserUpgradeService {
             return new UserUpgradeResponse(upgradeId, existing.get().getResultLevel());
         }
 
+        // 같은 유저 동시 요청 직렬화를 위해 지갑 row를 먼저 락 잡고 조회
+        Wallet wallet =
+                walletRepository
+                        .findByUserIdForUpdate(userId)
+                        .orElseThrow(() -> ErrorCode.WALLET_NOT_FOUND.exception(userId));
+
         // 현재 상태 조회 및 최대 레벨 체크
         Upgrade upgrade = upgradeService.findUpgrade(upgradeId);
         UserUpgrade userUpgrade =
@@ -60,10 +66,6 @@ public class UserUpgradeService {
         if (upgrade.getCostBase() != null) {
             int costStep = upgrade.getCostStep() == null ? 0 : upgrade.getCostStep();
             int cost = upgrade.getCostBase() + costStep * currentLevel;
-            Wallet wallet =
-                    walletRepository
-                            .findByUserId(userId)
-                            .orElseThrow(() -> ErrorCode.WALLET_NOT_FOUND.exception(userId));
             if (wallet.getGold() < cost) {
                 throw ErrorCode.WALLET_GOLD_NOT_ENOUGH.exception(upgradeId);
             }

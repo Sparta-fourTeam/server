@@ -32,6 +32,7 @@ import com.novaserver.user.repository.UserRepository;
 import com.novaserver.user.repository.UserStageProgressRepository;
 import com.novaserver.user.repository.UserTutorialRepository;
 import com.novaserver.user.repository.UserUpgradeRepository;
+import com.novaserver.user.repository.UserUpgradeRequestRepository;
 import com.novaserver.user.repository.WalletRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -63,6 +64,7 @@ class UserServiceTest {
     @Mock private UserEnergyRepository userEnergyRepository;
     @Mock private UserStageProgressRepository userStageProgressRepository;
     @Mock private UserUpgradeRepository userUpgradeRepository;
+    @Mock private UserUpgradeRequestRepository userUpgradeRequestRepository;
     @Mock private UserItemRepository userItemRepository;
     @Mock private UserCodexRepository userCodexRepository;
     @Mock private UserTutorialRepository userTutorialRepository;
@@ -126,6 +128,7 @@ class UserServiceTest {
         verifyNoInteractions(
                 userStageProgressRepository,
                 userUpgradeRepository,
+                userUpgradeRequestRepository,
                 userItemRepository,
                 userCodexRepository,
                 userTutorialRepository);
@@ -142,6 +145,7 @@ class UserServiceTest {
         verify(walletRepository).deleteByUserId(USER_ID);
         verify(userEnergyRepository).deleteByUserId(USER_ID);
         verify(userStageProgressRepository).deleteByUserId(USER_ID);
+        verify(userUpgradeRequestRepository).deleteByUserId(USER_ID);
         verify(userUpgradeRepository).deleteByUserId(USER_ID);
         verify(userItemRepository).deleteByUserId(USER_ID);
         verify(userCodexRepository).deleteByUserId(USER_ID);
@@ -279,6 +283,7 @@ class UserServiceTest {
         verifyNoInteractions(
                 userStageProgressRepository,
                 userUpgradeRepository,
+                userUpgradeRequestRepository,
                 userItemRepository,
                 userCodexRepository,
                 userTutorialRepository);

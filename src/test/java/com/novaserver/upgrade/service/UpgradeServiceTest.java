@@ -49,6 +49,7 @@ class UpgradeServiceTest {
         ReflectionTestUtils.setField(request, "maxLevel", maxLevel);
         ReflectionTestUtils.setField(request, "unlockLevel", 1);
         ReflectionTestUtils.setField(request, "materialItemId", materialItemId);
+        ReflectionTestUtils.setField(request, "materialBase", materialItemId == null ? null : 1);
         ReflectionTestUtils.setField(request, "effects", effects);
         return request;
     }
@@ -59,6 +60,7 @@ class UpgradeServiceTest {
         ReflectionTestUtils.setField(request, "maxLevel", maxLevel);
         ReflectionTestUtils.setField(request, "unlockLevel", 1);
         ReflectionTestUtils.setField(request, "materialItemId", materialItemId);
+        ReflectionTestUtils.setField(request, "materialBase", materialItemId == null ? null : 1);
         ReflectionTestUtils.setField(request, "effects", effects);
         return request;
     }
@@ -181,6 +183,52 @@ class UpgradeServiceTest {
 
         assertThat(response.upgradeId()).isEqualTo("atk");
         assertThat(response.materialItemId()).isNull();
+    }
+
+    @Test
+    @DisplayName("재료 아이템이 이미 다른 강화에 연결되어 있으면 400 ITEM_DATA_INVALID를 던진다")
+    void shouldThrowBadRequest_whenMaterialAlreadyLinkedToOtherUpgrade() {
+        Item material = new Item("mat.wood", null);
+        when(upgradeRepository.existsById("def")).thenReturn(false);
+        when(itemRepository.findById("mat.wood")).thenReturn(Optional.of(material));
+        when(upgradeRepository.existsByMaterialItemId("mat.wood")).thenReturn(true);
+
+        assertThatThrownBy(
+                        () ->
+                                upgradeService.createUpgrade(
+                                        createRequest("def", 10, "mat.wood", null)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("하나의 재료는 하나의 강화에만 연결되어야 합니다");
+        verify(upgradeRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("재료가 이미 연결된 강화 자신을 수정할 때는 재료 중복 검증에 걸리지 않는다")
+    void shouldAllowUpdating_whenMaterialAlreadyLinkedToItself() {
+        Item material = new Item("mat.wood", null);
+        Upgrade upgrade = new Upgrade("atk", 10, 1, material, 100, 10, 2, 1, null);
+        when(upgradeRepository.findById("atk")).thenReturn(Optional.of(upgrade));
+        when(itemRepository.findById("mat.wood")).thenReturn(Optional.of(material));
+        when(upgradeRepository.existsByMaterialItemIdAndUpgradeIdNot("mat.wood", "atk"))
+                .thenReturn(false);
+
+        UpgradeResponse response =
+                upgradeService.updateUpgrade("atk", updateRequest(10, "mat.wood", null));
+
+        assertThat(response.materialItemId()).isEqualTo("mat.wood");
+    }
+
+    @Test
+    @DisplayName("unlockLevel이 maxLevel보다 크면 400 UPGRADE_DATA_INVALID를 던진다")
+    void shouldThrowBadRequest_whenUnlockLevelGreaterThanMaxLevel() {
+        when(upgradeRepository.existsById("atk")).thenReturn(false);
+        UpgradeCreateRequest request = createRequest("atk", 5, null, null);
+        ReflectionTestUtils.setField(request, "unlockLevel", 6);
+
+        assertThatThrownBy(() -> upgradeService.createUpgrade(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("unlockLevel은 maxLevel(5)보다 클 수 없습니다");
+        verify(upgradeRepository, never()).saveAndFlush(any());
     }
 
     @Test

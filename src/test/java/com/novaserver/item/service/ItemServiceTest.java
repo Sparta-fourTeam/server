@@ -112,17 +112,6 @@ class ItemServiceTest {
     }
 
     @Test
-    @DisplayName("장비 재료 아이템이 이미 다른 강화에 연결되어 있으면 400 ITEM_DATA_INVALID를 던진다")
-    void shouldThrowBadRequest_whenMaterialAlreadyLinkedToMultipleUpgrades() {
-        when(itemRepository.existsById("mat.wood")).thenReturn(false);
-        when(upgradeRepository.countByMaterialItemId("mat.wood")).thenReturn(2L);
-
-        assertThatThrownBy(() -> itemService.createItem(createRequest("mat.wood", null)))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("하나의 재료는 하나의 강화에만 연결되어야 합니다");
-    }
-
-    @Test
     @DisplayName("스킬 재료 아이템을 정상적으로 등록한다")
     void shouldCreateItemSuccessfully_withSkillTarget() {
         when(itemRepository.existsById("book.skill")).thenReturn(false);
@@ -139,7 +128,6 @@ class ItemServiceTest {
     @DisplayName("저장 시점에 유니크 제약이 깨지면 409 ITEM_DUPLICATED를 던진다")
     void shouldThrowConflict_whenSaveViolatesUniqueConstraint() {
         when(itemRepository.existsById("mat.wood")).thenReturn(false);
-        when(upgradeRepository.countByMaterialItemId("mat.wood")).thenReturn(0L);
         when(itemRepository.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException(""));
 
         assertStatus(
@@ -166,7 +154,6 @@ class ItemServiceTest {
     void shouldUpdateItemSuccessfully() {
         Item item = new Item("mat.wood", null);
         when(itemRepository.findById("mat.wood")).thenReturn(Optional.of(item));
-        when(upgradeRepository.countByMaterialItemId("mat.wood")).thenReturn(1L);
 
         ItemResponse response = itemService.updateItem("mat.wood", updateRequest(null));
 

@@ -44,7 +44,7 @@ public class ItemService {
         if (itemRepository.existsById(request.getItemId())) {
             throw ErrorCode.ITEM_DUPLICATED.exception(request.getItemId());
         }
-        validate(request.getItemId(), request.getTargetId());
+        validate(request.getTargetId());
 
         try {
             Item saved =
@@ -60,7 +60,7 @@ public class ItemService {
     @Transactional
     public ItemResponse updateItem(String id, ItemRequest request) {
         Item item = findItem(id);
-        validate(id, request.getTargetId());
+        validate(request.getTargetId());
 
         item.update(request.getTargetId());
         return ItemResponse.from(item);
@@ -86,11 +86,8 @@ public class ItemService {
                 .orElseThrow(() -> ErrorCode.ITEM_NOT_FOUND.exception(id));
     }
 
-    /**
-     * 스킬 재료면(targetId 있음) 해당 스킬이 있는지 확인하고, 장비 재료면(targetId 없음) 이 아이템을 재료로 쓰는 강화가 둘 이상이 아닌지(1재료-1장비)
-     * 확인한다.
-     */
-    private void validate(String itemId, String targetId) {
+    /** 스킬 재료(targetId 있음)면 해당 스킬이 있는지 확인한다. */
+    private void validate(String targetId) {
         if (targetId != null) {
             Long skillId;
             try {
@@ -102,8 +99,6 @@ public class ItemService {
             if (!skillRepository.existsById(skillId)) {
                 throw ErrorCode.ITEM_DATA_INVALID.exception("targetId에 해당하는 스킬이 없습니다: " + targetId);
             }
-        } else if (upgradeRepository.countByMaterialItemId(itemId) > 1) {
-            throw ErrorCode.ITEM_DATA_INVALID.exception("하나의 재료는 하나의 강화에만 연결되어야 합니다: " + itemId);
         }
     }
 }

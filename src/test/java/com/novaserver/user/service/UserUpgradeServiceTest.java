@@ -85,11 +85,13 @@ class UserUpgradeServiceTest {
     }
 
     @Test
-    @DisplayName("존재하지 않는 강화면 404를 던지고 재화·재료는 조회하지 않는다")
+    @DisplayName("존재하지 않는 강화면 404를 던지고 재료는 조회하지 않는다")
     void shouldThrowNotFound_whenUpgradeMissing() {
         when(userUpgradeRequestRepository.findByUserIdAndUpgradeIdAndCreateId(
                         USER_ID, UPGRADE_ID, CREATE_ID))
                 .thenReturn(Optional.empty());
+        when(walletRepository.findByUserIdForUpdate(USER_ID))
+                .thenReturn(Optional.of(new Wallet(mock(User.class), 0, 0)));
         when(upgradeService.findUpgrade(UPGRADE_ID))
                 .thenThrow(ErrorCode.UPGRADE_NOT_FOUND.exception(UPGRADE_ID));
 
@@ -98,16 +100,18 @@ class UserUpgradeServiceTest {
                 HttpStatus.NOT_FOUND,
                 ErrorCode.UPGRADE_NOT_FOUND,
                 UPGRADE_ID);
-        verifyNoInteractions(walletRepository, userItemRepository);
+        verifyNoInteractions(userItemRepository);
     }
 
     @Test
-    @DisplayName("이미 최대 레벨이면 409 UPGRADE_MAX_LEVEL을 던지고 재화·재료는 건드리지 않는다")
+    @DisplayName("이미 최대 레벨이면 409 UPGRADE_MAX_LEVEL을 던지고 재료는 건드리지 않는다")
     void shouldThrowConflict_whenAlreadyMaxLevel() {
         Upgrade upgrade = new Upgrade(UPGRADE_ID, 3, 1, null, 100, 10, null, null, null);
         when(userUpgradeRequestRepository.findByUserIdAndUpgradeIdAndCreateId(
                         USER_ID, UPGRADE_ID, CREATE_ID))
                 .thenReturn(Optional.empty());
+        when(walletRepository.findByUserIdForUpdate(USER_ID))
+                .thenReturn(Optional.of(new Wallet(mock(User.class), 0, 0)));
         when(upgradeService.findUpgrade(UPGRADE_ID)).thenReturn(upgrade);
         User user = mock(User.class);
         UserUpgrade userUpgrade = new UserUpgrade(user, upgrade, 3);
@@ -119,21 +123,23 @@ class UserUpgradeServiceTest {
                 HttpStatus.CONFLICT,
                 ErrorCode.UPGRADE_MAX_LEVEL,
                 UPGRADE_ID);
-        verifyNoInteractions(walletRepository, userItemRepository);
+        verifyNoInteractions(userItemRepository);
     }
 
     @Test
-    @DisplayName("유료 강화인데 지갑이 없으면 404 WALLET_NOT_FOUND를 던진다")
-    void shouldThrowNotFound_whenWalletMissingForPaidUpgrade() {
-        Upgrade upgrade = new Upgrade(UPGRADE_ID, 5, 1, null, 100, 10, null, null, null);
-        givenNoExistingRequestOrProgress(upgrade);
-        when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+    @DisplayName("지갑이 없으면 404 WALLET_NOT_FOUND를 던지고 강화 정보는 조회하지 않는다")
+    void shouldThrowNotFound_whenWalletMissing() {
+        when(userUpgradeRequestRepository.findByUserIdAndUpgradeIdAndCreateId(
+                        USER_ID, UPGRADE_ID, CREATE_ID))
+                .thenReturn(Optional.empty());
+        when(walletRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.empty());
 
         assertStatus(
                 () -> userUpgradeService.levelUp(USER_ID, request(UPGRADE_ID, CREATE_ID)),
                 HttpStatus.NOT_FOUND,
                 ErrorCode.WALLET_NOT_FOUND,
                 USER_ID);
+        verifyNoInteractions(upgradeService, userItemRepository);
     }
 
     @Test
@@ -142,7 +148,7 @@ class UserUpgradeServiceTest {
         Upgrade upgrade = new Upgrade(UPGRADE_ID, 5, 1, null, 100, 10, null, null, null);
         givenNoExistingRequestOrProgress(upgrade);
         User walletOwner = mock(User.class);
-        when(walletRepository.findByUserId(USER_ID))
+        when(walletRepository.findByUserIdForUpdate(USER_ID))
                 .thenReturn(Optional.of(new Wallet(walletOwner, 50, 0)));
 
         assertStatus(
@@ -159,6 +165,8 @@ class UserUpgradeServiceTest {
         Item material = new Item("mat.wood", null);
         Upgrade upgrade = new Upgrade(UPGRADE_ID, 5, 1, material, null, null, 3, 1, null);
         givenNoExistingRequestOrProgress(upgrade);
+        when(walletRepository.findByUserIdForUpdate(USER_ID))
+                .thenReturn(Optional.of(new Wallet(mock(User.class), 0, 0)));
         when(userItemRepository.findByUserIdAndItemId(USER_ID, "mat.wood"))
                 .thenReturn(Optional.empty());
 
@@ -175,6 +183,8 @@ class UserUpgradeServiceTest {
         Item material = new Item("mat.wood", null);
         Upgrade upgrade = new Upgrade(UPGRADE_ID, 5, 1, material, null, null, 3, 1, null);
         givenNoExistingRequestOrProgress(upgrade);
+        when(walletRepository.findByUserIdForUpdate(USER_ID))
+                .thenReturn(Optional.of(new Wallet(mock(User.class), 0, 0)));
         User itemOwner = mock(User.class);
         when(userItemRepository.findByUserIdAndItemId(USER_ID, "mat.wood"))
                 .thenReturn(Optional.of(new UserItem(itemOwner, material, 2)));
@@ -187,16 +197,19 @@ class UserUpgradeServiceTest {
     }
 
     @Test
-    @DisplayName("costBase가 없으면 지갑을 조회하지 않는다")
-    void shouldSkipWalletLookup_whenCostBaseNull() {
+    @DisplayName("costBase가 없으면 골드를 차감하지 않는다")
+    void shouldNotDeductGold_whenCostBaseNull() {
         Upgrade upgrade = new Upgrade(UPGRADE_ID, 5, 1, null, null, null, null, null, null);
         givenNoExistingRequestOrProgress(upgrade);
+        Wallet wallet = new Wallet(mock(User.class), 500, 0);
+        when(walletRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(wallet));
         when(userRepository.getReferenceById(USER_ID)).thenReturn(mock(User.class));
         when(userUpgradeRepository.save(any())).thenReturn(mock(UserUpgrade.class));
 
         userUpgradeService.levelUp(USER_ID, request(UPGRADE_ID, CREATE_ID));
 
-        verifyNoInteractions(walletRepository, userItemRepository);
+        assertThat(wallet.getGold()).isEqualTo(500);
+        verifyNoInteractions(userItemRepository);
     }
 
     @Test
@@ -205,7 +218,7 @@ class UserUpgradeServiceTest {
         Upgrade upgrade = new Upgrade(UPGRADE_ID, 5, 1, null, 100, 10, null, null, null);
         givenNoExistingRequestOrProgress(upgrade);
         User walletOwner = mock(User.class);
-        when(walletRepository.findByUserId(USER_ID))
+        when(walletRepository.findByUserIdForUpdate(USER_ID))
                 .thenReturn(Optional.of(new Wallet(walletOwner, 1000, 0)));
         when(userRepository.getReferenceById(USER_ID)).thenReturn(mock(User.class));
         when(userUpgradeRepository.save(any())).thenReturn(mock(UserUpgrade.class));
@@ -221,7 +234,7 @@ class UserUpgradeServiceTest {
         Upgrade upgrade = new Upgrade(UPGRADE_ID, 5, 1, null, 100, null, null, null, null);
         givenNoExistingRequestOrProgress(upgrade);
         Wallet wallet = new Wallet(mock(User.class), 150, 0);
-        when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+        when(walletRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(wallet));
         when(userRepository.getReferenceById(USER_ID)).thenReturn(mock(User.class));
         when(userUpgradeRepository.save(any())).thenReturn(mock(UserUpgrade.class));
 
@@ -238,7 +251,7 @@ class UserUpgradeServiceTest {
         givenNoExistingRequestOrProgress(upgrade);
 
         Wallet wallet = new Wallet(mock(User.class), 200, 0);
-        when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+        when(walletRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(wallet));
         UserItem userItem = new UserItem(mock(User.class), material, 10);
         when(userItemRepository.findByUserIdAndItemId(USER_ID, "mat.wood"))
                 .thenReturn(Optional.of(userItem));
@@ -279,7 +292,7 @@ class UserUpgradeServiceTest {
                 .thenReturn(Optional.of(existing));
 
         Wallet wallet = new Wallet(mock(User.class), 1000, 0);
-        when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+        when(walletRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(wallet));
         UserItem userItem = new UserItem(mock(User.class), material, 10);
         when(userItemRepository.findByUserIdAndItemId(USER_ID, "mat.wood"))
                 .thenReturn(Optional.of(userItem));
@@ -299,6 +312,8 @@ class UserUpgradeServiceTest {
     void shouldThrowConflict_whenRequestSaveRacesWithDuplicate() {
         Upgrade upgrade = new Upgrade(UPGRADE_ID, 5, 1, null, null, null, null, null, null);
         givenNoExistingRequestOrProgress(upgrade);
+        when(walletRepository.findByUserIdForUpdate(USER_ID))
+                .thenReturn(Optional.of(new Wallet(mock(User.class), 0, 0)));
         when(userRepository.getReferenceById(USER_ID)).thenReturn(mock(User.class));
         when(userUpgradeRepository.save(any())).thenReturn(mock(UserUpgrade.class));
         when(userUpgradeRequestRepository.saveAndFlush(any()))

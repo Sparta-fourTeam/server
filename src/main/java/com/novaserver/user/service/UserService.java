@@ -15,6 +15,7 @@ import com.novaserver.user.repository.UserRepository;
 import com.novaserver.user.repository.UserStageProgressRepository;
 import com.novaserver.user.repository.UserTutorialRepository;
 import com.novaserver.user.repository.UserUpgradeRepository;
+import com.novaserver.user.repository.UserUpgradeRequestRepository;
 import com.novaserver.user.repository.WalletRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -33,6 +34,7 @@ public class UserService {
     private final UserEnergyRepository userEnergyRepository;
     private final UserStageProgressRepository userStageProgressRepository;
     private final UserUpgradeRepository userUpgradeRepository;
+    private final UserUpgradeRequestRepository userUpgradeRequestRepository;
     private final UserItemRepository userItemRepository;
     private final UserCodexRepository userCodexRepository;
     private final UserTutorialRepository userTutorialRepository;
@@ -76,6 +78,7 @@ public class UserService {
         walletRepository.deleteByUserId(userId);
         userEnergyRepository.deleteByUserId(userId);
         userStageProgressRepository.deleteByUserId(userId);
+        userUpgradeRequestRepository.deleteByUserId(userId);
         userUpgradeRepository.deleteByUserId(userId);
         userItemRepository.deleteByUserId(userId);
         userCodexRepository.deleteByUserId(userId);
