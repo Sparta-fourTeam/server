@@ -6,9 +6,11 @@ import com.novaserver.upgrade.service.UpgradeService;
 import com.novaserver.user.dto.UserUpgradeCreateRequest;
 import com.novaserver.user.dto.UserUpgradeResponse;
 import com.novaserver.user.entity.User;
+import com.novaserver.user.entity.UserItem;
 import com.novaserver.user.entity.UserUpgrade;
 import com.novaserver.user.entity.UserUpgradeRequest;
 import com.novaserver.user.entity.Wallet;
+import com.novaserver.user.repository.UserItemRepository;
 import com.novaserver.user.repository.UserRepository;
 import com.novaserver.user.repository.UserUpgradeRepository;
 import com.novaserver.user.repository.UserUpgradeRequestRepository;
@@ -25,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserUpgradeService {
     private final UserRepository userRepository;
     private final WalletRepository walletRepository;
+    private final UserItemRepository userItemRepository;
     private final UserUpgradeRepository userUpgradeRepository;
     private final UserUpgradeRequestRepository userUpgradeRequestRepository;
     private final UpgradeService upgradeService;
@@ -67,6 +70,25 @@ public class UserUpgradeService {
             gold = cost;
         }
 
+        // 재료 차감
+        Integer material = null;
+        if (upgrade.getMaterialItem() != null && upgrade.getMaterialBase() != null) {
+            String materialItemId = upgrade.getMaterialItem().getItemId();
+            int materialStep = upgrade.getMaterialStep() == null ? 0 : upgrade.getMaterialStep();
+            int requiredQuantity = upgrade.getMaterialBase() + materialStep * currentLevel;
+            if (requiredQuantity > 0) {
+                UserItem userItem =
+                        userItemRepository
+                                .findByUserIdAndItemId(userId, materialItemId)
+                                .orElse(null);
+                if (userItem == null || userItem.getQuantity() < requiredQuantity) {
+                    throw ErrorCode.ITEM_QUANTITY_NOT_ENOUGH.exception(materialItemId);
+                }
+                userItem.useQuantity(requiredQuantity);
+            }
+            material = requiredQuantity;
+        }
+
         // 레벨 반영
         User user = userRepository.getReferenceById(userId);
         if (userUpgrade == null) {
@@ -77,7 +99,8 @@ public class UserUpgradeService {
 
         try {
             userUpgradeRequestRepository.saveAndFlush(
-                    new UserUpgradeRequest(user, upgrade, createId, userUpgrade.getLevel(), gold));
+                    new UserUpgradeRequest(
+                            user, upgrade, createId, userUpgrade.getLevel(), gold, material));
         } catch (DataIntegrityViolationException e) {
             throw ErrorCode.UPGRADE_REQUEST_DUPLICATED.exception(createId);
         }

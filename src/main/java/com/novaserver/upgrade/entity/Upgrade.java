@@ -1,8 +1,12 @@
 package com.novaserver.upgrade.entity;
 
+import com.novaserver.item.entity.Item;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.util.List;
 import lombok.AccessLevel;
@@ -27,7 +31,9 @@ public class Upgrade {
     @Column(nullable = false)
     private Integer unlockLevel;
 
-    private String materialItemId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "material_item_id")
+    private Item materialItem;
 
     private Integer costBase;
 
@@ -45,7 +51,7 @@ public class Upgrade {
             String upgradeId,
             Integer maxLevel,
             Integer unlockLevel,
-            String materialItemId,
+            Item materialItem,
             Integer costBase,
             Integer costStep,
             Integer materialBase,
@@ -55,7 +61,7 @@ public class Upgrade {
         update(
                 maxLevel,
                 unlockLevel,
-                materialItemId,
+                materialItem,
                 costBase,
                 costStep,
                 materialBase,
@@ -67,7 +73,7 @@ public class Upgrade {
     public void update(
             Integer maxLevel,
             Integer unlockLevel,
-            String materialItemId,
+            Item materialItem,
             Integer costBase,
             Integer costStep,
             Integer materialBase,
@@ -75,7 +81,7 @@ public class Upgrade {
             List<UpgradeEffect> effects) {
         this.maxLevel = maxLevel;
         this.unlockLevel = unlockLevel;
-        this.materialItemId = materialItemId;
+        this.materialItem = materialItem;
         this.costBase = costBase;
         this.costStep = costStep;
         this.materialBase = materialBase;

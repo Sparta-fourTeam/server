@@ -1,6 +1,8 @@
 package com.novaserver.upgrade.service;
 
 import com.novaserver.global.error.ErrorCode;
+import com.novaserver.item.entity.Item;
+import com.novaserver.item.repository.ItemRepository;
 import com.novaserver.upgrade.dto.UpgradeCreateRequest;
 import com.novaserver.upgrade.dto.UpgradeRequest;
 import com.novaserver.upgrade.dto.UpgradeResponse;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UpgradeService {
     private final UpgradeRepository upgradeRepository;
     private final UserUpgradeRepository userUpgradeRepository;
+    private final ItemRepository itemRepository;
 
     /** 강화 데이터를 전체 조회한다. 유니티와 관리자 목록에서 함께 쓴다. */
     @Transactional(readOnly = true)
@@ -44,6 +47,7 @@ public class UpgradeService {
             throw ErrorCode.UPGRADE_DUPLICATED.exception(request.getUpgradeId());
         }
         validate(request);
+        Item materialItem = findMaterialItem(request.getMaterialItemId());
 
         try {
             Upgrade saved =
@@ -52,7 +56,7 @@ public class UpgradeService {
                                     request.getUpgradeId(),
                                     request.getMaxLevel(),
                                     request.getUnlockLevel(),
-                                    request.getMaterialItemId(),
+                                    materialItem,
                                     request.getCostBase(),
                                     request.getCostStep(),
                                     request.getMaterialBase(),
@@ -69,11 +73,12 @@ public class UpgradeService {
     public UpgradeResponse updateUpgrade(String id, UpgradeRequest request) {
         Upgrade upgrade = findUpgrade(id);
         validate(request);
+        Item materialItem = findMaterialItem(request.getMaterialItemId());
 
         upgrade.update(
                 request.getMaxLevel(),
                 request.getUnlockLevel(),
-                request.getMaterialItemId(),
+                materialItem,
                 request.getCostBase(),
                 request.getCostStep(),
                 request.getMaterialBase(),
@@ -97,6 +102,16 @@ public class UpgradeService {
         return upgradeRepository
                 .findById(id)
                 .orElseThrow(() -> ErrorCode.UPGRADE_NOT_FOUND.exception(id));
+    }
+
+    /** 재료 아이템을 materialItemId로 찾는다. id가 없으면 null, 없는 id면 404를 던진다. */
+    private Item findMaterialItem(String materialItemId) {
+        if (materialItemId == null) {
+            return null;
+        }
+        return itemRepository
+                .findById(materialItemId)
+                .orElseThrow(() -> ErrorCode.ITEM_NOT_FOUND.exception(materialItemId));
     }
 
     /** 효과 값의 형태와 레벨별 배열의 길이가 올바른지 확인한다. */

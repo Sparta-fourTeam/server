@@ -66,12 +66,15 @@ public class ItemService {
         return ItemResponse.from(item);
     }
 
-    /** 아이템을 삭제한다. 유저가 이미 보유 중이면 409를 던진다. */
+    /** 아이템을 삭제한다. 유저가 이미 보유 중이거나 강화 재료로 쓰이고 있으면 409를 던진다. */
     @Transactional
     public void deleteItem(String id) {
         Item item = findItem(id);
         if (userItemRepository.existsByItemId(id)) {
             throw ErrorCode.ITEM_IN_USE.exception(id);
+        }
+        if (upgradeRepository.existsByMaterialItemId(id)) {
+            throw ErrorCode.ITEM_LINKED_TO_UPGRADE.exception(id);
         }
         itemRepository.delete(item);
     }

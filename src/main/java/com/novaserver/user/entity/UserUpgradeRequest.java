@@ -43,13 +43,21 @@ public class UserUpgradeRequest {
 
     private Integer goldSpent;
 
+    private Integer materialSpent;
+
     /** 레벨업 요청 결과를 기록한다. */
     public UserUpgradeRequest(
-            User user, Upgrade upgrade, String createId, Integer resultLevel, Integer goldSpent) {
+            User user,
+            Upgrade upgrade,
+            String createId,
+            Integer resultLevel,
+            Integer goldSpent,
+            Integer materialSpent) {
         this.user = user;
         this.upgrade = upgrade;
         this.createId = createId;
         this.resultLevel = resultLevel;
         this.goldSpent = goldSpent;
+        this.materialSpent = materialSpent;
     }
 }

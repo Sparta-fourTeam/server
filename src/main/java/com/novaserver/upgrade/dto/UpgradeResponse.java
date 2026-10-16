@@ -24,7 +24,7 @@ public record UpgradeResponse(
                 upgrade.getUpgradeId(),
                 upgrade.getMaxLevel(),
                 upgrade.getUnlockLevel(),
-                upgrade.getMaterialItemId(),
+                upgrade.getMaterialItem() == null ? null : upgrade.getMaterialItem().getItemId(),
                 upgrade.getCostBase(),
                 upgrade.getCostStep(),
                 upgrade.getMaterialBase(),
