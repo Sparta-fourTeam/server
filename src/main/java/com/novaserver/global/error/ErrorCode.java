@@ -99,6 +99,12 @@ public enum ErrorCode {
     SKILL_ELEMENT_DUPLICATED(HttpStatus.CONFLICT, "이미 있는 속성 이름입니다: %s"),
     SKILL_ELEMENT_IN_USE(HttpStatus.CONFLICT, "사용 중인 스킬이 있어 삭제할 수 없습니다: %s"),
 
+    // 강화
+    UPGRADE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 강화입니다: %s"),
+    UPGRADE_DUPLICATED(HttpStatus.CONFLICT, "이미 존재하는 강화 id입니다: %s"),
+    UPGRADE_IN_USE(HttpStatus.CONFLICT, "사용 중인 유저 강화가 있어 삭제할 수 없습니다: %s"),
+    UPGRADE_DATA_INVALID(HttpStatus.BAD_REQUEST, "강화 데이터가 올바르지 않습니다: %s"),
+
     // 유저
     USER_DATA_NOT_FOUND(HttpStatus.NOT_FOUND, "유저 데이터가 없습니다: %s"),
     WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "유저 지갑이 없습니다: %s"),

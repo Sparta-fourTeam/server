@@ -165,7 +165,7 @@ class UserServiceTest {
         stageProgress.updateClaimedRating(2);
 
         Upgrade upgrade = mock(Upgrade.class);
-        when(upgrade.getId()).thenReturn("atk");
+        when(upgrade.getUpgradeId()).thenReturn("atk");
         UserUpgrade userUpgrade = mock(UserUpgrade.class);
         when(userUpgrade.getUpgrade()).thenReturn(upgrade);
         when(userUpgrade.getLevel()).thenReturn(3);
