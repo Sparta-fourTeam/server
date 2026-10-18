@@ -1,6 +1,7 @@
 package com.novaserver.user.service;
 
 import com.novaserver.battle.repository.BattleRepository;
+import com.novaserver.battle.repository.BattleResultRepository;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.user.dto.UserDataResponse;
 import com.novaserver.user.entity.User;
@@ -43,6 +44,7 @@ public class UserService {
     private final UserCodexRepository userCodexRepository;
     private final UserTutorialRepository userTutorialRepository;
     private final BattleRepository battleRepository;
+    private final BattleResultRepository battleResultRepository;
 
     private final Clock clock;
 
@@ -77,6 +79,7 @@ public class UserService {
     /** 유저와 유저에 속한 모든 데이터를 삭제한다. */
     @Transactional
     public void deleteAccount(Long userId) {
+        userRepository.findByIdForUpdate(userId);
         userEnergyRecoveryReceiptRepository.deleteByUserId(userId);
         userEnergyPurchaseStateRepository.deleteByUserId(userId);
         userDataRepository.deleteByUserId(userId);
@@ -88,6 +91,8 @@ public class UserService {
         userItemRepository.deleteByUserId(userId);
         userCodexRepository.deleteByUserId(userId);
         userTutorialRepository.deleteByUserId(userId);
+        // 영수증 아이템 컬렉션도 JPA 생명주기로 함께 삭제한다.
+        battleResultRepository.deleteAll(battleResultRepository.findAllByUserId(userId));
         battleRepository.deleteById(userId);
         userRepository.deleteById(userId);
     }

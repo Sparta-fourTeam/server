@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -13,13 +14,16 @@ import static org.mockito.Mockito.when;
 
 import com.novaserver.battle.dto.BattleEndRequest;
 import com.novaserver.battle.dto.BattleResponse;
+import com.novaserver.battle.entity.BattleResult;
 import com.novaserver.battle.entity.BattleSession;
 import com.novaserver.battle.repository.BattleRepository;
+import com.novaserver.battle.repository.BattleResultRepository;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.stage.dto.ClearRewardResult;
 import com.novaserver.stage.entity.Stage;
 import com.novaserver.stage.service.StageRewardService;
 import com.novaserver.stage.service.StageService;
+import com.novaserver.user.entity.User;
 import com.novaserver.user.entity.UserStageProgress;
 import com.novaserver.user.repository.UserRepository;
 import com.novaserver.user.repository.UserStageProgressRepository;
@@ -30,6 +34,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -43,6 +48,7 @@ import org.springframework.web.server.ResponseStatusException;
 class BattleServiceTest {
 
     @Mock private BattleRepository battleRepository;
+    @Mock private BattleResultRepository results;
     @Mock private UserService userService;
     @Mock private UserRepository userRepository;
     @Mock private UserRewardService userRewardService;
@@ -52,6 +58,14 @@ class BattleServiceTest {
     @Spy private Clock clock = Clock.fixed(Instant.parse("2026-10-18T19:00:00Z"), ZoneOffset.UTC);
 
     @InjectMocks private BattleService battleService;
+
+    @BeforeEach
+    void accountExists() {
+        lenient()
+                .when(userRepository.findByIdForUpdate(1L))
+                .thenReturn(Optional.of(mock(User.class)));
+        lenient().when(results.saveAndFlush(any())).thenAnswer(call -> call.getArgument(0));
+    }
 
     private static BattleEndRequest endRequest(String battleId, int clearedWave, int rating) {
         BattleEndRequest request = new BattleEndRequest();
@@ -135,7 +149,10 @@ class BattleServiceTest {
         UserStageProgress progress = new UserStageProgress(null, stage);
         when(userStageProgressRepository.save(any())).thenReturn(progress);
 
-        battleService.endBattle(1L, endRequest("battle-1", 10, 3));
+        var result = battleService.endBattle(1L, endRequest("battle-1", 10, 3));
+        assertThat(result.exp()).isEqualTo(100);
+        assertThat(result.items()).containsEntry("mat.wood", 5);
+        assertThat(result.completedAt()).isEqualTo(clock.instant());
 
         verify(userRewardService).grant(1L, 100, 50, Map.of("mat.wood", 5));
         assertThat(progress.getClearRating()).isEqualTo(3);
@@ -159,5 +176,22 @@ class BattleServiceTest {
         assertThatThrownBy(() -> battleService.endBattle(1L, endRequest("wrong-id", 10, 3)))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("배틀 ID가 일치하지 않습니다");
+    }
+
+    @Test
+    void replaysReceiptWithoutRecalculatingRewardsOrRequiringActiveSession() {
+        var request = endRequest("finished", 10, 3);
+        var reward = new ClearRewardResult(13, 17, Map.of("mat.saved", 9));
+        final var receipt = new BattleResult(1L, request, reward, 3, clock.instant());
+        when(results.findByUserIdAndBattleId(1L, "finished")).thenReturn(Optional.of(receipt));
+        var response = battleService.endBattle(1L, request);
+        assertThat(response.gold()).isEqualTo(17);
+        assertThat(response.items()).containsExactlyEntriesOf(Map.of("mat.saved", 9));
+        verify(userRewardService, never()).grant(any(), anyInt(), anyInt(), any());
+        verify(stageRewardService, never()).calculateClearReward(any(), anyInt(), anyInt());
+        verify(battleRepository, never()).findById(any());
+        assertThatThrownBy(() -> battleService.endBattle(1L, endRequest("finished", 9, 3)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("이미 확정한 전투 결과");
     }
 }

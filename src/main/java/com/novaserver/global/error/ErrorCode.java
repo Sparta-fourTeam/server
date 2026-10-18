@@ -32,6 +32,8 @@ public enum ErrorCode {
 
     // 배틀
     BATTLE_NOT_FOUND(HttpStatus.NOT_FOUND, "진행 중인 배틀이 없습니다"),
+    BATTLE_REWARD_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "전투 보상 기준 데이터가 올바르지 않습니다"),
+    BATTLE_RESULT_CONFLICT(HttpStatus.CONFLICT, "이미 확정한 전투 결과와 요청 내용이 다릅니다"),
     BATTLE_ID_MISMATCH(HttpStatus.BAD_REQUEST, "배틀 ID가 일치하지 않습니다"),
 
     // 스킬 시전 방식

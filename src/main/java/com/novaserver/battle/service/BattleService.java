@@ -2,8 +2,11 @@ package com.novaserver.battle.service;
 
 import com.novaserver.battle.dto.BattleEndRequest;
 import com.novaserver.battle.dto.BattleResponse;
+import com.novaserver.battle.dto.BattleResultResponse;
+import com.novaserver.battle.entity.BattleResult;
 import com.novaserver.battle.entity.BattleSession;
 import com.novaserver.battle.repository.BattleRepository;
+import com.novaserver.battle.repository.BattleResultRepository;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.stage.dto.ClearRewardResult;
 import com.novaserver.stage.entity.Stage;
@@ -16,9 +19,11 @@ import com.novaserver.user.repository.UserStageProgressRepository;
 import com.novaserver.user.service.UserRewardService;
 import com.novaserver.user.service.UserService;
 import java.time.Clock;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 /** 배틀ID 발급 및 확인 후 삭제 로직. */
@@ -35,6 +40,7 @@ public class BattleService {
     private final StageService stageService;
 
     private final BattleRepository battleRepository;
+    private final BattleResultRepository results;
     private final Clock clock;
 
     /**
@@ -44,8 +50,9 @@ public class BattleService {
      * @param createId 클라이언트가 발급 요청마다 보내는 멱등성 키
      * @return 발급된(또는 기존) 배틀 ID
      */
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public BattleResponse createBattle(Long userId, String createId) {
+        lockUser(userId);
         return battleRepository
                 .findById(userId)
                 .filter(session -> session.getCreateId().equals(createId))
@@ -70,6 +77,7 @@ public class BattleService {
      */
     @Transactional
     public void cancelBattle(Long userId, String battleId) {
+        lockUser(userId);
         int deleted = battleRepository.deleteByUserIdAndBattleId(userId, battleId);
         if (deleted == 0) {
             if (!battleRepository.existsById(userId)) {
@@ -79,15 +87,18 @@ public class BattleService {
         }
     }
 
-    /**
-     * 배틀 ID가 일치하면 배틀 세션을 먼저 삭제해 선점한 뒤, 기본 보상(경험치·골드·아이템)을 지급하고 스테이지 클리어 등급을 갱신한다. 같은 배틀을 동시에 두 번 종료
-     * 요청해도 삭제에 성공한 요청만 보상을 받는다. 배틀을 포기(cancel)하면 이 메서드를 거치지 않으므로 보상을 받지 못한다.
-     *
-     * @param userId 유저 ID
-     * @param request 종료할 배틀 ID와 이번 배틀의 클리어 결과
-     */
-    @Transactional
-    public void endBattle(Long userId, BattleEndRequest request) {
+    /** 보상·진척·최초 확정 영수증을 함께 저장하고 동일 결과 재요청은 재지급 없이 복원한다. */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public BattleResultResponse endBattle(Long userId, BattleEndRequest request) {
+        // 시작·취소·종료를 같은 계정 잠금으로 직렬화한다. 잠금 획득 후 최신 완료 기록을 읽는다.
+        lockUser(userId);
+        var prior = results.findByUserIdAndBattleId(userId, request.getBattleId());
+        if (prior.isPresent()) {
+            if (!prior.get().matches(request)) {
+                throw ErrorCode.BATTLE_RESULT_CONFLICT.exception();
+            }
+            return BattleResultResponse.from(prior.get());
+        }
         BattleSession session =
                 battleRepository
                         .findById(userId)
@@ -95,18 +106,25 @@ public class BattleService {
         if (!session.getBattleId().equals(request.getBattleId())) {
             throw ErrorCode.BATTLE_ID_MISMATCH.exception();
         }
-
         int deleted = battleRepository.deleteByUserIdAndBattleId(userId, request.getBattleId());
         if (deleted == 0) {
-            // 동시에 들어온 다른 종료 요청이 이미 세션을 선점해 삭제했다.
             throw ErrorCode.BATTLE_NOT_FOUND.exception();
         }
-
         ClearRewardResult reward =
                 stageRewardService.calculateClearReward(
                         request.getStageId(), request.getClearedWave(), request.getRating());
+        if (reward.exp() < 0
+                || reward.gold() < 0
+                || reward.items() == null
+                || reward.items().entrySet().stream()
+                        .anyMatch(
+                                item ->
+                                        item.getKey() == null
+                                                || item.getValue() == null
+                                                || item.getValue() <= 0)) {
+            throw ErrorCode.BATTLE_REWARD_UNAVAILABLE.exception();
+        }
         userRewardService.grant(userId, reward.exp(), reward.gold(), reward.items());
-
         UserStageProgress progress =
                 userStageProgressRepository
                         .findByUserIdAndStageId(userId, request.getStageId())
@@ -118,5 +136,20 @@ public class BattleService {
                                             new UserStageProgress(user, stage));
                                 });
         progress.updateClearRating(request.getRating());
+        BattleResult result =
+                results.saveAndFlush(
+                        new BattleResult(
+                                userId,
+                                request,
+                                reward,
+                                progress.getClearRating(),
+                                clock.instant().truncatedTo(ChronoUnit.MICROS)));
+        return BattleResultResponse.from(result);
+    }
+
+    private void lockUser(Long userId) {
+        userRepository
+                .findByIdForUpdate(userId)
+                .orElseThrow(() -> ErrorCode.ACCOUNT_DELETED.exception());
     }
 }
