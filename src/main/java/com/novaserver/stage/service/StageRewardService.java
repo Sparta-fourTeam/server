@@ -117,10 +117,8 @@ public class StageRewardService {
             throw ErrorCode.BATTLE_REWARD_UNAVAILABLE.exception();
         }
         try {
-            int exp = clearedWave >= 1 ? reward.getBaseExp() : 0;
-            if (rating == 3) {
-                exp = Math.addExact(exp, reward.getThreeStarBonusExp());
-            }
+            int bonusExp = rating == 3 ? reward.getThreeStarBonusExp() : 0;
+            int exp = Math.addExact(clearedWave >= 1 ? reward.getBaseExp() : 0, bonusExp);
             int gold = coinSchedule.amount(clearedWave, reward.getFinalCoin());
             List<String> itemIds = reward.getItems().stream().map(StageRewardItem::itemId).toList();
             Map<String, Item> catalogItems =
@@ -143,7 +141,7 @@ public class StageRewardService {
                     items.put(item.itemId(), amount);
                 }
             }
-            return new ClearRewardResult(exp, gold, items);
+            return new ClearRewardResult(exp, gold, items, bonusExp);
         } catch (ArithmeticException error) {
             throw ErrorCode.BATTLE_REWARD_UNAVAILABLE.exception();
         }

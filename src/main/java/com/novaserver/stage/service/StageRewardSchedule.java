@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 
 /** 수치를 직접 보관하지 않는 지급 일정 계산 모델. 값은 RewardRules 기준 데이터로 받는다. */
 public record StageRewardSchedule(
-        @NotNull @Schema(description = "시작 지급량. 0도 명시") Integer start,
+        @NotNull @Schema(description = "참가 시 확보하는 기본 보상. 완료 0웨이브에도 지급. 0도 명시") Integer start,
         @NotNull @Schema(description = "완료 웨이브당 증가량. 0도 명시") Integer perWave,
         @NotNull @Schema(description = "총량과 기본 누적의 차액을 지급할 웨이브, 1~20") Integer bonusWave) {
     public static final int WAVE_COUNT = 20;
@@ -27,11 +27,8 @@ public record StageRewardSchedule(
         return Math.addExact(start, Math.multiplyExact(perWave, WAVE_COUNT));
     }
 
-    /** 완료한 웨이브가 없으면 지급하지 않는다. */
+    /** 참가 시 기본량을 확보하고 완료 웨이브에 따라 누적한다. 0웨이브도 기본량을 지급한다. */
     public int amount(int completedWaves, int finalAmount) {
-        if (completedWaves == 0) {
-            return 0;
-        }
         return Math.addExact(
                 Math.addExact(start, Math.multiplyExact(perWave, completedWaves)),
                 completedWaves >= bonusWave ? finalAmount - minimumFinal() : 0);

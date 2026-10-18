@@ -41,6 +41,9 @@ public class BattleResult {
     private int exp;
 
     @Column(nullable = false)
+    private int threeStarBonusExp;
+
+    @Column(nullable = false)
     private int gold;
 
     @Column(nullable = false)
@@ -68,6 +71,7 @@ public class BattleResult {
         this.clearedWave = request.getClearedWave();
         this.rating = request.getRating();
         this.exp = reward.exp();
+        this.threeStarBonusExp = reward.threeStarBonusExp();
         this.gold = reward.gold();
         this.items.putAll(reward.items());
         this.clearRating = clearRating;
