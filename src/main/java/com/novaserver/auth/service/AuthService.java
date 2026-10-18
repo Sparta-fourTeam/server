@@ -11,6 +11,7 @@ import com.novaserver.auth.repository.RefreshTokenRepository;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.auth.social.SocialTokenVerifier;
 import com.novaserver.global.error.ErrorCode;
+import com.novaserver.quest.service.UserQuestService;
 import com.novaserver.user.Provider;
 import com.novaserver.user.Role;
 import com.novaserver.user.entity.User;
@@ -24,6 +25,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -34,6 +36,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final UserService userService;
+    private final UserQuestService quests;
     private final JwtProvider jwtProvider;
     private final RefreshTokenRepository refreshTokenRepository;
     private final TokenBlocklistRepository tokenBlocklistRepository;
@@ -61,7 +64,7 @@ public class AuthService {
      * @throws org.springframework.web.server.ResponseStatusException UUID 형식이 아니면 INVALID_REQUEST,
      *     일치하는 게스트가 없으면 INVALID_GUEST_ID
      */
-    @Transactional(readOnly = true)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public TokenResponse guestLogIn(String guestId) {
         String hashed = hash(parseUuid(guestId).toString());
         User user =
@@ -128,6 +131,9 @@ public class AuthService {
     }
 
     private TokenResponse issueTokens(Long userId, ClientType clientType, Role role) {
+        if (clientType == ClientType.GAME) {
+            quests.recordLogin(userId);
+        }
         String access = jwtProvider.createAccessToken(userId, clientType, role);
         IssuedToken refresh = jwtProvider.createRefreshToken(userId, clientType, role);
         refreshTokenRepository.save(userId, clientType, refresh.tokenId());

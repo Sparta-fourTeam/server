@@ -51,6 +51,11 @@ public class Wallet {
         this.gem -= amount;
     }
 
+    /** 검증한 젬 보상을 지급한다. */
+    public void addGem(int amount) {
+        this.gem += amount;
+    }
+
     /** 골드를 지급한다. */
     public void addGold(int amount) {
         this.gold += amount;

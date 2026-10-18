@@ -23,6 +23,7 @@ import com.novaserver.auth.repository.RefreshTokenRepository;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.auth.social.SocialTokenVerifier;
 import com.novaserver.global.error.ErrorCode;
+import com.novaserver.quest.service.UserQuestService;
 import com.novaserver.user.Provider;
 import com.novaserver.user.Role;
 import com.novaserver.user.entity.User;
@@ -58,6 +59,7 @@ class AuthServiceTest {
 
     @Mock private UserRepository userRepository;
     @Mock private UserService userService;
+    @Mock private UserQuestService quests;
     @Mock private JwtProvider jwtProvider;
     @Mock private RefreshTokenRepository refreshTokenRepository;
     @Mock private TokenBlocklistRepository tokenBlocklistRepository;

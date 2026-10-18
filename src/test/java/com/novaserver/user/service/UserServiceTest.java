@@ -12,6 +12,9 @@ import com.novaserver.battle.repository.BattleResultRepository;
 import com.novaserver.condex.entity.Codex;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.item.entity.Item;
+import com.novaserver.quest.repository.UserQuestClaimRepository;
+import com.novaserver.quest.repository.UserQuestPeriodRepository;
+import com.novaserver.quest.service.UserQuestService;
 import com.novaserver.stage.entity.Stage;
 import com.novaserver.tutorial.entity.Tutorials;
 import com.novaserver.upgrade.entity.Upgrade;
@@ -77,6 +80,9 @@ class UserServiceTest {
     @Mock private BattleRepository battleRepository;
     @Mock private BattleResultRepository battleResultRepository;
     @Mock private StageRatingClaimRepository stageRatingClaims;
+    @Mock private UserQuestService quests;
+    @Mock private UserQuestPeriodRepository questPeriods;
+    @Mock private UserQuestClaimRepository questClaims;
 
     private UserService userService;
 
@@ -102,7 +108,10 @@ class UserServiceTest {
                         battleRepository,
                         battleResultRepository,
                         stageRatingClaims,
-                        clock);
+                        clock,
+                        quests,
+                        questPeriods,
+                        questClaims);
     }
 
     @Test

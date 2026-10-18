@@ -12,10 +12,14 @@ public record RewardDefinitionResponse(
         int gold,
         Map<String, Integer> items,
         @Schema(description = "이 묶음 편집의 영향을 받는 레이팅 보상 수") long ratingReferences,
-        @Schema(description = "이 묶음 편집의 영향을 받는 튜토리얼 수") long tutorialReferences) {
+        @Schema(description = "이 묶음 편집의 영향을 받는 튜토리얼 수") long tutorialReferences,
+        @Schema(description = "이 묶음 편집의 영향을 받는 퀘스트 상자 수") long questChestReferences) {
     /** 엔티티를 고정 보상 응답으로 변환한다. */
     public static RewardDefinitionResponse from(
-            RewardDefinition definition, long references, long tutorialReferences) {
+            RewardDefinition definition,
+            long references,
+            long tutorialReferences,
+            long questChestReferences) {
         return new RewardDefinitionResponse(
                 definition.getId(),
                 definition.getName(),
@@ -23,6 +27,7 @@ public record RewardDefinitionResponse(
                 definition.getGold(),
                 definition.itemAmounts(),
                 references,
-                tutorialReferences);
+                tutorialReferences,
+                questChestReferences);
     }
 }

@@ -3,6 +3,7 @@ package com.novaserver.reward.service;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
+import com.novaserver.quest.repository.QuestChestRepository;
 import com.novaserver.reward.dto.RewardDefinitionRequest;
 import com.novaserver.reward.dto.RewardDefinitionResponse;
 import com.novaserver.reward.entity.RewardDefinition;
@@ -27,6 +28,7 @@ public class RewardDefinitionService {
     private final StageRatingRewardRepository ratings;
     private final RewardRulesService referenceLocks;
     private final TutorialRepository tutorials;
+    private final QuestChestRepository questChests;
 
     /** 전체 묶음과 참조 수를 일괄 조회한다. */
     @Transactional(readOnly = true)
@@ -45,13 +47,20 @@ public class RewardDefinitionService {
                                 Collectors.toMap(
                                         TutorialRepository.DefinitionUsage::getDefinitionId,
                                         TutorialRepository.DefinitionUsage::getReferenceCount));
+        var questUsage =
+                questChests.findDefinitionUsage().stream()
+                        .collect(
+                                Collectors.toMap(
+                                        QuestChestRepository.DefinitionUsage::getDefinitionId,
+                                        QuestChestRepository.DefinitionUsage::getReferenceCount));
         return definitions.findAll().stream()
                 .map(
                         definition ->
                                 RewardDefinitionResponse.from(
                                         definition,
                                         usage.getOrDefault(definition.getId(), 0L),
-                                        tutorialUsage.getOrDefault(definition.getId(), 0L)))
+                                        tutorialUsage.getOrDefault(definition.getId(), 0L),
+                                        questUsage.getOrDefault(definition.getId(), 0L)))
                 .toList();
     }
 
@@ -96,7 +105,8 @@ public class RewardDefinitionService {
         referenceLocks.lockItemReferences();
         var definition = findDefinition(id);
         if (ratings.countByRewardDefinitionId(id) > 0
-                || tutorials.countByRewardDefinitionId(id) > 0) {
+                || tutorials.countByRewardDefinitionId(id) > 0
+                || questChests.countByRewardDefinitionId(id) > 0) {
             throw ErrorCode.REWARD_DEFINITION_IN_USE.exception(id);
         }
         definitions.delete(definition);
@@ -114,7 +124,8 @@ public class RewardDefinitionService {
         return RewardDefinitionResponse.from(
                 definition,
                 ratings.countByRewardDefinitionId(definition.getId()),
-                tutorials.countByRewardDefinitionId(definition.getId()));
+                tutorials.countByRewardDefinitionId(definition.getId()),
+                questChests.countByRewardDefinitionId(definition.getId()));
     }
 
     private Map<Item, Integer> validate(RewardDefinitionRequest request) {

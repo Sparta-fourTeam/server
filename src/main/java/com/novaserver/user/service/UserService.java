@@ -3,6 +3,9 @@ package com.novaserver.user.service;
 import com.novaserver.battle.repository.BattleRepository;
 import com.novaserver.battle.repository.BattleResultRepository;
 import com.novaserver.global.error.ErrorCode;
+import com.novaserver.quest.repository.UserQuestClaimRepository;
+import com.novaserver.quest.repository.UserQuestPeriodRepository;
+import com.novaserver.quest.service.UserQuestService;
 import com.novaserver.user.dto.UserDataResponse;
 import com.novaserver.user.entity.User;
 import com.novaserver.user.entity.UserData;
@@ -26,6 +29,7 @@ import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 /** 유저 상태 조회 관련 API. */
@@ -49,6 +53,9 @@ public class UserService {
     private final StageRatingClaimRepository stageRatingClaims;
 
     private final Clock clock;
+    private final UserQuestService quests;
+    private final UserQuestPeriodRepository questPeriods;
+    private final UserQuestClaimRepository questClaims;
 
     /** 가입 직후 유저의 기본 상태(경험치·재화는 0, 에너지는 최대치)를 만든다. */
     @Transactional
@@ -59,12 +66,18 @@ public class UserService {
     }
 
     /** 토큰의 유저 id로 유저 상태 정보를 조회한다. */
-    @Transactional(readOnly = true)
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     public UserDataResponse getMe(Long userId) {
+        var questSnapshot = quests.snapshot(userId);
         UserData userData = findUserData(userId);
         Wallet wallet = findWallet(userId);
-        UserEnergy energy = findEnergy(userId);
-
+        UserEnergy storedEnergy = findEnergy(userId);
+        // 조회 응답용 자연회복만 계산한다. 잠금 없이 읽은 저장 에너지를 dirty checking으로 덮어쓰지 않는다.
+        UserEnergy energy =
+                new UserEnergy(
+                        storedEnergy.getUser(),
+                        storedEnergy.getEnergyStored(),
+                        storedEnergy.getEnergyUpdatedAt());
         energy.recover(clock.instant());
 
         return UserDataResponse.of(
@@ -75,13 +88,16 @@ public class UserService {
                 userUpgradeRepository.findByUserId(userId),
                 userItemRepository.findByUserId(userId),
                 userCodexRepository.findByUserId(userId),
-                userTutorialRepository.findByUserId(userId));
+                userTutorialRepository.findByUserId(userId),
+                questSnapshot);
     }
 
     /** 유저와 유저에 속한 모든 데이터를 삭제한다. */
     @Transactional
     public void deleteAccount(Long userId) {
         userRepository.findByIdForUpdate(userId);
+        questClaims.deleteByUserId(userId);
+        questPeriods.deleteByUserId(userId);
         stageRatingClaims.deleteByUserId(userId);
         userEnergyRecoveryReceiptRepository.deleteByUserId(userId);
         userEnergyPurchaseStateRepository.deleteByUserId(userId);
