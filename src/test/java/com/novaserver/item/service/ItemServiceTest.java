@@ -139,6 +139,14 @@ class ItemServiceTest {
     }
 
     @Test
+    void numericEquipmentTargetCanBeRegistered() {
+        when(upgradeRepository.existsById("42")).thenReturn(true);
+        when(itemRepository.saveAndFlush(any())).thenReturn(new Item("fixture.numeric", "42"));
+        assertThat(itemService.createItem(createRequest("fixture.numeric", "42")).targetId())
+                .isEqualTo("42");
+    }
+
+    @Test
     @DisplayName("저장 시점에 유니크 제약이 깨지면 409 ITEM_DUPLICATED를 던진다")
     void shouldThrowConflict_whenSaveViolatesUniqueConstraint() {
         when(itemRepository.existsById("mat.wood")).thenReturn(false);

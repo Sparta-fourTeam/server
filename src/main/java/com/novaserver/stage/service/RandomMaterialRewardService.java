@@ -113,12 +113,21 @@ public class RandomMaterialRewardService {
                     (id, target) ->
                             unlockLevels.put(id, skillLevels.get(Long.valueOf(target).toString())));
         } else if (kind.equals("EquipmentMaterial")) {
+            var linkedLevels =
+                    skills.findUpgradeUnlockLevels().stream()
+                            .collect(
+                                    Collectors.toMap(
+                                            SkillRepository.UpgradeUnlock::getProgressionId,
+                                            SkillRepository.UpgradeUnlock::getUnlockLevel));
             var equipmentLevels =
                     upgrades.findAllById(targets.values()).stream()
                             .collect(
                                     Collectors.toMap(
                                             upgrade -> upgrade.getUpgradeId(),
-                                            upgrade -> upgrade.getUnlockLevel()));
+                                            upgrade ->
+                                                    linkedLevels.getOrDefault(
+                                                            upgrade.getUpgradeId(),
+                                                            upgrade.getUnlockLevel())));
             unlockLevels = new HashMap<>();
             targets.forEach((id, target) -> unlockLevels.put(id, equipmentLevels.get(target)));
         } else {

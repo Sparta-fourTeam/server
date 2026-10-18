@@ -91,20 +91,17 @@ public class ItemService {
 
     /** 재료의 대상 스킬 또는 장비 강화가 있는지 확인한다. */
     private void validate(String targetId) {
-        if (targetId != null) {
-            Long skillId;
-            try {
-                skillId = Long.valueOf(targetId);
-            } catch (NumberFormatException e) {
-                if (!upgradeRepository.existsById(targetId)) {
-                    throw ErrorCode.ITEM_DATA_INVALID.exception(
-                            "targetId에 해당하는 스킬 또는 장비 강화가 없습니다: " + targetId);
-                }
+        if (targetId == null || upgradeRepository.existsById(targetId)) {
+            return;
+        }
+        try {
+            if (skillRepository.existsById(Long.valueOf(targetId))) {
                 return;
             }
-            if (!skillRepository.existsById(skillId)) {
-                throw ErrorCode.ITEM_DATA_INVALID.exception("targetId에 해당하는 스킬이 없습니다: " + targetId);
-            }
+        } catch (NumberFormatException e) {
+            throw ErrorCode.ITEM_DATA_INVALID.exception(
+                    "targetId에 해당하는 스킬 또는 장비 강화가 없습니다: " + targetId);
         }
+        throw ErrorCode.ITEM_DATA_INVALID.exception("targetId에 해당하는 스킬이 없습니다: " + targetId);
     }
 }
