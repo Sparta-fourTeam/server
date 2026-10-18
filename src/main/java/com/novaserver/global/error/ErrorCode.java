@@ -172,6 +172,14 @@ public enum ErrorCode {
     WALLET_GOLD_NOT_ENOUGH(HttpStatus.CONFLICT, "골드가 부족합니다: %s"),
     ENERGY_NOT_FOUND(HttpStatus.NOT_FOUND, "유저 에너지가 없습니다: %s"),
 
+    // 퀘스트
+    QUEST_INVALID(HttpStatus.BAD_REQUEST, "퀘스트 입력이나 정의가 올바르지 않습니다"),
+    QUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 퀘스트/상자입니다: %s"),
+    QUEST_NOT_COMPLETE(HttpStatus.CONFLICT, "퀘스트 목표나 수령 점수가 부족합니다"),
+    QUEST_PERIOD_EXPIRED(HttpStatus.CONFLICT, "현재 서버 기간이 아닙니다. 다시 조회하세요"),
+    QUEST_IN_USE(HttpStatus.CONFLICT, "수령 이력이 있는 정의는 새 ID로 등록해야 합니다"),
+    REWARD_GEM_OVERFLOW(HttpStatus.CONFLICT, "보상 젬이 저장 범위를 초과합니다"),
+
     // 에너지
     INSUFFICIENT_ENERGY(HttpStatus.CONFLICT, "해당 유저의 에너지가 부족합니다."),
     ENERGY_LOCK_CONFLICT(HttpStatus.CONFLICT, "잠시 후 다시 시도해주세요."),

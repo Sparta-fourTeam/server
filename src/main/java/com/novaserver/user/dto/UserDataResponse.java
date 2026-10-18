@@ -1,5 +1,6 @@
 package com.novaserver.user.dto;
 
+import com.novaserver.quest.dto.QuestBoardResponse;
 import com.novaserver.tutorial.dto.TutorialStateResponse;
 import com.novaserver.user.entity.UserCodex;
 import com.novaserver.user.entity.UserData;
@@ -53,6 +54,9 @@ public class UserDataResponse {
     @Schema(description = "튜토리얼별 대사 시청·완료·보상 수령 상태. 대사 본문은 포함하지 않음")
     private final List<TutorialStateResponse> tutorialStates;
 
+    @Schema(description = "현재 서버 일일·주간 퀘스트 진행·수령·상자 상태")
+    private final List<QuestBoardResponse> quests;
+
     /** 유저의 상태 엔티티들을 하나의 응답으로 합친다. */
     public static UserDataResponse of(
             UserData userData,
@@ -62,7 +66,8 @@ public class UserDataResponse {
             List<UserUpgrade> upgrades,
             List<UserItem> items,
             List<UserCodex> codex,
-            List<UserTutorial> tutorials) {
+            List<UserTutorial> tutorials,
+            List<QuestBoardResponse> quests) {
         return new UserDataResponse(
                 wallet.getGold(),
                 wallet.getGem(),
@@ -74,6 +79,7 @@ public class UserDataResponse {
                 items.stream().map(UserItemResponse::from).toList(),
                 codex.stream().map(UserCodexResponse::from).toList(),
                 tutorials.stream().flatMap(ut -> ut.recordedIds().stream()).toList(),
-                tutorials.stream().map(TutorialStateResponse::from).toList());
+                tutorials.stream().map(TutorialStateResponse::from).toList(),
+                quests);
     }
 }

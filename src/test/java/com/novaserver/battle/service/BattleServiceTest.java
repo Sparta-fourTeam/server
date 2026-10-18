@@ -19,6 +19,7 @@ import com.novaserver.battle.entity.BattleSession;
 import com.novaserver.battle.repository.BattleRepository;
 import com.novaserver.battle.repository.BattleResultRepository;
 import com.novaserver.global.error.ErrorCode;
+import com.novaserver.quest.service.UserQuestService;
 import com.novaserver.stage.dto.ClearRewardResult;
 import com.novaserver.stage.entity.Stage;
 import com.novaserver.stage.service.StageRewardService;
@@ -50,6 +51,7 @@ class BattleServiceTest {
     @Mock private BattleRepository battleRepository;
     @Mock private BattleResultRepository results;
     @Mock private UserService userService;
+    @Mock private UserQuestService quests;
     @Mock private UserRepository userRepository;
     @Mock private UserRewardService userRewardService;
     @Mock private UserStageProgressRepository userStageProgressRepository;

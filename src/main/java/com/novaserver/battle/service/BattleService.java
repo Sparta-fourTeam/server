@@ -8,6 +8,7 @@ import com.novaserver.battle.entity.BattleSession;
 import com.novaserver.battle.repository.BattleRepository;
 import com.novaserver.battle.repository.BattleResultRepository;
 import com.novaserver.global.error.ErrorCode;
+import com.novaserver.quest.service.UserQuestService;
 import com.novaserver.stage.dto.ClearRewardResult;
 import com.novaserver.stage.entity.Stage;
 import com.novaserver.stage.service.StageRewardService;
@@ -42,6 +43,7 @@ public class BattleService {
     private final BattleRepository battleRepository;
     private final BattleResultRepository results;
     private final Clock clock;
+    private final UserQuestService quests;
 
     /**
      * 유저에게 새 배틀 ID를 발급한다. 같은 멱등성 키로 이미 발급받은 배틀이 있으면 기존 ID를 그대로 돌려주고, 그렇지 않으면 에너지를 소모하고 새 ID로 덮어쓴다.
@@ -65,6 +67,7 @@ public class BattleService {
 
         String battleId = UUID.randomUUID().toString();
         battleRepository.upsert(userId, battleId, createId, clock.instant());
+        quests.recordBattleEnergy(userId, BATTLE_ENERGY_COST);
 
         return new BattleResponse(battleId);
     }
