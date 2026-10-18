@@ -167,13 +167,13 @@ public class MonsterCatalog {
                     number(p, "Duration", 0, true);
                 }
                 if (trigger.equals("OnHit")) {
-                    chance(p);
+                    chance(p, true);
                 }
                 statuses(p, false);
             }
             case "Evade" -> {
                 fields(p, Set.of("Kind", "Chance"));
-                chance(p);
+                chance(p, true);
             }
             case "LowHp" -> {
                 fields(
@@ -220,13 +220,15 @@ public class MonsterCatalog {
                 if (speed != 1) {
                     number(p, "Duration", 0, false);
                 }
-                chance(p);
-                if (p.has("Element")
-                        && !p.get("Element").isNull()
-                        && !p.get("Element").asText().isEmpty()) {
-                    require(
-                            ELEMENTS.contains(string(p, "Element")),
-                            "HealOnHit Element가 잘못되었습니다: " + id);
+                chance(p, false);
+                if (p.has("Element") && !p.get("Element").isNull()) {
+                    JsonNode element = p.get("Element");
+                    require(element.isTextual(), "HealOnHit Element가 잘못되었습니다: " + id);
+                    if (!element.textValue().isEmpty()) {
+                        require(
+                                ELEMENTS.contains(string(p, "Element")),
+                                "HealOnHit Element가 잘못되었습니다: " + id);
+                    }
                 }
             }
             case "SpeedBoost" -> {
@@ -253,7 +255,8 @@ public class MonsterCatalog {
         }
     }
 
-    private static void chance(JsonNode p) {
+    private static void chance(JsonNode p, boolean required) {
+        require(!required || p.has("Chance"), "Chance가 비었습니다");
         if (p.has("Chance")) {
             require(number(p, "Chance", 0, false) <= 1, "Chance가 잘못되었습니다");
         }

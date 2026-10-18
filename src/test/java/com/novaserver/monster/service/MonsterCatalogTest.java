@@ -106,6 +106,43 @@ class MonsterCatalogTest {
                 .hasMessageContaining("Chance");
     }
 
+    @Test
+    void rejectsMissingChanceForChanceDrivenPassives() throws IOException {
+        var missingEvadeChance = source();
+        ((ObjectNode) missingEvadeChance.get(1))
+                .set("Passives", mapper.readTree("[{\"Kind\":\"Evade\"}]"));
+        assertThatThrownBy(() -> MonsterCatalog.validate(missingEvadeChance))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Chance");
+
+        var missingShieldChance = source();
+        ((ObjectNode) missingShieldChance.get(1))
+                .set(
+                        "Passives",
+                        mapper.readTree(
+                                "[{\"Kind\":\"Shield\",\"Trigger\":\"OnHit\",\"Hits\":2}]"));
+        assertThatThrownBy(() -> MonsterCatalog.validate(missingShieldChance))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Chance");
+    }
+
+    @Test
+    void rejectsNonTextualHealOnHitElement() throws IOException {
+        for (String element : new String[] {"{}", "[]"}) {
+            var rows = source();
+            ((ObjectNode) rows.get(1))
+                    .set(
+                            "Passives",
+                            mapper.readTree(
+                                    "[{\"Kind\":\"HealOnHit\",\"HealRatio\":0.1,\"Element\":"
+                                            + element
+                                            + "}]"));
+            assertThatThrownBy(() -> MonsterCatalog.validate(rows))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Element");
+        }
+    }
+
     private JsonNode source() throws IOException {
         return mapper.readTree(new MonsterCatalog().json());
     }
