@@ -67,14 +67,14 @@ public class UserQuestService {
         state(user, QuestPeriod.WEEKLY, periodDay(QuestPeriod.WEEKLY, now), now).login(day, now);
     }
 
-    /** 멱등 전투 발급의 최초 에너지 차감 분기에서만 같은 트랜잭션으로 호출한다. */
+    /** 최초 차감 분기에서 확정한 서버 시각을 받아 같은 트랜잭션·기간으로 집계한다. */
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public void recordBattleEnergy(Long userId, int amount) {
-        if (amount <= 0) {
+    public void recordBattleEnergy(Long userId, int amount, Instant eventAt) {
+        if (amount <= 0 || eventAt == null) {
             throw ErrorCode.QUEST_INVALID.exception();
         }
         final var user = lock(userId);
-        var now = now();
+        var now = eventAt.truncatedTo(ChronoUnit.MICROS);
         for (var period : QuestPeriod.values()) {
             state(user, period, periodDay(period, now), now).spend(amount, now);
         }

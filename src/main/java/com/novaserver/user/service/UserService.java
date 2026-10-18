@@ -116,14 +116,19 @@ public class UserService {
         userRepository.deleteById(userId);
     }
 
-    /** 해당 유저가 에너지를 소모한다. */
+    /**
+     * 잠금 획득 뒤 확정한 한 시각으로 자연회복과 차감을 처리한다.
+     *
+     * @return 세션·퀘스트 집계에도 재사용할 실제 차감 UTC 시각
+     */
     @Transactional
-    public void useEnergy(Long userId, int amount) {
+    public Instant useEnergy(Long userId, int amount) {
         UserEnergy energy = findEnergyForUpdate(userId);
         Instant now = clock.instant();
 
         energy.recover(now);
         energy.consume(amount, now);
+        return now;
     }
 
     /** 해당 유저에게 에너지 보상을 지급한다. */
