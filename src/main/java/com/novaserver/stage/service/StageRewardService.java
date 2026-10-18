@@ -4,6 +4,7 @@ import com.novaserver.global.error.ErrorCode;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
 import com.novaserver.stage.dto.ClearRewardResult;
+import com.novaserver.stage.dto.RewardRulesData;
 import com.novaserver.stage.dto.StageDataResponse;
 import com.novaserver.stage.dto.StageRewardRequest;
 import com.novaserver.stage.dto.StageRewardResponse;
@@ -103,12 +104,18 @@ public class StageRewardService {
     /** 지급 전 계정 상태로 랜덤 재료를 실제 아이템으로 확정한다. */
     public ClearRewardResult calculateClearReward(
             Long userId, Integer stageId, int clearedWave, int rating) {
-        var scheduled = calculateClearReward(stageId, clearedWave, rating);
-        return randomMaterials.resolve(userId, scheduled, rulesService.getRules());
+        var rules = rulesService.getRules();
+        var scheduled = calculateScheduledReward(stageId, clearedWave, rating, rules);
+        return randomMaterials.resolve(userId, scheduled, rules);
     }
 
     /** 추첨 전 지급 일정을 계산한다. 실제 지급에는 계정 인자를 받는 메서드를 사용한다. */
     ClearRewardResult calculateClearReward(Integer stageId, int clearedWave, int rating) {
+        return calculateScheduledReward(stageId, clearedWave, rating, rulesService.getRules());
+    }
+
+    private ClearRewardResult calculateScheduledReward(
+            Integer stageId, int clearedWave, int rating, RewardRulesData rules) {
         if (clearedWave < 0
                 || clearedWave > StageRewardSchedule.WAVE_COUNT
                 || rating < 0
@@ -116,7 +123,6 @@ public class StageRewardService {
                 || (rating > 0 && clearedWave != StageRewardSchedule.WAVE_COUNT)) {
             throw ErrorCode.BATTLE_RESULT_INVALID.exception();
         }
-        var rules = rulesService.getRules();
         StageReward reward = findStageReward(stageId);
         var coinSchedule = rules.schedules().get("Coin");
         if (reward.getBaseExp() < 0

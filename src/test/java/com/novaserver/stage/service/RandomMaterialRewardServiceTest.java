@@ -126,6 +126,27 @@ class RandomMaterialRewardServiceTest {
         assertThat(result.items()).doesNotContainKeys("fixture.skill.locked", RANDOM_SKILL);
     }
 
+    @ParameterizedTest
+    @CsvSource({"1,10,false", "10,1,true"})
+    void equipmentUsesTheEffectiveUnlockLevelFromLinkedSkills(
+            int rawLevel, int linkedLevel, boolean available) {
+        Upgrade equipment = mock(Upgrade.class);
+        when(equipment.getUpgradeId()).thenReturn("fixture.equipment.target");
+        when(equipment.getUnlockLevel()).thenReturn(rawLevel);
+        when(upgrades.findAllById(any())).thenReturn(List.of(equipment));
+        var linked = mock(SkillRepository.UpgradeUnlock.class);
+        when(linked.getProgressionId()).thenReturn("fixture.equipment.target");
+        when(linked.getUnlockLevel()).thenReturn(linkedLevel);
+        when(skills.findUpgradeUnlockLevels()).thenReturn(List.of(linked));
+        var reward = new ClearRewardResult(0, 0, Map.of(RANDOM_EQUIPMENT, 3), 0);
+        if (available) {
+            assertThat(resolver.resolve(1L, reward, rules).items()).containsEntry(EQUIPMENT, 3);
+        } else {
+            assertThatThrownBy(() -> resolver.resolve(1L, reward, rules))
+                    .isInstanceOf(ResponseStatusException.class);
+        }
+    }
+
     @Test
     void rejectsNoUnlockedCandidatesInvalidTargetAndMergedOverflow() {
         when(levels.levelAt(0)).thenReturn(0);

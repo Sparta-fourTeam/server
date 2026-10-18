@@ -8,6 +8,7 @@ import static com.novaserver.support.RewardRulesFixture.SKILL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -145,6 +146,24 @@ class StageRewardServiceTest {
                                         .validate(List.of(item(itemId, 41))))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("지급 규칙이 준비되지 않은");
+    }
+
+    @Test
+    void calculationAndResolutionUseOneRulesSnapshotEvenWhenTheNextReadWouldChangeIt() {
+        var first = RewardRulesFixture.rules();
+        var nextItems = new HashMap<>(first.items());
+        nextItems.put(SKILL, new RewardItemRule("SkillMaterial", true));
+        var next = new RewardRulesData(first.schedules(), nextItems);
+        when(rulesService.getRules()).thenReturn(first, next);
+        when(randomMaterials.resolve(eq(9L), any(), any()))
+                .thenAnswer(
+                        call -> {
+                            RewardRulesData snapshot = call.getArgument(2);
+                            assertThat(snapshot.items().get(SKILL).random()).isFalse();
+                            return call.getArgument(1);
+                        });
+        assertThat(rewards.calculateClearReward(9L, 1, 20, 3).items())
+                .containsEntry(SKILL, SKILL_FINAL);
     }
 
     @Test
