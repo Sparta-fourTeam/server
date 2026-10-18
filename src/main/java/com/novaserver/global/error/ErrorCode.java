@@ -9,6 +9,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Getter
 @RequiredArgsConstructor
 public enum ErrorCode {
+    TUTORIAL_LEVEL_CAP_CONFLICT(HttpStatus.CONFLICT, "튜토리얼에서 요구하는 레벨보다 상한을 낮출 수 없습니다"),
     TUTORIAL_NOT_FOUND(HttpStatus.NOT_FOUND, "튜토리얼이 없습니다: %s"),
     TUTORIAL_INVALID(HttpStatus.BAD_REQUEST, "튜토리얼 조건·보상 참조가 올바르지 않습니다"),
     TUTORIAL_NOT_READY(HttpStatus.CONFLICT, "튜토리얼 완료 조건을 충족하지 않았습니다"),

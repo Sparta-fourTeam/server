@@ -5,6 +5,8 @@ import com.novaserver.playerlevel.dto.PlayerLevelConfigRequest;
 import com.novaserver.playerlevel.dto.PlayerLevelConfigResponse;
 import com.novaserver.playerlevel.entity.PlayerLevelConfig;
 import com.novaserver.playerlevel.repository.PlayerLevelConfigRepository;
+import com.novaserver.stage.service.RewardRulesService;
+import com.novaserver.tutorial.repository.TutorialRepository;
 import com.novaserver.version.entity.DataTable;
 import com.novaserver.version.repository.DataVersionRepository;
 import com.novaserver.version.service.DataVersionService;
@@ -20,6 +22,8 @@ public class PlayerLevelService {
     private final PlayerLevelConfigRepository repository;
     private final DataVersionRepository versions;
     private final DataVersionService versionService;
+    private final TutorialRepository tutorials;
+    private final RewardRulesService referenceLocks;
 
     /** DB 기준과 해당 버전을 같은 읽기 트랜잭션에서 조회한다. 미설정이면 503을 반환한다. */
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
@@ -41,6 +45,10 @@ public class PlayerLevelService {
     @Transactional
     public PlayerLevelConfigResponse saveConfig(PlayerLevelConfigRequest request) {
         validate(request);
+        referenceLocks.lockItemReferences();
+        if (tutorials.existsOutsidePlayerLevelCap(request.maxLevel())) {
+            throw ErrorCode.TUTORIAL_LEVEL_CAP_CONFLICT.exception();
+        }
         // 초기 등록을 포함해 동시 관리 요청을 같은 버전 행으로 직렬화한다.
         versions.findByTableNameForUpdate(DataTable.PLAYER_LEVELS.getKey())
                 .orElseThrow(() -> ErrorCode.DATA_VERSION_ROW_MISSING.exception("PlayerLevels"));

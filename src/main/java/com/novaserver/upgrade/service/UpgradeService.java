@@ -96,8 +96,13 @@ public class UpgradeService {
     /** 강화를 수정한다. 효과는 통째로 교체한다. 없는 id면 404를 던진다. */
     @Transactional
     public UpgradeResponse updateUpgrade(String id, UpgradeRequest request) {
+        referenceLocks.lockItemReferences();
         Upgrade upgrade = findUpgrade(id);
         Item materialItem = validateAndResolveMaterialItem(request, id);
+        if (tutorials.existsByRequiredUpgradeUpgradeIdAndUpgradeLevelGreaterThan(
+                id, request.getMaxLevel())) {
+            throw ErrorCode.TUTORIAL_LEVEL_CAP_CONFLICT.exception();
+        }
 
         upgrade.update(
                 request.getMaxLevel(),
