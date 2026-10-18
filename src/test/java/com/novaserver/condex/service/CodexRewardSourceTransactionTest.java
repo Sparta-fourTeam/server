@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -472,6 +473,25 @@ class CodexRewardSourceTransactionTest {
                                         }))
                 .isInstanceOf(DataIntegrityViolationException.class);
         assertThat(source.findForMonster(1L).orElseThrow().getGold()).isEqualTo(500);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"GET", "PUT", "DELETE"})
+    void adminGameCannotReadOrWriteCodexConfiguration(String method) throws Exception {
+        var request =
+                switch (method) {
+                    case "GET" -> get("/api/admin/codex/rewards");
+                    case "PUT" ->
+                            put("/api/admin/codex/monsters/1")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"grade\":\"Normal\"}");
+                    case "DELETE" -> delete("/api/admin/codex/rewards/Normal");
+                    default -> throw new IllegalArgumentException(method);
+                };
+        mvc.perform(request.header("Authorization", auth(Role.ADMIN, ClientType.GAME)))
+                .andExpect(status().isForbidden());
+        assertThat(config.monsters()).isEmpty();
+        assertThat(config.rewards()).isEmpty();
     }
 
     private String auth(Role role, ClientType type) {
