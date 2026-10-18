@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authorization.AuthorityAuthorizationManager;
+import org.springframework.security.authorization.AuthorizationManagers;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -20,7 +22,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 /**
  * JWT 기반 보안 설정.
  *
- * <p>로그인·헬스체크·Swagger·에러 경로는 토큰 없이 허용하고, 관리자 경로는 WEB 토큰, 나머지는 유효한 access 토큰이 있어야 한다.
+ * <p>로그인·헬스체크·Swagger·에러 경로는 토큰 없이 허용하고, 관리자 경로는 ADMIN 권한이 필요하다. 도감 관리 경로는 WEB 토큰도 요구하며 나머지는 유효한
+ * access 토큰이 있어야 한다.
  */
 @Configuration
 @EnableWebSecurity
@@ -57,6 +60,13 @@ public class SecurityConfig {
                                         .authenticated()
                                         .requestMatchers(PUBLIC_PATHS)
                                         .permitAll()
+                                        .requestMatchers("/api/admin/codex/**")
+                                        .access(
+                                                AuthorizationManagers.allOf(
+                                                        AuthorityAuthorizationManager.hasRole(
+                                                                Role.ADMIN.name()),
+                                                        AuthorityAuthorizationManager.hasAuthority(
+                                                                "CLIENT_WEB")))
                                         .requestMatchers("/api/admin/**")
                                         .hasRole(Role.ADMIN.name())
                                         .anyRequest()

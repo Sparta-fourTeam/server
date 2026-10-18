@@ -83,6 +83,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         SimpleGrantedAuthority authority =
                 new SimpleGrantedAuthority("ROLE_" + tokenInfo.role().name());
         return new UsernamePasswordAuthenticationToken(
-                tokenInfo.userId(), null, List.of(authority));
+                tokenInfo.userId(),
+                null,
+                List.of(
+                        authority,
+                        new SimpleGrantedAuthority("CLIENT_" + tokenInfo.clientType().name())));
     }
 }

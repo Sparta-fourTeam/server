@@ -213,6 +213,20 @@ class SecurityConfigTest {
         result.andExpect(status().isOk());
     }
 
+    @Test
+    @DisplayName("도감 관리자 경로는 ADMIN GAME 토큰을 거절한다")
+    void shouldRejectGameAdmin_onCodexConfigurationPath() throws Exception {
+        String token = jwtProvider.createAccessToken(1L, ClientType.GAME, Role.ADMIN);
+        callWithToken("/api/admin/codex/ping", token).andExpect(error(ErrorCode.FORBIDDEN));
+    }
+
+    @Test
+    @DisplayName("도감 관리자 경로는 ADMIN WEB 토큰을 허용한다")
+    void shouldAllowWebAdmin_onCodexConfigurationPath() throws Exception {
+        String token = jwtProvider.createAccessToken(1L, ClientType.WEB, Role.ADMIN);
+        callWithToken("/api/admin/codex/ping", token).andExpect(status().isOk());
+    }
+
     private ResultActions callWithToken(String path, String token) throws Exception {
         return mockMvc.perform(get(path).header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
     }
@@ -255,6 +269,11 @@ class SecurityConfigTest {
 
         @PostMapping("/auth/social/link")
         String linkSocial() {
+            return "ok";
+        }
+
+        @GetMapping("/admin/codex/ping")
+        String codexAdminPing() {
             return "ok";
         }
 
