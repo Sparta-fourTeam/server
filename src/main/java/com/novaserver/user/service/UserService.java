@@ -9,6 +9,8 @@ import com.novaserver.user.entity.UserEnergy;
 import com.novaserver.user.entity.Wallet;
 import com.novaserver.user.repository.UserCodexRepository;
 import com.novaserver.user.repository.UserDataRepository;
+import com.novaserver.user.repository.UserEnergyPurchaseStateRepository;
+import com.novaserver.user.repository.UserEnergyRecoveryReceiptRepository;
 import com.novaserver.user.repository.UserEnergyRepository;
 import com.novaserver.user.repository.UserItemRepository;
 import com.novaserver.user.repository.UserRepository;
@@ -32,6 +34,8 @@ public class UserService {
     private final UserDataRepository userDataRepository;
     private final WalletRepository walletRepository;
     private final UserEnergyRepository userEnergyRepository;
+    private final UserEnergyRecoveryReceiptRepository userEnergyRecoveryReceiptRepository;
+    private final UserEnergyPurchaseStateRepository userEnergyPurchaseStateRepository;
     private final UserStageProgressRepository userStageProgressRepository;
     private final UserUpgradeRepository userUpgradeRepository;
     private final UserUpgradeRequestRepository userUpgradeRequestRepository;
@@ -74,6 +78,8 @@ public class UserService {
     /** 유저와 유저에 속한 모든 데이터를 삭제한다. */
     @Transactional
     public void deleteAccount(Long userId) {
+        userEnergyRecoveryReceiptRepository.deleteByUserId(userId);
+        userEnergyPurchaseStateRepository.deleteByUserId(userId);
         userDataRepository.deleteByUserId(userId);
         walletRepository.deleteByUserId(userId);
         userEnergyRepository.deleteByUserId(userId);

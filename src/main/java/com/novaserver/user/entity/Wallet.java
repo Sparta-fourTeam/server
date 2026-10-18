@@ -46,6 +46,11 @@ public class Wallet {
         this.gold -= amount;
     }
 
+    /** 젬을 차감한다. 유료 구매 서비스에서 잔액과 가격을 먼저 검증한다. */
+    public void useGem(int amount) {
+        this.gem -= amount;
+    }
+
     /** 골드를 지급한다. */
     public void addGold(int amount) {
         this.gold += amount;
