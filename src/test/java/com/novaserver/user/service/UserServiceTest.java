@@ -26,6 +26,8 @@ import com.novaserver.user.entity.UserUpgrade;
 import com.novaserver.user.entity.Wallet;
 import com.novaserver.user.repository.UserCodexRepository;
 import com.novaserver.user.repository.UserDataRepository;
+import com.novaserver.user.repository.UserEnergyPurchaseStateRepository;
+import com.novaserver.user.repository.UserEnergyRecoveryReceiptRepository;
 import com.novaserver.user.repository.UserEnergyRepository;
 import com.novaserver.user.repository.UserItemRepository;
 import com.novaserver.user.repository.UserRepository;
@@ -62,6 +64,8 @@ class UserServiceTest {
     @Mock private UserDataRepository userDataRepository;
     @Mock private WalletRepository walletRepository;
     @Mock private UserEnergyRepository userEnergyRepository;
+    @Mock private UserEnergyRecoveryReceiptRepository userEnergyRecoveryReceiptRepository;
+    @Mock private UserEnergyPurchaseStateRepository userEnergyPurchaseStateRepository;
     @Mock private UserStageProgressRepository userStageProgressRepository;
     @Mock private UserUpgradeRepository userUpgradeRepository;
     @Mock private UserUpgradeRequestRepository userUpgradeRequestRepository;
@@ -83,6 +87,8 @@ class UserServiceTest {
                         userDataRepository,
                         walletRepository,
                         userEnergyRepository,
+                        userEnergyRecoveryReceiptRepository,
+                        userEnergyPurchaseStateRepository,
                         userStageProgressRepository,
                         userUpgradeRepository,
                         userUpgradeRequestRepository,

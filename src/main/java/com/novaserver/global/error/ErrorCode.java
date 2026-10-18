@@ -148,7 +148,12 @@ public enum ErrorCode {
 
     // 에너지
     INSUFFICIENT_ENERGY(HttpStatus.CONFLICT, "해당 유저의 에너지가 부족합니다."),
-    ENERGY_LOCK_CONFLICT(HttpStatus.CONFLICT, "잠시 후 다시 시도해주세요.");
+    ENERGY_LOCK_CONFLICT(HttpStatus.CONFLICT, "잠시 후 다시 시도해주세요."),
+    WALLET_GEM_NOT_ENOUGH(HttpStatus.CONFLICT, "젬이 부족합니다."),
+    ENERGY_PURCHASE_LIMIT(HttpStatus.CONFLICT, "일일 에너지 구매 한도에 도달했습니다."),
+    ENERGY_STORAGE_LIMIT(HttpStatus.CONFLICT, "에너지 저장 범위를 초과합니다."),
+    ENERGY_REQUEST_CONFLICT(HttpStatus.CONFLICT, "같은 회복 요청 키의 경로를 변경할 수 없습니다."),
+    AD_REWARD_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "광고 보상 검증이 준비되지 않았습니다.");
 
     private final HttpStatus status;
     private final String message;
