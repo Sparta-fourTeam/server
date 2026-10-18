@@ -16,6 +16,7 @@ import com.novaserver.auth.repository.RefreshTokenRepository;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.auth.service.AuthService;
 import com.novaserver.condex.entity.Codex;
+import com.novaserver.condex.entity.MonsterGrade;
 import com.novaserver.condex.repository.CodexRepository;
 import com.novaserver.item.entity.Item;
 import com.novaserver.reward.dto.RewardDefinitionRequest;
@@ -43,7 +44,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -89,14 +89,10 @@ class CodexAccountTransactionTest {
         when(clock.instant()).thenReturn(FIRST);
         monster =
                 tx.execute(
-                        s ->
-                                monsters.saveAndFlush(BeanUtils.instantiateClass(Codex.class))
-                                        .getId());
+                        s -> monsters.saveAndFlush(new Codex(50001L, MonsterGrade.NORMAL)).getId());
         second =
                 tx.execute(
-                        s ->
-                                monsters.saveAndFlush(BeanUtils.instantiateClass(Codex.class))
-                                        .getId());
+                        s -> monsters.saveAndFlush(new Codex(50002L, MonsterGrade.NORMAL)).getId());
         reward =
                 rewards.create(new RewardDefinitionRequest("codex fixture", 500, Map.of(), null))
                         .id();

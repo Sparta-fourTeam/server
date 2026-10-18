@@ -1,5 +1,6 @@
 package com.novaserver.reward.service;
 
+import com.novaserver.condex.repository.CodexGradeRewardRepository;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
@@ -31,6 +32,7 @@ public class RewardDefinitionService {
     private final TutorialRepository tutorials;
     private final QuestChestRepository questChests;
     private final ShopOfferRepository shopOffers;
+    private final CodexGradeRewardRepository codexGrades;
 
     /** 전체 묶음과 참조 수를 일괄 조회한다. */
     @Transactional(readOnly = true)
@@ -61,6 +63,13 @@ public class RewardDefinitionService {
                                 Collectors.toMap(
                                         ShopOfferRepository.DefinitionUsage::getDefinitionId,
                                         ShopOfferRepository.DefinitionUsage::getReferenceCount));
+        var codexUsage =
+                codexGrades.findDefinitionUsage().stream()
+                        .collect(
+                                Collectors.toMap(
+                                        CodexGradeRewardRepository.DefinitionUsage::getDefinitionId,
+                                        CodexGradeRewardRepository.DefinitionUsage
+                                                ::getReferenceCount));
         return definitions.findAll().stream()
                 .map(
                         definition ->
@@ -69,7 +78,8 @@ public class RewardDefinitionService {
                                         usage.getOrDefault(definition.getId(), 0L),
                                         tutorialUsage.getOrDefault(definition.getId(), 0L),
                                         questUsage.getOrDefault(definition.getId(), 0L),
-                                        shopUsage.getOrDefault(definition.getId(), 0L)))
+                                        shopUsage.getOrDefault(definition.getId(), 0L),
+                                        codexUsage.getOrDefault(definition.getId(), 0L)))
                 .toList();
     }
 
@@ -103,6 +113,10 @@ public class RewardDefinitionService {
         if (definition.getVersion() == Integer.MAX_VALUE) {
             throw ErrorCode.REWARD_DEFINITION_INVALID.exception();
         }
+        if (codexGrades.countByRewardDefinitionId(id) > 0
+                && (request.gold() <= 0 || !resolved.isEmpty())) {
+            throw ErrorCode.CODEX_CONFIG_INVALID.exception();
+        }
         definition.replace(request.name(), request.gold(), resolved);
         definitions.flush();
         return response(definition);
@@ -116,7 +130,8 @@ public class RewardDefinitionService {
         if (ratings.countByRewardDefinitionId(id) > 0
                 || tutorials.countByRewardDefinitionId(id) > 0
                 || questChests.countByRewardDefinitionId(id) > 0
-                || shopOffers.countByRewardDefinitionId(id) > 0) {
+                || shopOffers.countByRewardDefinitionId(id) > 0
+                || codexGrades.countByRewardDefinitionId(id) > 0) {
             throw ErrorCode.REWARD_DEFINITION_IN_USE.exception(id);
         }
         definitions.delete(definition);
@@ -136,7 +151,8 @@ public class RewardDefinitionService {
                 ratings.countByRewardDefinitionId(definition.getId()),
                 tutorials.countByRewardDefinitionId(definition.getId()),
                 questChests.countByRewardDefinitionId(definition.getId()),
-                shopOffers.countByRewardDefinitionId(definition.getId()));
+                shopOffers.countByRewardDefinitionId(definition.getId()),
+                codexGrades.countByRewardDefinitionId(definition.getId()));
     }
 
     private Map<Item, Integer> validate(RewardDefinitionRequest request) {

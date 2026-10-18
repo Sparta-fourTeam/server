@@ -17,6 +17,8 @@ public enum ErrorCode {
     TUTORIAL_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "튜토리얼 레벨 기준을 적용할 수 없습니다"),
 
     // 도감
+    CODEX_CONFIG_INVALID(HttpStatus.BAD_REQUEST, "도감 몬스터 등급·골드 보상 설정이 올바르지 않습니다"),
+    CODEX_CONFIG_CONFLICT(HttpStatus.CONFLICT, "도감 설정 버전이 변경됐습니다"),
     CODEX_MONSTER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 도감 몬스터입니다: %s"),
     CODEX_NOT_DISCOVERED(HttpStatus.CONFLICT, "아직 발견하지 않은 몬스터입니다: %s"),
     CODEX_REWARD_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "도감 등급별 골드 보상 기준이 준비되지 않았습니다"),
