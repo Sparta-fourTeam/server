@@ -69,11 +69,10 @@ public class PlayerLevelService {
                 || request.maxLevel() > PlayerLevelConfig.MAX_SUPPORTED_LEVEL) {
             throw ErrorCode.PLAYER_LEVELS_DATA_INVALID.exception();
         }
-        // 클라이언트 PlayerLevelConfig.ToTable의 checked(int)와 같은 유효 범위를 유지한다.
-        long last =
-                request.baseExp().longValue()
-                        + request.stepExp().longValue() * (request.maxLevel() - 2L);
-        if (last > Integer.MAX_VALUE) {
+        // 누적 경험치는 UserData.exp와 클라이언트 모두 int로 저장한다.
+        long count = request.maxLevel() - 1L;
+        long requiredExp = count * request.baseExp() + count * (count - 1) / 2 * request.stepExp();
+        if (requiredExp > Integer.MAX_VALUE) {
             throw ErrorCode.PLAYER_LEVELS_DATA_INVALID.exception();
         }
     }

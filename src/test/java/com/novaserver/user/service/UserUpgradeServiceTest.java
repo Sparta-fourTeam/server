@@ -505,6 +505,28 @@ class UserUpgradeServiceTest {
         verify(userUpgradeRequestRepository, never()).saveAndFlush(any());
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {0, -1})
+    @DisplayName("연결 스킬의 잘못된 해금 레벨은 구매·재화 차감 전에 거절한다")
+    void shouldRejectInvalidLinkedSkillUnlock(int unlockLevel) {
+        Upgrade upgrade = new Upgrade(UPGRADE_ID, 3, 4, null, 11, 7, null, null, null, null, null);
+        when(upgradeService.findUpgrade(UPGRADE_ID)).thenReturn(upgrade);
+        Skill skill = mock(Skill.class);
+        when(skill.getUnlockLevel()).thenReturn(unlockLevel);
+        when(skillRepository.findByProgressionId(UPGRADE_ID)).thenReturn(List.of(skill));
+        Wallet wallet = new Wallet(mock(User.class), 100, 0);
+        when(walletRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(wallet));
+
+        assertThatThrownBy(
+                        () -> userUpgradeService.levelUp(USER_ID, request(UPGRADE_ID, CREATE_ID)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("연결 스킬의 해금 레벨");
+        assertThat(wallet.getGold()).isEqualTo(100);
+        verifyNoInteractions(userDataRepository, playerLevelPolicy, userItemRepository);
+        verify(userUpgradeRepository, never()).save(any());
+        verify(userUpgradeRequestRepository, never()).saveAndFlush(any());
+    }
+
     private void givenUnlocked() {
         when(userDataRepository.findByUserId(USER_ID))
                 .thenReturn(Optional.of(new UserData(mock(User.class), 0)));

@@ -84,6 +84,9 @@ public class UserUpgradeService {
                         .mapToInt(Skill::getUnlockLevel)
                         .min()
                         .orElse(upgrade.getUnlockLevel());
+        if (unlockLevel <= 0) {
+            throw ErrorCode.UPGRADE_DATA_INVALID.exception("연결 스킬의 해금 레벨은 양수여야 합니다");
+        }
         UserData userData =
                 userDataRepository
                         .findByUserId(userId)

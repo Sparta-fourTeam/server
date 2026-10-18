@@ -33,7 +33,8 @@ class PlayerLevelServiceTest {
         "10,-1,4",
         "10,5,1",
         "2147483647,1,3",
-        "1,0,2147483647"
+        "1,0,2147483647",
+        "1500000000,0,3"
     })
     @DisplayName("누락·잘못된 범위·클라이언트 정수 오버플로를 저장 전에 거절한다")
     void shouldRejectInvalidConfigBeforeDatabaseAccess(Integer base, Integer step, Integer max) {
