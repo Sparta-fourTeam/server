@@ -45,6 +45,8 @@ import com.novaserver.user.repository.UserRepository;
 import com.novaserver.user.repository.WalletRepository;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +59,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -662,6 +665,44 @@ class QuestAccountTransactionTest {
                 .isInstanceOf(ResponseStatusException.class);
         assertBalances(0, 0, 30, 0);
         assertThat(service.snapshot(userId).getFirst().chests().getFirst().claimed()).isFalse();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "2026-10-19T18:59:59.999999Z,20261019,20261019",
+        "2026-10-18T18:59:59.999999Z,20261018,20261012"
+    })
+    void battleIssueUsesOneDebitTimestampAcrossDailyAndWeeklyReset(
+            String beforeText, String dailyKey, String weeklyKey) {
+        Instant before = Instant.parse(beforeText);
+        Instant after = before.plusSeconds(1);
+        when(clock.instant()).thenReturn(before, after);
+        final var issued = battles.createBattle(userId, "reset-crossing");
+        time(after.toString());
+        assertThat(energies.findByUserId(userId).orElseThrow().getEnergyUpdatedAt())
+                .isEqualTo(before);
+        assertThat(sessions.findById(userId).orElseThrow().getCreatedAt()).isEqualTo(before);
+        assertThat(
+                        periods.findByUserIdAndPeriodAndPeriodDay(
+                                        userId,
+                                        QuestPeriod.DAILY,
+                                        LocalDate.parse(dailyKey, DateTimeFormatter.BASIC_ISO_DATE))
+                                .orElseThrow()
+                                .getSpentEnergy())
+                .isEqualTo(5);
+        assertThat(
+                        periods.findByUserIdAndPeriodAndPeriodDay(
+                                        userId,
+                                        QuestPeriod.WEEKLY,
+                                        LocalDate.parse(
+                                                weeklyKey, DateTimeFormatter.BASIC_ISO_DATE))
+                                .orElseThrow()
+                                .getSpentEnergy())
+                .isEqualTo(5);
+        assertThat(service.snapshot(userId).getFirst().spentEnergy()).isZero();
+        assertThat(battles.createBattle(userId, "reset-crossing").getBattleId())
+                .isEqualTo(issued.getBattleId());
+        assertThat(service.snapshot(userId).getFirst().spentEnergy()).isZero();
     }
 
     private void unlock() {

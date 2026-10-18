@@ -63,11 +63,11 @@ public class BattleService {
     }
 
     private BattleResponse issueNewBattle(Long userId, String createId) {
-        userService.useEnergy(userId, BATTLE_ENERGY_COST);
+        var eventAt = userService.useEnergy(userId, BATTLE_ENERGY_COST);
 
         String battleId = UUID.randomUUID().toString();
-        battleRepository.upsert(userId, battleId, createId, clock.instant());
-        quests.recordBattleEnergy(userId, BATTLE_ENERGY_COST);
+        battleRepository.upsert(userId, battleId, createId, eventAt);
+        quests.recordBattleEnergy(userId, BATTLE_ENERGY_COST, eventAt);
 
         return new BattleResponse(battleId);
     }

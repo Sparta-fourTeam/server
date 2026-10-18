@@ -67,6 +67,9 @@ class BattleServiceTest {
                 .when(userRepository.findByIdForUpdate(1L))
                 .thenReturn(Optional.of(mock(User.class)));
         lenient().when(results.saveAndFlush(any())).thenAnswer(call -> call.getArgument(0));
+        lenient()
+                .when(userService.useEnergy(1L, 5))
+                .thenReturn(Instant.parse("2026-10-18T19:00:00Z"));
     }
 
     private static BattleEndRequest endRequest(String battleId, int clearedWave, int rating) {
