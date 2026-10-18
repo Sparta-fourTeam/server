@@ -7,4 +7,5 @@ import jakarta.validation.constraints.NotNull;
 public record RewardItemRule(
         @NotNull @Schema(description = "SkillMaterial, EquipmentMaterial, GemChest 중 하나")
                 String kind,
-        @NotNull @Schema(description = "랜덤 재료 placeholder 여부. false도 명시") Boolean random) {}
+        @NotNull @Schema(description = "추첨 전용 ID 여부. true면 실제 Items와 다른 ID여야 함. false도 명시")
+                Boolean random) {}

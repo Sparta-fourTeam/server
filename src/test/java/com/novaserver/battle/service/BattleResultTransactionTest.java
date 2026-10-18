@@ -28,11 +28,13 @@ import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.battle.dto.BattleEndRequest;
 import com.novaserver.battle.repository.BattleRepository;
 import com.novaserver.battle.repository.BattleResultRepository;
+import com.novaserver.item.dto.ItemCreateRequest;
 import com.novaserver.item.dto.ItemRequest;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
 import com.novaserver.item.service.ItemService;
 import com.novaserver.stage.dto.ClearRewardResult;
+import com.novaserver.stage.dto.RewardItemRule;
 import com.novaserver.stage.dto.RewardRulesData;
 import com.novaserver.stage.entity.Stage;
 import com.novaserver.stage.entity.StageReward;
@@ -424,6 +426,23 @@ class BattleResultTransactionTest {
         // 랜덤 선택자는 카탈로그에 만들지 않는다. 실제 아이템 수정도 지급 규칙을 바꾸지 않는다.
         assertThat(items.existsById(RANDOM_SKILL)).isFalse();
         assertThat(items.existsById(RANDOM_EQUIPMENT)).isFalse();
+        var colliding = new HashMap<>(ruleData.items());
+        colliding.put(SKILL, new RewardItemRule("SkillMaterial", true));
+        mvc.perform(
+                        put("/api/admin/reward-rules")
+                                .header("Authorization", admin)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        mapper.writeValueAsString(
+                                                new RewardRulesData(
+                                                        ruleData.schedules(), colliding))))
+                .andExpect(status().isBadRequest());
+        var createSelector = new ItemCreateRequest();
+        ReflectionTestUtils.setField(createSelector, "itemId", RANDOM_SKILL);
+        assertThatThrownBy(() -> itemService.createItem(createSelector))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThat(items.existsById(RANDOM_SKILL)).isFalse();
+        assertThat(rulesService.getConfig()).isEqualTo(before);
         itemService.updateItem(SKILL, new ItemRequest());
         assertThat(rulesService.getConfig()).isEqualTo(before);
         assertThatThrownBy(() -> itemService.deleteItem(SKILL))
