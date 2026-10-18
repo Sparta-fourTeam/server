@@ -27,6 +27,7 @@ public record RewardRulesData(
                                     RewardItemRule rule = entry.getValue();
                                     return entry.getKey() != null
                                             && !entry.getKey().isBlank()
+                                            && !entry.getKey().startsWith("currency.")
                                             && rule != null
                                             && rule.kind() != null
                                             && KINDS.contains(rule.kind())

@@ -140,7 +140,7 @@ class BattleResultTransactionTest {
                     ruleConfigs.deleteAll();
                     stageRewards.deleteById(901);
                     items.deleteById(ITEM);
-                    items.deleteAllById(List.of(SKILL, EQUIPMENT, CHEST));
+                    items.deleteAllById(List.of(SKILL, EQUIPMENT, CHEST, RANDOM_SKILL));
                     stages.deleteById(901);
                 });
     }
@@ -423,26 +423,28 @@ class BattleResultTransactionTest {
                                 .content(mapper.writeValueAsString(invalidRules)))
                 .andExpect(status().isBadRequest());
         assertThat(rulesService.getConfig()).isEqualTo(before);
-        // 랜덤 선택자는 카탈로그에 만들지 않는다. 실제 아이템 수정도 지급 규칙을 바꾸지 않는다.
+        // 추첨 정의와 실제 아이템은 함께 존재할 수 있다. 정의만으로 인벤토리 개봉을 수행하지 않는다.
         assertThat(items.existsById(RANDOM_SKILL)).isFalse();
         assertThat(items.existsById(RANDOM_EQUIPMENT)).isFalse();
-        var colliding = new HashMap<>(ruleData.items());
-        colliding.put(SKILL, new RewardItemRule("SkillMaterial", true));
-        mvc.perform(
-                        put("/api/admin/reward-rules")
-                                .header("Authorization", admin)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        mapper.writeValueAsString(
-                                                new RewardRulesData(
-                                                        ruleData.schedules(), colliding))))
-                .andExpect(status().isBadRequest());
+        for (String id : List.of("currency.coin", "currency.energy", "currency.exp")) {
+            var colliding = new HashMap<>(ruleData.items());
+            colliding.put(id, new RewardItemRule("SkillMaterial", true));
+            mvc.perform(
+                            put("/api/admin/reward-rules")
+                                    .header("Authorization", admin)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(
+                                            mapper.writeValueAsString(
+                                                    new RewardRulesData(
+                                                            ruleData.schedules(), colliding))))
+                    .andExpect(status().isBadRequest());
+        }
         var createSelector = new ItemCreateRequest();
         ReflectionTestUtils.setField(createSelector, "itemId", RANDOM_SKILL);
-        assertThatThrownBy(() -> itemService.createItem(createSelector))
-                .isInstanceOf(ResponseStatusException.class);
-        assertThat(items.existsById(RANDOM_SKILL)).isFalse();
+        itemService.createItem(createSelector);
+        assertThat(items.existsById(RANDOM_SKILL)).isTrue();
         assertThat(rulesService.getConfig()).isEqualTo(before);
+        before = rulesService.saveConfig(ruleData);
         itemService.updateItem(SKILL, new ItemRequest());
         assertThat(rulesService.getConfig()).isEqualTo(before);
         assertThatThrownBy(() -> itemService.deleteItem(SKILL))

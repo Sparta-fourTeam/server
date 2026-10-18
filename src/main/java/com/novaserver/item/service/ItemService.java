@@ -42,7 +42,6 @@ public class ItemService {
     /** 아이템을 등록한다. 이미 있는 id면 409, 데이터가 올바르지 않으면 400을 던진다. */
     @Transactional
     public ItemResponse createItem(ItemCreateRequest request) {
-        rewardRules.checkItemCreatable(request.getItemId());
         // id를 직접 지정하는 엔티티라 save()가 기존 행을 덮어쓰므로, 먼저 존재 여부를 확인한다.
         if (itemRepository.existsById(request.getItemId())) {
             throw ErrorCode.ITEM_DUPLICATED.exception(request.getItemId());
