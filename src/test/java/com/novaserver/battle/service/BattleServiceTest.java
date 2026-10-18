@@ -140,7 +140,7 @@ class BattleServiceTest {
         BattleSession existing = new BattleSession(1L, "battle-1", "key-1");
         when(battleRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(battleRepository.deleteByUserIdAndBattleId(1L, "battle-1")).thenReturn(1);
-        when(stageRewardService.calculateClearReward(1, 10, 3))
+        when(stageRewardService.calculateClearReward(1L, 1, 10, 3))
                 .thenReturn(new ClearRewardResult(100, 50, Map.of("mat.wood", 5), 0));
         Stage stage = mock(Stage.class);
         when(stageService.findStage(1)).thenReturn(stage);
@@ -188,7 +188,7 @@ class BattleServiceTest {
         assertThat(response.gold()).isEqualTo(17);
         assertThat(response.items()).containsExactlyEntriesOf(Map.of("mat.saved", 9));
         verify(userRewardService, never()).grant(any(), anyInt(), anyInt(), any());
-        verify(stageRewardService, never()).calculateClearReward(any(), anyInt(), anyInt());
+        verify(stageRewardService, never()).calculateClearReward(any(), any(), anyInt(), anyInt());
         verify(battleRepository, never()).findById(any());
         assertThatThrownBy(() -> battleService.endBattle(1L, endRequest("finished", 9, 3)))
                 .isInstanceOf(ResponseStatusException.class)

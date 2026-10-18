@@ -37,11 +37,9 @@ public record RewardRulesData(
                                 });
     }
 
-    /** 고정 지급할 수 있는 아이템의 일정. 랜덤 확정 지급은 후속 구현 전까지 차단한다. */
-    public Optional<StageRewardSchedule> fixedItemSchedule(String itemId) {
+    /** 실제 아이템과 별도 랜덤 추첨 ID가 공유하는 지급 일정. */
+    public Optional<StageRewardSchedule> itemSchedule(String itemId) {
         RewardItemRule rule = items.get(itemId);
-        return rule == null || rule.random()
-                ? Optional.empty()
-                : Optional.of(schedules.get(rule.kind()));
+        return rule == null ? Optional.empty() : Optional.of(schedules.get(rule.kind()));
     }
 }

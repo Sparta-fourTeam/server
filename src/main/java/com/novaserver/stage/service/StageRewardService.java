@@ -29,6 +29,7 @@ public class StageRewardService {
     private final ItemRepository itemRepository;
     private final StageRewardItemValidator itemValidator;
     private final RewardRulesService rulesService;
+    private final RandomMaterialRewardService randomMaterials;
 
     /** 스테이지 보상 목록을 조회한다. */
     @Transactional(readOnly = true)
@@ -99,8 +100,15 @@ public class StageRewardService {
                 .orElseThrow(() -> ErrorCode.STAGE_REWARD_NOT_FOUND.exception(stageId));
     }
 
-    /** 완료 웨이브의 기본 보상. 별이 있으면 최종 웨이브까지 완료한 결과여야 한다. */
-    public ClearRewardResult calculateClearReward(Integer stageId, int clearedWave, int rating) {
+    /** 지급 전 계정 상태로 랜덤 재료를 실제 아이템으로 확정한다. */
+    public ClearRewardResult calculateClearReward(
+            Long userId, Integer stageId, int clearedWave, int rating) {
+        var scheduled = calculateClearReward(stageId, clearedWave, rating);
+        return randomMaterials.resolve(userId, scheduled, rulesService.getRules());
+    }
+
+    /** 추첨 전 지급 일정을 계산한다. 실제 지급에는 계정 인자를 받는 메서드를 사용한다. */
+    ClearRewardResult calculateClearReward(Integer stageId, int clearedWave, int rating) {
         if (clearedWave < 0
                 || clearedWave > StageRewardSchedule.WAVE_COUNT
                 || rating < 0
@@ -120,18 +128,26 @@ public class StageRewardService {
             int bonusExp = rating == 3 ? reward.getThreeStarBonusExp() : 0;
             int exp = Math.addExact(clearedWave >= 1 ? reward.getBaseExp() : 0, bonusExp);
             int gold = coinSchedule.amount(clearedWave, reward.getFinalCoin());
-            List<String> itemIds = reward.getItems().stream().map(StageRewardItem::itemId).toList();
+            List<String> itemIds =
+                    reward.getItems().stream()
+                            .map(StageRewardItem::itemId)
+                            .filter(
+                                    id ->
+                                            rules.items().containsKey(id)
+                                                    && !rules.items().get(id).random())
+                            .toList();
             Map<String, Item> catalogItems =
                     itemRepository.findAllById(itemIds).stream()
                             .collect(Collectors.toMap(Item::getItemId, item -> item));
             Map<String, Integer> items = new HashMap<>();
             var seen = new java.util.HashSet<String>();
             for (StageRewardItem item : reward.getItems()) {
-                if (!catalogItems.containsKey(item.itemId())) {
+                var rule = rules.items().get(item.itemId());
+                if (rule != null && !rule.random() && !catalogItems.containsKey(item.itemId())) {
                     throw ErrorCode.ITEM_NOT_FOUND.exception(item.itemId());
                 }
                 StageRewardSchedule schedule =
-                        rules.fixedItemSchedule(item.itemId())
+                        rules.itemSchedule(item.itemId())
                                 .orElseThrow(ErrorCode.BATTLE_REWARD_UNAVAILABLE::exception);
                 if (item.finalAmount() < schedule.minimumFinal() || !seen.add(item.itemId())) {
                     throw ErrorCode.BATTLE_REWARD_UNAVAILABLE.exception();

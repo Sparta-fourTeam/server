@@ -112,7 +112,10 @@ public class BattleService {
         }
         ClearRewardResult reward =
                 stageRewardService.calculateClearReward(
-                        request.getStageId(), request.getClearedWave(), request.getRating());
+                        userId,
+                        request.getStageId(),
+                        request.getClearedWave(),
+                        request.getRating());
         if (reward.exp() < 0
                 || reward.threeStarBonusExp() < 0
                 || reward.threeStarBonusExp() > reward.exp()

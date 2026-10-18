@@ -99,7 +99,7 @@ public class RewardRulesService {
             }
             for (var item : reward.getItems()) {
                 var schedule =
-                        data.fixedItemSchedule(item.itemId())
+                        data.itemSchedule(item.itemId())
                                 .orElseThrow(ErrorCode.REWARD_RULES_INVALID::exception);
                 if (item.finalAmount() < schedule.minimumFinal()) {
                     throw ErrorCode.REWARD_RULES_INVALID.exception();

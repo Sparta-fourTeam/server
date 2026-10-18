@@ -48,6 +48,7 @@ class StageRewardServiceTest {
     @Mock private ItemRepository itemRepository;
     @Mock private StageRewardItemValidator itemValidator;
     @Mock private RewardRulesService rulesService;
+    @Mock private RandomMaterialRewardService randomMaterials;
     private StageRewardService rewards;
     private StageReward balance;
 
@@ -61,7 +62,8 @@ class StageRewardServiceTest {
                         stageService,
                         itemRepository,
                         itemValidator,
-                        rulesService);
+                        rulesService,
+                        randomMaterials);
         balance =
                 new StageReward(
                         Stage.create(1),
@@ -130,20 +132,37 @@ class StageRewardServiceTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {RANDOM_SKILL, RANDOM_EQUIPMENT, "unknown.reward"})
+    @ValueSource(strings = {"unknown.reward"})
     void unresolvedOrUnknownRewardCannotBeStoredAsAnInventoryPlaceholder(String itemId) {
         balance.update(BASE_EXP, BONUS_EXP, FINAL_COIN, List.of(new StageRewardItem(itemId, 41)));
         when(itemRepository.findAllById(any())).thenReturn(List.of(new Item(itemId, null)));
         assertThatThrownBy(() -> rewards.calculateClearReward(1, 20, 3))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("전투 보상 기준 데이터");
-        when(itemRepository.findById(itemId)).thenReturn(Optional.of(new Item(itemId, null)));
         assertThatThrownBy(
                         () ->
                                 new StageRewardItemValidator(itemRepository, rulesService)
                                         .validate(List.of(item(itemId, 41))))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("지급 규칙이 준비되지 않은");
+    }
+
+    @Test
+    void selectorNeedsNoItemEntityAndUsesTheKindScheduleBeforeResolution() {
+        balance.update(
+                BASE_EXP,
+                BONUS_EXP,
+                FINAL_COIN,
+                List.of(
+                        new StageRewardItem(RANDOM_SKILL, 83),
+                        new StageRewardItem(RANDOM_EQUIPMENT, 26)));
+        var result = rewards.calculateClearReward(1, 4, 0);
+        assertThat(result.items())
+                .containsEntry(RANDOM_SKILL, 35)
+                .containsEntry(RANDOM_EQUIPMENT, 5);
+        var validator = new StageRewardItemValidator(itemRepository, rulesService);
+        assertThat(validator.validate(List.of(item(RANDOM_SKILL, 83), item(RANDOM_EQUIPMENT, 26))))
+                .hasSize(2);
     }
 
     @Test

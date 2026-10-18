@@ -31,13 +31,17 @@ class StageRewardItemValidator {
                 throw ErrorCode.STAGE_REWARD_ITEM_DUPLICATED.exception(itemId);
             }
 
-            itemRepository
-                    .findById(itemId)
-                    .orElseThrow(() -> ErrorCode.ITEM_NOT_FOUND.exception(itemId));
+            var rules = rulesService.getRules();
+            var rule = rules.items().get(itemId);
+            if (rule != null && !rule.random()) {
+                itemRepository
+                        .findById(itemId)
+                        .orElseThrow(() -> ErrorCode.ITEM_NOT_FOUND.exception(itemId));
+            }
             StageRewardSchedule schedule =
                     rulesService
                             .getRules()
-                            .fixedItemSchedule(itemId)
+                            .itemSchedule(itemId)
                             .orElseThrow(
                                     () ->
                                             ErrorCode.STAGE_REWARD_ITEM_UNSUPPORTED.exception(
