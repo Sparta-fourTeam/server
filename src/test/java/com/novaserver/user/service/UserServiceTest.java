@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.novaserver.battle.repository.BattleRepository;
+import com.novaserver.battle.repository.BattleResultRepository;
 import com.novaserver.condex.entity.Codex;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.item.entity.Item;
@@ -73,6 +74,7 @@ class UserServiceTest {
     @Mock private UserCodexRepository userCodexRepository;
     @Mock private UserTutorialRepository userTutorialRepository;
     @Mock private BattleRepository battleRepository;
+    @Mock private BattleResultRepository battleResultRepository;
 
     private UserService userService;
 
@@ -96,6 +98,7 @@ class UserServiceTest {
                         userCodexRepository,
                         userTutorialRepository,
                         battleRepository,
+                        battleResultRepository,
                         clock);
     }
 

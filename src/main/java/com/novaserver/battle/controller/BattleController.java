@@ -3,6 +3,7 @@ package com.novaserver.battle.controller;
 import com.novaserver.battle.dto.BattleEndRequest;
 import com.novaserver.battle.dto.BattleRequest;
 import com.novaserver.battle.dto.BattleResponse;
+import com.novaserver.battle.dto.BattleResultResponse;
 import com.novaserver.battle.dto.BattleStartRequest;
 import com.novaserver.battle.service.BattleService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,11 +47,11 @@ public class BattleController {
     @Operation(
             summary = "배틀 종료",
             description =
-                    "배틀 ID가 일치하면 클리어한 웨이브·등급에 따라 기본 보상을 지급하고 스테이지 진행도를 갱신한 뒤 배틀을 삭제합니다. "
-                            + "불일치 시 400, 진행 중인 배틀이 없으면 404를 반환합니다.")
+                    "보상·진척과 최초 확정 결과를 함께 저장합니다. 같은 payload 재제출은 최초 결과를 반환하며 "
+                            + "같은 battleId의 다른 payload는 409로 거절합니다. 현재 잔액은 포함하지 않습니다.")
     @PostMapping("/end")
-    public void endBattle(
+    public BattleResultResponse endBattle(
             @AuthenticationPrincipal Long userId, @Valid @RequestBody BattleEndRequest request) {
-        battleService.endBattle(userId, request);
+        return battleService.endBattle(userId, request);
     }
 }
