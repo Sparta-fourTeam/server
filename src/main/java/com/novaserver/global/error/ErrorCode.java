@@ -16,6 +16,11 @@ public enum ErrorCode {
     TUTORIAL_IN_USE(HttpStatus.CONFLICT, "계정 상태 또는 튜토리얼 조건에서 참조 중입니다"),
     TUTORIAL_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "튜토리얼 레벨 기준을 적용할 수 없습니다"),
 
+    // 도감
+    CODEX_MONSTER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 도감 몬스터입니다: %s"),
+    CODEX_NOT_DISCOVERED(HttpStatus.CONFLICT, "아직 발견하지 않은 몬스터입니다: %s"),
+    CODEX_REWARD_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "도감 등급별 골드 보상 기준이 준비되지 않았습니다"),
+
     // 공통
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "요청 형식이 올바르지 않습니다"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다"),
