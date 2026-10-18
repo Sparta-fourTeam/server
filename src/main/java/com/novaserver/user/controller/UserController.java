@@ -1,8 +1,8 @@
 package com.novaserver.user.controller;
 
+import com.novaserver.user.dto.StageRatingClaimResponse;
 import com.novaserver.user.dto.StageRatingRewardClaimRequest;
 import com.novaserver.user.dto.UserDataResponse;
-import com.novaserver.user.dto.UserStageProgressResponse;
 import com.novaserver.user.dto.UserUpgradeCreateRequest;
 import com.novaserver.user.dto.UserUpgradeResponse;
 import com.novaserver.user.service.UserService;
@@ -50,11 +50,16 @@ public class UserController {
 
     @Operation(
             summary = "별등급 보상 수령",
-            description = "아직 받지 못한 별등급 최초 보상을 수령합니다. 받을 보상이 없으면 409를 반환합니다.")
+            description =
+                    "미수령 별 구간의 골드·실제 아이템을 지급합니다. createId·targetRating은 필수입니다. "
+                            + "같은 키와 목표 등급은 최초 영수증을 반환하며 새 별 수령은 새 키를 사용합니다. "
+                            + "같은 키의 다른 stageId·targetRating 또는 새 키로 미수령 보상이 없으면 409입니다. "
+                            + "누락된 보상 설정은 503이며 진행도와 지급을 함께 롤백합니다. 현재 잔액은 user/me로 조회합니다.")
     @PostMapping("/stage-progress/claim")
-    public UserStageProgressResponse claimStageRatingReward(
+    public StageRatingClaimResponse claimStageRatingReward(
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody StageRatingRewardClaimRequest request) {
-        return userStageProgressService.claimRatingReward(userId, request.getStageId());
+        return userStageProgressService.claimRatingReward(
+                userId, request.getStageId(), request.getCreateId(), request.getTargetRating());
     }
 }

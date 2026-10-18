@@ -8,6 +8,7 @@ import com.novaserver.user.entity.User;
 import com.novaserver.user.entity.UserData;
 import com.novaserver.user.entity.UserEnergy;
 import com.novaserver.user.entity.Wallet;
+import com.novaserver.user.repository.StageRatingClaimRepository;
 import com.novaserver.user.repository.UserCodexRepository;
 import com.novaserver.user.repository.UserDataRepository;
 import com.novaserver.user.repository.UserEnergyPurchaseStateRepository;
@@ -45,6 +46,7 @@ public class UserService {
     private final UserTutorialRepository userTutorialRepository;
     private final BattleRepository battleRepository;
     private final BattleResultRepository battleResultRepository;
+    private final StageRatingClaimRepository stageRatingClaims;
 
     private final Clock clock;
 
@@ -80,6 +82,7 @@ public class UserService {
     @Transactional
     public void deleteAccount(Long userId) {
         userRepository.findByIdForUpdate(userId);
+        stageRatingClaims.deleteByUserId(userId);
         userEnergyRecoveryReceiptRepository.deleteByUserId(userId);
         userEnergyPurchaseStateRepository.deleteByUserId(userId);
         userDataRepository.deleteByUserId(userId);

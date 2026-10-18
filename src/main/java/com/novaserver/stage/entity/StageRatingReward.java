@@ -10,9 +10,13 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /** 별등급 최초 클리어 보상. stageId와 rating(1~3) 조합으로 하나씩 존재한다. */
 @Getter
@@ -36,6 +40,14 @@ public class StageRatingReward {
     @Column(nullable = false)
     private int gold;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    private Map<String, Integer> items = new HashMap<>();
+
+    /** 기존 골드 전용 행의 null 아이템 목록은 빈 보상으로 읽는다. */
+    public Map<String, Integer> getItems() {
+        return items == null ? Map.of() : Map.copyOf(items);
+    }
+
     /**
      * 별등급 보상을 생성한다.
      *
@@ -49,6 +61,12 @@ public class StageRatingReward {
         this.gold = gold;
     }
 
+    /** 실제 아이템별 수량을 포함한 별등급 보상을 만든다. */
+    public StageRatingReward(Stage stage, int rating, int gold, Map<String, Integer> items) {
+        this(stage, rating, gold);
+        this.items = new HashMap<>(items);
+    }
+
     /**
      * 보상 내용을 수정한다.
      *
@@ -56,5 +74,11 @@ public class StageRatingReward {
      */
     public void update(int gold) {
         this.gold = gold;
+    }
+
+    /** 골드와 실제 아이템별 수량을 함께 교체한다. */
+    public void update(int gold, Map<String, Integer> items) {
+        this.gold = gold;
+        this.items = new HashMap<>(items);
     }
 }

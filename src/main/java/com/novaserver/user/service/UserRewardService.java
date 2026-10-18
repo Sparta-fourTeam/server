@@ -50,6 +50,9 @@ public class UserRewardService {
                     walletRepository
                             .findByUserIdForUpdate(userId)
                             .orElseThrow(() -> ErrorCode.WALLET_NOT_FOUND.exception(userId));
+            if ((long) wallet.getGold() + gold > Integer.MAX_VALUE) {
+                throw ErrorCode.REWARD_GOLD_OVERFLOW.exception();
+            }
             wallet.addGold(gold);
         }
 
