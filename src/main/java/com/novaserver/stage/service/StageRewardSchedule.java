@@ -27,8 +27,11 @@ public record StageRewardSchedule(
         return Math.addExact(start, Math.multiplyExact(perWave, WAVE_COUNT));
     }
 
-    /** 현재 웨이브까지의 지급량. */
+    /** 완료한 웨이브가 없으면 지급하지 않는다. */
     public int amount(int completedWaves, int finalAmount) {
+        if (completedWaves == 0) {
+            return 0;
+        }
         return Math.addExact(
                 Math.addExact(start, Math.multiplyExact(perWave, completedWaves)),
                 completedWaves >= bonusWave ? finalAmount - minimumFinal() : 0);

@@ -277,7 +277,7 @@ class BattleResultTransactionTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"0,0,0,3,2,1,2", "20,3,30,67,83,26,49"})
+    @CsvSource({"0,0,0,0,0,0,0", "20,3,30,67,83,26,49"})
     void realCalculationIsGrantedAndReceiptedOnce(
             int wave, int rating, int exp, int gold, int skill, int equipment, int chest)
             throws Exception {
@@ -331,8 +331,17 @@ class BattleResultTransactionTest {
                 .andExpect(status().isOk())
                 .andExpect(content().json(first));
         assertBalances(exp, gold, 0);
-        assertThat(inventory.findByUserIdAndItemId(userId, SKILL).orElseThrow().getQuantity())
+        assertThat(
+                        inventory
+                                .findByUserIdAndItemId(userId, SKILL)
+                                .map(item -> item.getQuantity())
+                                .orElse(0))
                 .isEqualTo(skill);
+        if (wave == 0) {
+            assertThat(inventory.findByUserIdAndItemId(userId, SKILL)).isEmpty();
+            assertThat(inventory.findByUserIdAndItemId(userId, EQUIPMENT)).isEmpty();
+            assertThat(inventory.findByUserIdAndItemId(userId, CHEST)).isEmpty();
+        }
         assertThat(
                         inventory
                                 .findByUserIdAndItemId(userId, EQUIPMENT)
@@ -363,12 +372,13 @@ class BattleResultTransactionTest {
                 .andExpect(status().isOk())
                 .andExpect(content().json(first));
         String nextId = battles.createBattle(userId, "updated-rules").getBattleId();
-        var nextResult = battles.endBattle(userId, request(nextId, 0, 0));
-        assertThat(nextResult.gold()).isEqualTo(9);
-        assertThat(nextResult.items()).containsEntry(SKILL, 2);
-        assertBalances(exp, gold + 9, 0);
+        var nextResult = battles.endBattle(userId, request(nextId, 1, 0));
+        assertThat(nextResult.gold()).isEqualTo(11);
+        assertThat(nextResult.exp()).isEqualTo(13);
+        assertThat(nextResult.items()).containsEntry(SKILL, 3);
+        assertBalances(exp + 13, gold + 11, 0);
         assertThat(inventory.findByUserIdAndItemId(userId, SKILL).orElseThrow().getQuantity())
-                .isEqualTo(skill + 2);
+                .isEqualTo(skill + 3);
     }
 
     @Test

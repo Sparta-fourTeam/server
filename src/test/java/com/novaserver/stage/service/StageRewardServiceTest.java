@@ -79,7 +79,7 @@ class StageRewardServiceTest {
 
     @ParameterizedTest
     @CsvSource({
-        "0,3,0,2,1,2",
+        "0,0,0,0,0,0",
         "1,5,13,5,2,4",
         "3,9,13,11,4,8",
         "4,11,13,35,5,10",
@@ -95,7 +95,10 @@ class StageRewardServiceTest {
         var result = rewards.calculateClearReward(1, wave, 0);
         assertThat(result.gold()).isEqualTo(gold);
         assertThat(result.exp()).isEqualTo(exp);
-        assertThat(result.items()).containsEntry(SKILL, skill);
+        assertThat(result.items().getOrDefault(SKILL, 0)).isEqualTo(skill);
+        if (wave == 0) {
+            assertThat(result.items()).isEmpty();
+        }
         assertThat(result.items().getOrDefault(EQUIPMENT, 0)).isEqualTo(equipment);
         assertThat(result.items().getOrDefault(CHEST, 0)).isEqualTo(chest);
     }
