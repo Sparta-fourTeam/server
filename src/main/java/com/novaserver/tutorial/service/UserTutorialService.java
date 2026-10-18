@@ -74,7 +74,7 @@ public class UserTutorialService {
             var config =
                     definition.getMinLevel() > 1
                                     || definition.getPlayerLevel() > 1
-                                    || definition.getSetLevel() > 0
+                                    || definition.getSetLevel() > 1
                             ? levels.getConfig()
                             : null;
             checkReady(userId, definition, before, config);

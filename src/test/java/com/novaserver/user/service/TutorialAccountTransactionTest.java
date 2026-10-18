@@ -367,6 +367,31 @@ class TutorialAccountTransactionTest {
     }
 
     @Test
+    void adminAcceptedSetLevelOneCompletesWithoutLevelConfiguration() throws Exception {
+        clear(userId, STAGE);
+        levels.deleteAll();
+        tx.executeWithoutResult(s -> data.findByUserIdForUpdate(userId).orElseThrow().addExp(90));
+        String body =
+                "{\"minLevel\":1,\"clearStageId\":"
+                        + STAGE
+                        + ",\"setLevel\":1,\"rewardDefinitionId\":"
+                        + rewardId
+                        + "}";
+        mvc.perform(
+                        put("/api/admin/tutorials/" + INTRO)
+                                .header("Authorization", auth(userId, Role.ADMIN))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
+                .andExpect(status().isOk());
+        var receipt = service.complete(userId, INTRO);
+        assertThat(receipt.expBefore()).isEqualTo(90);
+        assertThat(receipt.expAfter()).isZero();
+        assertThat(receipt.gold()).isEqualTo(13);
+        assertThat(service.complete(userId, INTRO)).isEqualTo(receipt);
+        assertState(13, 2, 0);
+    }
+
+    @Test
     void missingLevelConfigFailsClosedAndAccountDeletionRemovesTutorialState() {
         clear(userId, STAGE);
         levels.deleteAll();
