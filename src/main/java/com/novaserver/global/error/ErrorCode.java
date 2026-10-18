@@ -142,6 +142,11 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "아이템 보상 총수량이 지급 규칙의 최소 누적량보다 작습니다: %s"),
 
     // 스테이지 별등급 보상
+    STAGE_RATING_REWARD_INVALID(HttpStatus.BAD_REQUEST, "별등급 아이템 보상 설정이 올바르지 않습니다"),
+    STAGE_RATING_REWARD_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "별등급 보상 기준이 없거나 올바르지 않습니다"),
+    STAGE_RATING_CLAIM_TARGET_INVALID(HttpStatus.CONFLICT, "수령 목표 별 등급이 달성한 등급을 벗어납니다"),
+    STAGE_RATING_CLAIM_CONFLICT(HttpStatus.CONFLICT, "같은 수령 요청 키의 스테이지·목표 등급을 변경할 수 없습니다"),
+    REWARD_GOLD_OVERFLOW(HttpStatus.CONFLICT, "보상 골드가 저장 범위를 초과합니다"),
     STAGE_RATING_REWARD_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 별등급 보상입니다: stageId=%s, rating=%s"),
     STAGE_RATING_REWARD_DUPLICATED(HttpStatus.CONFLICT, "이미 등록된 별등급 보상입니다: stageId=%s, rating=%s"),
 

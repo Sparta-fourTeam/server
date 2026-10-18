@@ -25,6 +25,7 @@ import com.novaserver.user.entity.UserStageProgress;
 import com.novaserver.user.entity.UserTutorial;
 import com.novaserver.user.entity.UserUpgrade;
 import com.novaserver.user.entity.Wallet;
+import com.novaserver.user.repository.StageRatingClaimRepository;
 import com.novaserver.user.repository.UserCodexRepository;
 import com.novaserver.user.repository.UserDataRepository;
 import com.novaserver.user.repository.UserEnergyPurchaseStateRepository;
@@ -75,6 +76,7 @@ class UserServiceTest {
     @Mock private UserTutorialRepository userTutorialRepository;
     @Mock private BattleRepository battleRepository;
     @Mock private BattleResultRepository battleResultRepository;
+    @Mock private StageRatingClaimRepository stageRatingClaims;
 
     private UserService userService;
 
@@ -99,6 +101,7 @@ class UserServiceTest {
                         userTutorialRepository,
                         battleRepository,
                         battleResultRepository,
+                        stageRatingClaims,
                         clock);
     }
 
