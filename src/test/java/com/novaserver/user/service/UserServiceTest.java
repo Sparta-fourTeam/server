@@ -15,6 +15,7 @@ import com.novaserver.item.entity.Item;
 import com.novaserver.quest.repository.UserQuestClaimRepository;
 import com.novaserver.quest.repository.UserQuestPeriodRepository;
 import com.novaserver.quest.service.UserQuestService;
+import com.novaserver.shop.service.UserShopService;
 import com.novaserver.stage.entity.Stage;
 import com.novaserver.tutorial.entity.Tutorials;
 import com.novaserver.upgrade.entity.Upgrade;
@@ -83,6 +84,7 @@ class UserServiceTest {
     @Mock private UserQuestService quests;
     @Mock private UserQuestPeriodRepository questPeriods;
     @Mock private UserQuestClaimRepository questClaims;
+    @Mock private UserShopService shops;
 
     private UserService userService;
 
@@ -111,7 +113,8 @@ class UserServiceTest {
                         clock,
                         quests,
                         questPeriods,
-                        questClaims);
+                        questClaims,
+                        shops);
     }
 
     @Test

@@ -6,6 +6,7 @@ import com.novaserver.global.error.ErrorCode;
 import com.novaserver.quest.repository.UserQuestClaimRepository;
 import com.novaserver.quest.repository.UserQuestPeriodRepository;
 import com.novaserver.quest.service.UserQuestService;
+import com.novaserver.shop.service.UserShopService;
 import com.novaserver.user.dto.UserDataResponse;
 import com.novaserver.user.entity.User;
 import com.novaserver.user.entity.UserData;
@@ -56,6 +57,7 @@ public class UserService {
     private final UserQuestService quests;
     private final UserQuestPeriodRepository questPeriods;
     private final UserQuestClaimRepository questClaims;
+    private final UserShopService shops;
 
     /** 가입 직후 유저의 기본 상태(경험치·재화는 0, 에너지는 최대치)를 만든다. */
     @Transactional
@@ -68,6 +70,7 @@ public class UserService {
     /** 토큰의 유저 id로 유저 상태 정보를 조회한다. */
     @Transactional(isolation = Isolation.REPEATABLE_READ)
     public UserDataResponse getMe(Long userId) {
+        var shopSnapshot = shops.snapshot(userId);
         var questSnapshot = quests.snapshot(userId);
         UserData userData = findUserData(userId);
         Wallet wallet = findWallet(userId);
@@ -89,13 +92,15 @@ public class UserService {
                 userItemRepository.findByUserId(userId),
                 userCodexRepository.findByUserId(userId),
                 userTutorialRepository.findByUserId(userId),
-                questSnapshot);
+                questSnapshot,
+                shopSnapshot);
     }
 
     /** 유저와 유저에 속한 모든 데이터를 삭제한다. */
     @Transactional
     public void deleteAccount(Long userId) {
         userRepository.findByIdForUpdate(userId);
+        shops.deleteRecords(userId);
         questClaims.deleteByUserId(userId);
         questPeriods.deleteByUserId(userId);
         stageRatingClaims.deleteByUserId(userId);

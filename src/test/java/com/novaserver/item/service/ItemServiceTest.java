@@ -15,6 +15,7 @@ import com.novaserver.item.dto.ItemResponse;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
 import com.novaserver.reward.repository.RewardDefinitionRepository;
+import com.novaserver.shop.repository.UserShopStateRepository;
 import com.novaserver.skill.repository.SkillRepository;
 import com.novaserver.stage.service.RewardRulesService;
 import com.novaserver.upgrade.repository.UpgradeRepository;
@@ -42,6 +43,8 @@ class ItemServiceTest {
     @Mock private UpgradeRepository upgradeRepository;
     @Mock private RewardRulesService rewardRules;
     @Mock private RewardDefinitionRepository fixedRewards;
+
+    @Mock private UserShopStateRepository shopStates;
 
     @InjectMocks private ItemService itemService;
 
