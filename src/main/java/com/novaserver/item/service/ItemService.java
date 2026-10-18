@@ -7,6 +7,7 @@ import com.novaserver.item.dto.ItemResponse;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
 import com.novaserver.reward.repository.RewardDefinitionRepository;
+import com.novaserver.shop.repository.UserShopStateRepository;
 import com.novaserver.skill.repository.SkillRepository;
 import com.novaserver.stage.service.RewardRulesService;
 import com.novaserver.upgrade.repository.UpgradeRepository;
@@ -28,6 +29,7 @@ public class ItemService {
     private final UpgradeRepository upgradeRepository;
     private final RewardRulesService rewardRules;
     private final RewardDefinitionRepository fixedRewards;
+    private final UserShopStateRepository shopStates;
 
     /** 아이템 데이터를 전체 조회한다. 유니티와 관리자 목록에서 함께 쓴다. */
     @Transactional(readOnly = true)
@@ -77,6 +79,9 @@ public class ItemService {
         final Item item = findItem(id);
         if (fixedRewards.existsByItemId(id)) {
             throw ErrorCode.ITEM_LINKED_TO_REWARD_DEFINITION.exception(id);
+        }
+        if (shopStates.existsByCatalogItem(id)) {
+            throw ErrorCode.ITEM_LINKED_TO_SHOP.exception(id);
         }
         if (userItemRepository.existsByItemId(id)) {
             throw ErrorCode.ITEM_IN_USE.exception(id);

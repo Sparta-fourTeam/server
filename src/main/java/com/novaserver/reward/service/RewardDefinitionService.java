@@ -8,6 +8,7 @@ import com.novaserver.reward.dto.RewardDefinitionRequest;
 import com.novaserver.reward.dto.RewardDefinitionResponse;
 import com.novaserver.reward.entity.RewardDefinition;
 import com.novaserver.reward.repository.RewardDefinitionRepository;
+import com.novaserver.shop.repository.ShopOfferRepository;
 import com.novaserver.stage.repository.StageRatingRewardRepository;
 import com.novaserver.stage.service.RewardRulesService;
 import com.novaserver.tutorial.repository.TutorialRepository;
@@ -29,6 +30,7 @@ public class RewardDefinitionService {
     private final RewardRulesService referenceLocks;
     private final TutorialRepository tutorials;
     private final QuestChestRepository questChests;
+    private final ShopOfferRepository shopOffers;
 
     /** 전체 묶음과 참조 수를 일괄 조회한다. */
     @Transactional(readOnly = true)
@@ -53,6 +55,12 @@ public class RewardDefinitionService {
                                 Collectors.toMap(
                                         QuestChestRepository.DefinitionUsage::getDefinitionId,
                                         QuestChestRepository.DefinitionUsage::getReferenceCount));
+        var shopUsage =
+                shopOffers.findDefinitionUsage().stream()
+                        .collect(
+                                Collectors.toMap(
+                                        ShopOfferRepository.DefinitionUsage::getDefinitionId,
+                                        ShopOfferRepository.DefinitionUsage::getReferenceCount));
         return definitions.findAll().stream()
                 .map(
                         definition ->
@@ -60,7 +68,8 @@ public class RewardDefinitionService {
                                         definition,
                                         usage.getOrDefault(definition.getId(), 0L),
                                         tutorialUsage.getOrDefault(definition.getId(), 0L),
-                                        questUsage.getOrDefault(definition.getId(), 0L)))
+                                        questUsage.getOrDefault(definition.getId(), 0L),
+                                        shopUsage.getOrDefault(definition.getId(), 0L)))
                 .toList();
     }
 
@@ -106,7 +115,8 @@ public class RewardDefinitionService {
         var definition = findDefinition(id);
         if (ratings.countByRewardDefinitionId(id) > 0
                 || tutorials.countByRewardDefinitionId(id) > 0
-                || questChests.countByRewardDefinitionId(id) > 0) {
+                || questChests.countByRewardDefinitionId(id) > 0
+                || shopOffers.countByRewardDefinitionId(id) > 0) {
             throw ErrorCode.REWARD_DEFINITION_IN_USE.exception(id);
         }
         definitions.delete(definition);
@@ -125,7 +135,8 @@ public class RewardDefinitionService {
                 definition,
                 ratings.countByRewardDefinitionId(definition.getId()),
                 tutorials.countByRewardDefinitionId(definition.getId()),
-                questChests.countByRewardDefinitionId(definition.getId()));
+                questChests.countByRewardDefinitionId(definition.getId()),
+                shopOffers.countByRewardDefinitionId(definition.getId()));
     }
 
     private Map<Item, Integer> validate(RewardDefinitionRequest request) {

@@ -185,6 +185,17 @@ public enum ErrorCode {
     QUEST_IN_USE(HttpStatus.CONFLICT, "수령 이력이 있는 정의는 새 ID로 등록해야 합니다"),
     REWARD_GEM_OVERFLOW(HttpStatus.CONFLICT, "보상 젬이 저장 범위를 초과합니다"),
 
+    // 일일 상점
+    SHOP_INVALID(HttpStatus.BAD_REQUEST, "상점 입력이나 서버 설정이 올바르지 않습니다"),
+    SHOP_CONFIG_CONFLICT(HttpStatus.CONFLICT, "상점 설정 버전이 변경됐습니다"),
+    SHOP_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "상점 서버 설정이 준비되지 않았습니다"),
+    SHOP_STALE_STOCK(HttpStatus.CONFLICT, "상점 날짜·진열 회차가 바뀌었습니다. 다시 조회하세요"),
+    SHOP_SOLD_OUT(HttpStatus.CONFLICT, "이번 회차에 이미 구매한 슬롯입니다"),
+    SHOP_REROLL_LIMIT(HttpStatus.CONFLICT, "일일 골드 재추첨 한도에 도달했습니다"),
+    SHOP_REQUEST_CONFLICT(HttpStatus.CONFLICT, "같은 상점 요청 키에 대상을 변경할 수 없습니다"),
+    SHOP_AD_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "광고 재추첨 검증이 준비되지 않았습니다"),
+    ITEM_LINKED_TO_SHOP(HttpStatus.CONFLICT, "계정의 동결 상점 후보가 참조하는 아이템입니다: %s"),
+
     // 에너지
     INSUFFICIENT_ENERGY(HttpStatus.CONFLICT, "해당 유저의 에너지가 부족합니다."),
     ENERGY_LOCK_CONFLICT(HttpStatus.CONFLICT, "잠시 후 다시 시도해주세요."),
