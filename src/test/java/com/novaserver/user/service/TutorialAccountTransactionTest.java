@@ -16,8 +16,10 @@ import com.novaserver.auth.jwt.JwtProvider;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
+import com.novaserver.playerlevel.dto.PlayerLevelConfigRequest;
 import com.novaserver.playerlevel.entity.PlayerLevelConfig;
 import com.novaserver.playerlevel.repository.PlayerLevelConfigRepository;
+import com.novaserver.playerlevel.service.PlayerLevelService;
 import com.novaserver.reward.dto.RewardDefinitionRequest;
 import com.novaserver.reward.repository.RewardDefinitionRepository;
 import com.novaserver.reward.service.RewardDefinitionService;
@@ -25,10 +27,10 @@ import com.novaserver.stage.entity.Stage;
 import com.novaserver.stage.repository.StageRepository;
 import com.novaserver.stage.service.StageService;
 import com.novaserver.tutorial.dto.TutorialConfigRequest;
-import com.novaserver.tutorial.dto.TutorialReceiptResponse;
 import com.novaserver.tutorial.repository.TutorialRepository;
 import com.novaserver.tutorial.service.TutorialConfigService;
 import com.novaserver.tutorial.service.UserTutorialService;
+import com.novaserver.upgrade.dto.UpgradeRequest;
 import com.novaserver.upgrade.entity.Upgrade;
 import com.novaserver.upgrade.repository.UpgradeRepository;
 import com.novaserver.upgrade.service.UpgradeService;
@@ -67,6 +69,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -96,6 +99,7 @@ class TutorialAccountTransactionTest {
     @Autowired private UserItemRepository inventory;
     @Autowired private ItemRepository items;
     @Autowired private PlayerLevelConfigRepository levels;
+    @Autowired private PlayerLevelService levelService;
     @Autowired private RewardDefinitionRepository definitions;
     @Autowired private RewardDefinitionService rewards;
     @Autowired private PlatformTransactionManager transactions;
@@ -489,6 +493,110 @@ class TutorialAccountTransactionTest {
         assertThatThrownBy(() -> config.delete(INTRO)).isInstanceOf(ResponseStatusException.class);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"minimum", "completion", "reward"})
+    void playerCapEditsPreserveEveryReferencedTutorialLevel(String kind) {
+        config.save(
+                "fixture_high",
+                request(
+                        null,
+                        kind.equals("minimum") ? 5 : 1,
+                        null,
+                        kind.equals("completion") ? null : STAGE,
+                        null,
+                        0,
+                        kind.equals("completion") ? 5 : 0,
+                        kind.equals("reward") ? 5 : 0,
+                        rewardId));
+        var before = levelService.getConfig();
+        assertThatThrownBy(() -> levelService.saveConfig(new PlayerLevelConfigRequest(31, 7, 4)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("409");
+        assertThat(levelService.getConfig()).isEqualTo(before);
+        assertThat(levelService.saveConfig(new PlayerLevelConfigRequest(31, 7, 5)).maxLevel())
+                .isEqualTo(5);
+        clear(userId, STAGE);
+        tx.executeWithoutResult(t -> data.findByUserIdForUpdate(userId).orElseThrow().addExp(1000));
+        assertThat(service.complete(userId, "fixture_high").tutorialId()).isEqualTo("fixture_high");
+    }
+
+    @Test
+    void upgradeCapEditCannotInvalidateExistingTutorialRequirements() {
+        config.save("fixture_upgrade", request(null, 1, null, null, UPGRADE, 4, 0, 0, rewardId));
+        assertThatThrownBy(() -> upgradeService.updateUpgrade(UPGRADE, upgradeRequest(3)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("409");
+        assertThat(upgrades.findById(UPGRADE).orElseThrow().getMaxLevel()).isEqualTo(4);
+        assertThat(upgradeService.updateUpgrade(UPGRADE, upgradeRequest(4)).maxLevel())
+                .isEqualTo(4);
+        tx.executeWithoutResult(
+                t ->
+                        userUpgrades.saveAndFlush(
+                                new UserUpgrade(
+                                        accounts.getReferenceById(userId),
+                                        upgrades.getReferenceById(UPGRADE),
+                                        4)));
+        assertThat(service.complete(userId, "fixture_upgrade").tutorialId())
+                .isEqualTo("fixture_upgrade");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"player", "upgrade"})
+    void concurrentCapReductionAndTutorialRegistrationKeepRequirementsReachable(String kind)
+            throws Exception {
+        boolean player = kind.equals("player");
+        var results =
+                race(
+                        () -> {
+                            try {
+                                config.save(
+                                        "fixture_race",
+                                        request(
+                                                null,
+                                                player ? 5 : 1,
+                                                null,
+                                                player ? STAGE : null,
+                                                player ? null : UPGRADE,
+                                                player ? 0 : 4,
+                                                0,
+                                                0,
+                                                rewardId));
+                                return true;
+                            } catch (ResponseStatusException error) {
+                                assertThat(error.getStatusCode().value()).isEqualTo(400);
+                                return false;
+                            }
+                        },
+                        () -> {
+                            try {
+                                if (player) {
+                                    levelService.saveConfig(new PlayerLevelConfigRequest(31, 7, 4));
+                                } else {
+                                    upgradeService.updateUpgrade(UPGRADE, upgradeRequest(3));
+                                }
+                                return true;
+                            } catch (ResponseStatusException error) {
+                                assertThat(error.getStatusCode().value()).isEqualTo(409);
+                                return false;
+                            }
+                        });
+        assertThat(results.get(0)).isNotEqualTo(results.get(1));
+        assertThat(tutorials.existsById("fixture_race")).isEqualTo(results.get(0));
+        int cap =
+                player
+                        ? levels.findById(PlayerLevelConfig.CONFIG_ID).orElseThrow().getMaxLevel()
+                        : upgrades.findById(UPGRADE).orElseThrow().getMaxLevel();
+        assertThat(cap).isEqualTo(results.get(0) ? (player ? 8 : 4) : (player ? 4 : 3));
+    }
+
+    private UpgradeRequest upgradeRequest(int maxLevel) {
+        var request = new UpgradeRequest();
+        ReflectionTestUtils.setField(request, "maxLevel", maxLevel);
+        ReflectionTestUtils.setField(request, "costBase", 1);
+        ReflectionTestUtils.setField(request, "costStep", 0);
+        return request;
+    }
+
     private void clear(Long id, int stageId) {
         tx.executeWithoutResult(
                 s -> {
@@ -535,9 +643,7 @@ class TutorialAccountTransactionTest {
                         id, role == Role.ADMIN ? ClientType.WEB : ClientType.GAME, role);
     }
 
-    private List<TutorialReceiptResponse> race(
-            Callable<TutorialReceiptResponse> a, Callable<TutorialReceiptResponse> b)
-            throws Exception {
+    private <T> List<T> race(Callable<T> a, Callable<T> b) throws Exception {
         var ready = new CountDownLatch(2);
         var go = new CountDownLatch(1);
         try (var pool = Executors.newFixedThreadPool(2)) {

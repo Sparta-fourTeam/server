@@ -5,6 +5,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.novaserver.playerlevel.dto.PlayerLevelConfigRequest;
 import com.novaserver.playerlevel.repository.PlayerLevelConfigRepository;
+import com.novaserver.stage.service.RewardRulesService;
+import com.novaserver.tutorial.repository.TutorialRepository;
 import com.novaserver.version.repository.DataVersionRepository;
 import com.novaserver.version.service.DataVersionService;
 import org.junit.jupiter.api.DisplayName;
@@ -22,6 +24,8 @@ class PlayerLevelServiceTest {
     @Mock private PlayerLevelConfigRepository repository;
     @Mock private DataVersionRepository versions;
     @Mock private DataVersionService versionService;
+    @Mock private TutorialRepository tutorials;
+    @Mock private RewardRulesService referenceLocks;
     @InjectMocks private PlayerLevelService service;
 
     @ParameterizedTest

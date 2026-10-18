@@ -43,6 +43,14 @@ public interface TutorialRepository extends JpaRepository<Tutorials, String> {
 
     boolean existsByRequiredUpgradeUpgradeId(String id);
 
+    boolean existsByRequiredUpgradeUpgradeIdAndUpgradeLevelGreaterThan(String id, int maxLevel);
+
+    @Query(
+            "select count(t) > 0 from Tutorials t where t.minLevel > :cap "
+                    + "or t.playerLevel > :cap or t.setLevel > :cap")
+    boolean existsOutsidePlayerLevelCap(
+            @org.springframework.data.repository.query.Param("cap") int cap);
+
     @Query(
             "select t.rewardDefinition.id as definitionId, count(t) as referenceCount "
                     + "from Tutorials t group by t.rewardDefinition.id")
