@@ -294,6 +294,22 @@ class UserUpgradeTransactionTest {
         assertState(89, 18, 1);
     }
 
+    @Test
+    @DisplayName("보상이 정수 상한을 넘어도 저장 경험치가 음수로 돌아가거나 해금이 다시 잠기지 않는다")
+    void shouldKeepUnlockWhenAwardCrossesExperienceStorageLimit() {
+        playerLevels.saveConfig(new PlayerLevelConfigRequest(Integer.MAX_VALUE, 0, 2));
+        transaction.executeWithoutResult(
+                status -> {
+                    var data = dataRepository.findByUserId(userId).orElseThrow();
+                    data.addExp(Integer.MAX_VALUE - 10);
+                    data.addExp(2);
+                });
+
+        assertThat(users.getMe(userId).getExp()).isEqualTo(Integer.MAX_VALUE);
+        assertThat(purchases.levelUp(userId, request("xp-cap")).getLevel()).isEqualTo(1);
+        assertState(89, 18, 1);
+    }
+
     private int buyAfterStart(String key, CountDownLatch ready, CountDownLatch start)
             throws InterruptedException {
         ready.countDown();

@@ -25,6 +25,8 @@ import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -460,6 +462,35 @@ class UpgradeServiceTest {
 
         assertThat(response.unlockLevel()).isEqualTo(1);
         assertThat(response.effectiveUnlockLevel()).isEqualTo(4);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, -1})
+    @DisplayName("목록에서도 연결 스킬의 비양수 해금 레벨을 유효한 견적으로 내보내지 않는다")
+    void shouldRejectInvalidEffectiveUnlockInCatalog(int unlockLevel) {
+        var linked = mock(SkillRepository.UpgradeUnlock.class);
+        when(linked.getProgressionId()).thenReturn("test.skill");
+        when(linked.getUnlockLevel()).thenReturn(unlockLevel);
+        when(skillRepository.findUpgradeUnlockLevels()).thenReturn(List.of(linked));
+        when(upgradeRepository.findAll(Sort.by("upgradeId")))
+                .thenReturn(
+                        List.of(
+                                new Upgrade(
+                                        "test.skill",
+                                        3,
+                                        4,
+                                        null,
+                                        11,
+                                        7,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null)));
+
+        assertThatThrownBy(upgradeService::getUpgradeList)
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("연결 스킬의 해금 레벨");
     }
 
     private static void assertStatus(

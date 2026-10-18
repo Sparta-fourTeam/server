@@ -36,8 +36,8 @@ public class UserData {
         this.exp = exp;
     }
 
-    /** 경험치를 지급한다. */
+    /** 경험치를 지급한다. 저장 범위를 벗어나 음수로 돌아가지 않도록 0~int 최대값으로 제한한다. */
     public void addExp(int amount) {
-        this.exp += amount;
+        this.exp = (int) Math.max(0L, Math.min(Integer.MAX_VALUE, this.exp.longValue() + amount));
     }
 }

@@ -40,11 +40,16 @@ public class UpgradeService {
                                         SkillRepository.UpgradeUnlock::getUnlockLevel));
         return upgradeRepository.findAll(Sort.by("upgradeId")).stream()
                 .map(
-                        upgrade ->
-                                UpgradeResponse.from(
-                                        upgrade,
-                                        unlocks.getOrDefault(
-                                                upgrade.getUpgradeId(), upgrade.getUnlockLevel())))
+                        upgrade -> {
+                            int unlockLevel =
+                                    unlocks.getOrDefault(
+                                            upgrade.getUpgradeId(), upgrade.getUnlockLevel());
+                            if (unlockLevel <= 0) {
+                                throw ErrorCode.UPGRADE_DATA_INVALID.exception(
+                                        "연결 스킬의 해금 레벨은 양수여야 합니다");
+                            }
+                            return UpgradeResponse.from(upgrade, unlockLevel);
+                        })
                 .toList();
     }
 
