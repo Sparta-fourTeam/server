@@ -12,6 +12,8 @@ import com.novaserver.global.error.ErrorCode;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
 import com.novaserver.skill.repository.SkillRepository;
+import com.novaserver.stage.service.RewardRulesService;
+import com.novaserver.tutorial.repository.TutorialRepository;
 import com.novaserver.upgrade.dto.UpgradeCreateRequest;
 import com.novaserver.upgrade.dto.UpgradeRequest;
 import com.novaserver.upgrade.dto.UpgradeResponse;
@@ -44,6 +46,9 @@ class UpgradeServiceTest {
     @Mock private UserUpgradeRepository userUpgradeRepository;
     @Mock private ItemRepository itemRepository;
     @Mock private SkillRepository skillRepository;
+
+    @Mock private TutorialRepository tutorials;
+    @Mock private RewardRulesService referenceLocks;
 
     @InjectMocks private UpgradeService upgradeService;
 

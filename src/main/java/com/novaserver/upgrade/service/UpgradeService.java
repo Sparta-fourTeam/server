@@ -4,6 +4,8 @@ import com.novaserver.global.error.ErrorCode;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
 import com.novaserver.skill.repository.SkillRepository;
+import com.novaserver.stage.service.RewardRulesService;
+import com.novaserver.tutorial.repository.TutorialRepository;
 import com.novaserver.upgrade.dto.UpgradeCreateRequest;
 import com.novaserver.upgrade.dto.UpgradeRequest;
 import com.novaserver.upgrade.dto.UpgradeResponse;
@@ -24,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class UpgradeService {
+    private final TutorialRepository tutorials;
+    private final RewardRulesService referenceLocks;
     private final UpgradeRepository upgradeRepository;
     private final UserUpgradeRepository userUpgradeRepository;
     private final ItemRepository itemRepository;
@@ -112,7 +116,11 @@ public class UpgradeService {
     /** 강화를 삭제한다. 유저가 이미 사용 중이면 409를 던진다. */
     @Transactional
     public void deleteUpgrade(String id) {
+        referenceLocks.lockItemReferences();
         Upgrade upgrade = findUpgrade(id);
+        if (tutorials.existsByRequiredUpgradeUpgradeId(id)) {
+            throw ErrorCode.TUTORIAL_IN_USE.exception();
+        }
         if (userUpgradeRepository.existsByUpgradeId(id)) {
             throw ErrorCode.UPGRADE_IN_USE.exception(id);
         }

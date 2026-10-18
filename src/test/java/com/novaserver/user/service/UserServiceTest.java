@@ -200,9 +200,10 @@ class UserServiceTest {
         when(userCodex.isClaimed()).thenReturn(true);
 
         Tutorials tutorials = mock(Tutorials.class);
-        when(tutorials.getId()).thenReturn(50L);
+        when(tutorials.getId()).thenReturn("fixture");
         UserTutorial userTutorial = mock(UserTutorial.class);
         when(userTutorial.getTutorials()).thenReturn(tutorials);
+        when(userTutorial.recordedIds()).thenReturn(List.of("fixture"));
 
         UserData userData = new UserData(null, 120);
         when(userDataRepository.findByUserId(USER_ID)).thenReturn(Optional.of(userData));
@@ -242,7 +243,7 @@ class UserServiceTest {
         assertThat(response.getCodex().get(0).getMonsterId()).isEqualTo(40L);
         assertThat(response.getCodex().get(0).isClaimed()).isTrue();
 
-        assertThat(response.getTutorials()).containsExactly(50L);
+        assertThat(response.getTutorials()).containsExactly("fixture");
     }
 
     @Test

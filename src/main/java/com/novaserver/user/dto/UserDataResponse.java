@@ -1,5 +1,6 @@
 package com.novaserver.user.dto;
 
+import com.novaserver.tutorial.dto.TutorialStateResponse;
 import com.novaserver.user.entity.UserCodex;
 import com.novaserver.user.entity.UserData;
 import com.novaserver.user.entity.UserEnergy;
@@ -46,8 +47,11 @@ public class UserDataResponse {
     @Schema(description = "도감 목록")
     private final List<UserCodexResponse> codex;
 
-    @Schema(description = "완료한 튜토리얼 id 목록")
-    private final List<Long> tutorials;
+    @Schema(description = "완료·도입 대사 시청 문자열 ID 목록. 시청 기록은 기본 ID에 .dialogue를 붙임")
+    private final List<String> tutorials;
+
+    @Schema(description = "튜토리얼별 대사 시청·완료·보상 수령 상태. 대사 본문은 포함하지 않음")
+    private final List<TutorialStateResponse> tutorialStates;
 
     /** 유저의 상태 엔티티들을 하나의 응답으로 합친다. */
     public static UserDataResponse of(
@@ -69,6 +73,7 @@ public class UserDataResponse {
                 upgrades.stream().map(UserUpgradeResponse::from).toList(),
                 items.stream().map(UserItemResponse::from).toList(),
                 codex.stream().map(UserCodexResponse::from).toList(),
-                tutorials.stream().map(ut -> ut.getTutorials().getId()).toList());
+                tutorials.stream().flatMap(ut -> ut.recordedIds().stream()).toList(),
+                tutorials.stream().map(TutorialStateResponse::from).toList());
     }
 }
