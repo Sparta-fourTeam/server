@@ -99,11 +99,16 @@ public enum ErrorCode {
     SKILL_ELEMENT_DUPLICATED(HttpStatus.CONFLICT, "이미 있는 속성 이름입니다: %s"),
     SKILL_ELEMENT_IN_USE(HttpStatus.CONFLICT, "사용 중인 스킬이 있어 삭제할 수 없습니다: %s"),
 
+    // 플레이어 레벨 기준
+    PLAYER_LEVELS_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "플레이어 레벨 기준이 등록되지 않았습니다"),
+    PLAYER_LEVELS_DATA_INVALID(HttpStatus.BAD_REQUEST, "플레이어 레벨 기준이 올바르지 않습니다"),
+
     // 강화
     UPGRADE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 강화입니다: %s"),
     UPGRADE_DUPLICATED(HttpStatus.CONFLICT, "이미 존재하는 강화 id입니다: %s"),
     UPGRADE_IN_USE(HttpStatus.CONFLICT, "사용 중인 유저 강화가 있어 삭제할 수 없습니다: %s"),
     UPGRADE_DATA_INVALID(HttpStatus.BAD_REQUEST, "강화 데이터가 올바르지 않습니다: %s"),
+    UPGRADE_LOCKED(HttpStatus.CONFLICT, "아직 해금되지 않은 강화입니다: %s"),
     UPGRADE_MAX_LEVEL(HttpStatus.CONFLICT, "이미 최대 레벨입니다: %s"),
     UPGRADE_REQUEST_DUPLICATED(HttpStatus.CONFLICT, "이미 처리 중인 요청입니다: %s"),
 

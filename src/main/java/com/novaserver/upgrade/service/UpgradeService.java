@@ -3,6 +3,7 @@ package com.novaserver.upgrade.service;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
+import com.novaserver.skill.repository.SkillRepository;
 import com.novaserver.upgrade.dto.UpgradeCreateRequest;
 import com.novaserver.upgrade.dto.UpgradeRequest;
 import com.novaserver.upgrade.dto.UpgradeResponse;
@@ -11,6 +12,8 @@ import com.novaserver.upgrade.entity.UpgradeEffect;
 import com.novaserver.upgrade.repository.UpgradeRepository;
 import com.novaserver.user.repository.UserUpgradeRepository;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
@@ -24,12 +27,24 @@ public class UpgradeService {
     private final UpgradeRepository upgradeRepository;
     private final UserUpgradeRepository userUpgradeRepository;
     private final ItemRepository itemRepository;
+    private final SkillRepository skillRepository;
 
     /** 강화 데이터를 전체 조회한다. 유니티와 관리자 목록에서 함께 쓴다. */
     @Transactional(readOnly = true)
     public List<UpgradeResponse> getUpgradeList() {
+        Map<String, Integer> unlocks =
+                skillRepository.findUpgradeUnlockLevels().stream()
+                        .collect(
+                                Collectors.toMap(
+                                        SkillRepository.UpgradeUnlock::getProgressionId,
+                                        SkillRepository.UpgradeUnlock::getUnlockLevel));
         return upgradeRepository.findAll(Sort.by("upgradeId")).stream()
-                .map(UpgradeResponse::from)
+                .map(
+                        upgrade ->
+                                UpgradeResponse.from(
+                                        upgrade,
+                                        unlocks.getOrDefault(
+                                                upgrade.getUpgradeId(), upgrade.getUnlockLevel())))
                 .toList();
     }
 
@@ -60,7 +75,9 @@ public class UpgradeService {
                                     request.getCostStep(),
                                     request.getMaterialBase(),
                                     request.getMaterialStep(),
-                                    request.getEffects()));
+                                    request.getEffects(),
+                                    request.getLevelCosts(),
+                                    request.getMaterialCosts()));
             return UpgradeResponse.from(saved);
         } catch (DataIntegrityViolationException e) {
             throw ErrorCode.UPGRADE_DUPLICATED.exception(request.getUpgradeId());
@@ -81,7 +98,9 @@ public class UpgradeService {
                 request.getCostStep(),
                 request.getMaterialBase(),
                 request.getMaterialStep(),
-                request.getEffects());
+                request.getEffects(),
+                request.getLevelCosts(),
+                request.getMaterialCosts());
         return UpgradeResponse.from(upgrade);
     }
 
@@ -128,20 +147,44 @@ public class UpgradeService {
     /** 효과 값의 형태와 레벨별 배열의 길이, unlockLevel이 올바른지 확인한다. */
     private void validate(UpgradeRequest request) {
         boolean hasMaterialItem = request.getMaterialItemId() != null;
-        boolean hasMaterialBase = request.getMaterialBase() != null;
+        boolean hasMaterialBase =
+                request.getMaterialBase() != null || request.getMaterialCosts() != null;
         if (hasMaterialItem != hasMaterialBase) {
             throw ErrorCode.UPGRADE_DATA_INVALID.exception(
-                    "materialItemId와 materialBase는 둘 다 있거나 둘 다 없어야 합니다");
+                    "materialItemId와 재료 비용(materialBase 또는 materialCosts)은 함께 있어야 합니다");
         }
-        if (request.getUnlockLevel() != null && request.getUnlockLevel() > request.getMaxLevel()) {
-            throw ErrorCode.UPGRADE_DATA_INVALID.exception(
-                    "unlockLevel은 maxLevel(%d)보다 클 수 없습니다".formatted(request.getMaxLevel()));
-        }
+        validateCosts(
+                request.getLevelCosts(),
+                request.getMaxLevel(),
+                request.getCostBase(),
+                request.getCostStep(),
+                "levelCosts");
+        validateCosts(
+                request.getMaterialCosts(),
+                request.getMaxLevel(),
+                request.getMaterialBase(),
+                request.getMaterialStep(),
+                "materialCosts");
         if (request.getEffects() == null) {
             return;
         }
         for (UpgradeEffect effect : request.getEffects()) {
             validateEffect(effect, request.getMaxLevel());
+        }
+    }
+
+    private void validateCosts(
+            List<Integer> costs, int maxLevel, Integer base, Integer step, String name) {
+        if (costs != null) {
+            if (costs.size() != maxLevel
+                    || costs.stream().anyMatch(cost -> cost == null || cost <= 0)) {
+                throw ErrorCode.UPGRADE_DATA_INVALID.exception(name + "는 maxLevel개 양수여야 합니다");
+            }
+        } else if (base != null) {
+            long last = base.longValue() + (step == null ? 0L : step.longValue()) * (maxLevel - 1L);
+            if (base < 0 || (step != null && step < 0) || last > Integer.MAX_VALUE) {
+                throw ErrorCode.UPGRADE_DATA_INVALID.exception(name + " 선형 비용 범위가 올바르지 않습니다");
+            }
         }
     }
 

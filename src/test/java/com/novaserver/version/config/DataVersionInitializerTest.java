@@ -30,6 +30,7 @@ class DataVersionInitializerTest {
         when(dataVersionRepository.existsById(DataTable.UPGRADES.getKey())).thenReturn(true);
         when(dataVersionRepository.existsById(DataTable.ENERGY.getKey())).thenReturn(true);
         when(dataVersionRepository.existsById(DataTable.CARDS.getKey())).thenReturn(true);
+        when(dataVersionRepository.existsById(DataTable.PLAYER_LEVELS.getKey())).thenReturn(true);
 
         dataVersionInitializer.run(null);
 

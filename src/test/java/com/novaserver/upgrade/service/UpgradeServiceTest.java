@@ -3,6 +3,7 @@ package com.novaserver.upgrade.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -10,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
+import com.novaserver.skill.repository.SkillRepository;
 import com.novaserver.upgrade.dto.UpgradeCreateRequest;
 import com.novaserver.upgrade.dto.UpgradeRequest;
 import com.novaserver.upgrade.dto.UpgradeResponse;
@@ -39,6 +41,7 @@ class UpgradeServiceTest {
     @Mock private UpgradeRepository upgradeRepository;
     @Mock private UserUpgradeRepository userUpgradeRepository;
     @Mock private ItemRepository itemRepository;
+    @Mock private SkillRepository skillRepository;
 
     @InjectMocks private UpgradeService upgradeService;
 
@@ -69,7 +72,11 @@ class UpgradeServiceTest {
     @DisplayName("강화 목록을 upgradeId 기준으로 정렬해서 조회한다")
     void shouldReturnUpgradeList_onGetUpgradeList() {
         when(upgradeRepository.findAll(Sort.by("upgradeId")))
-                .thenReturn(List.of(new Upgrade("atk", 10, 1, null, null, null, null, null, null)));
+                .thenReturn(
+                        List.of(
+                                new Upgrade(
+                                        "atk", 10, 1, null, null, null, null, null, null, null,
+                                        null)));
 
         List<UpgradeResponse> responses = upgradeService.getUpgradeList();
 
@@ -176,7 +183,7 @@ class UpgradeServiceTest {
     void shouldCreateUpgradeSuccessfully_withoutMaterial() {
         when(upgradeRepository.existsById("atk")).thenReturn(false);
         when(upgradeRepository.saveAndFlush(any()))
-                .thenReturn(new Upgrade("atk", 10, 1, null, 100, 10, null, null, null));
+                .thenReturn(new Upgrade("atk", 10, 1, null, 100, 10, null, null, null, null, null));
 
         UpgradeResponse response =
                 upgradeService.createUpgrade(createRequest("atk", 10, null, null));
@@ -206,7 +213,7 @@ class UpgradeServiceTest {
     @DisplayName("재료가 이미 연결된 강화 자신을 수정할 때는 재료 중복 검증에 걸리지 않는다")
     void shouldAllowUpdating_whenMaterialAlreadyLinkedToItself() {
         Item material = new Item("mat.wood", null);
-        Upgrade upgrade = new Upgrade("atk", 10, 1, material, 100, 10, 2, 1, null);
+        Upgrade upgrade = new Upgrade("atk", 10, 1, material, 100, 10, 2, 1, null, null, null);
         when(upgradeRepository.findById("atk")).thenReturn(Optional.of(upgrade));
         when(itemRepository.findById("mat.wood")).thenReturn(Optional.of(material));
         when(upgradeRepository.existsByMaterialItemIdAndUpgradeIdNot("mat.wood", "atk"))
@@ -219,16 +226,19 @@ class UpgradeServiceTest {
     }
 
     @Test
-    @DisplayName("unlockLevel이 maxLevel보다 크면 400 UPGRADE_DATA_INVALID를 던진다")
-    void shouldThrowBadRequest_whenUnlockLevelGreaterThanMaxLevel() {
-        when(upgradeRepository.existsById("atk")).thenReturn(false);
-        UpgradeCreateRequest request = createRequest("atk", 5, null, null);
+    @DisplayName("플레이어 해금 레벨은 강화 최대 레벨보다 커도 등록할 수 있다")
+    void shouldAllowPlayerUnlockLevelAboveUpgradeMax() {
+        // Given
+        UpgradeCreateRequest request = createRequest("atk", 3, null, null);
         ReflectionTestUtils.setField(request, "unlockLevel", 6);
+        when(upgradeRepository.saveAndFlush(any())).thenAnswer(call -> call.getArgument(0));
 
-        assertThatThrownBy(() -> upgradeService.createUpgrade(request))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("unlockLevel은 maxLevel(5)보다 클 수 없습니다");
-        verify(upgradeRepository, never()).saveAndFlush(any());
+        // When
+        UpgradeResponse response = upgradeService.createUpgrade(request);
+
+        // Then
+        assertThat(response.unlockLevel()).isEqualTo(6);
+        assertThat(response.maxLevel()).isEqualTo(3);
     }
 
     @Test
@@ -238,7 +248,7 @@ class UpgradeServiceTest {
         when(upgradeRepository.existsById("atk")).thenReturn(false);
         when(itemRepository.findById("mat.wood")).thenReturn(Optional.of(material));
         when(upgradeRepository.saveAndFlush(any()))
-                .thenReturn(new Upgrade("atk", 10, 1, material, 100, 10, 2, 1, null));
+                .thenReturn(new Upgrade("atk", 10, 1, material, 100, 10, 2, 1, null, null, null));
 
         UpgradeResponse response =
                 upgradeService.createUpgrade(createRequest("atk", 10, "mat.wood", null));
@@ -251,7 +261,8 @@ class UpgradeServiceTest {
     void shouldDefaultUnlockLevelToOne_whenCreatingWithoutUnlockLevel() {
         when(upgradeRepository.existsById("atk")).thenReturn(false);
         when(upgradeRepository.saveAndFlush(any()))
-                .thenReturn(new Upgrade("atk", 10, 1, null, null, null, null, null, null));
+                .thenReturn(
+                        new Upgrade("atk", 10, 1, null, null, null, null, null, null, null, null));
         UpgradeCreateRequest request = createRequest("atk", 10, null, null);
         ReflectionTestUtils.setField(request, "unlockLevel", null);
 
@@ -291,7 +302,7 @@ class UpgradeServiceTest {
     @Test
     @DisplayName("강화를 정상적으로 수정하면 효과가 통째로 교체된다")
     void shouldUpdateUpgradeSuccessfully() {
-        Upgrade upgrade = new Upgrade("atk", 10, 1, null, 100, 10, null, null, null);
+        Upgrade upgrade = new Upgrade("atk", 10, 1, null, 100, 10, null, null, null, null, null);
         when(upgradeRepository.findById("atk")).thenReturn(Optional.of(upgrade));
         UpgradeEffect newEffect = new UpgradeEffect("ATK", 5, null);
 
@@ -304,7 +315,7 @@ class UpgradeServiceTest {
     @Test
     @DisplayName("unlockLevel이 없으면 1로 수정한다")
     void shouldDefaultUnlockLevelToOne_whenUpdatingWithoutUnlockLevel() {
-        Upgrade upgrade = new Upgrade("atk", 10, 5, null, 100, 10, null, null, null);
+        Upgrade upgrade = new Upgrade("atk", 10, 5, null, 100, 10, null, null, null, null, null);
         when(upgradeRepository.findById("atk")).thenReturn(Optional.of(upgrade));
         UpgradeRequest request = updateRequest(10, null, null);
         ReflectionTestUtils.setField(request, "unlockLevel", null);
@@ -329,7 +340,7 @@ class UpgradeServiceTest {
     @Test
     @DisplayName("유저가 이미 사용 중인 강화를 삭제하면 409 UPGRADE_IN_USE를 던진다")
     void shouldThrowConflict_whenDeletingUpgradeInUse() {
-        Upgrade upgrade = new Upgrade("atk", 10, 1, null, null, null, null, null, null);
+        Upgrade upgrade = new Upgrade("atk", 10, 1, null, null, null, null, null, null, null, null);
         when(upgradeRepository.findById("atk")).thenReturn(Optional.of(upgrade));
         when(userUpgradeRepository.existsByUpgradeId("atk")).thenReturn(true);
 
@@ -343,13 +354,112 @@ class UpgradeServiceTest {
     @Test
     @DisplayName("강화를 정상적으로 삭제한다")
     void shouldDeleteUpgradeSuccessfully() {
-        Upgrade upgrade = new Upgrade("atk", 10, 1, null, null, null, null, null, null);
+        Upgrade upgrade = new Upgrade("atk", 10, 1, null, null, null, null, null, null, null, null);
         when(upgradeRepository.findById("atk")).thenReturn(Optional.of(upgrade));
         when(userUpgradeRepository.existsByUpgradeId("atk")).thenReturn(false);
 
         upgradeService.deleteUpgrade("atk");
 
         verify(upgradeRepository).delete(upgrade);
+    }
+
+    @Test
+    @DisplayName("배열만 있는 재료 비용을 등록·수정하고 조회 응답에도 유지한다")
+    void shouldPersistAndReturnCostArrays() {
+        // Given
+        Item material = new Item("mat.wood", null);
+        when(itemRepository.findById("mat.wood")).thenReturn(Optional.of(material));
+        when(upgradeRepository.saveAndFlush(any())).thenAnswer(call -> call.getArgument(0));
+        UpgradeCreateRequest request = createRequest("atk", 3, "mat.wood", null);
+        ReflectionTestUtils.setField(request, "materialBase", null);
+        ReflectionTestUtils.setField(request, "levelCosts", List.of(7, 13, 29));
+        ReflectionTestUtils.setField(request, "materialCosts", List.of(2, 5, 9));
+
+        // When
+        UpgradeResponse response = upgradeService.createUpgrade(request);
+
+        // Then
+        assertThat(response.levelCosts()).containsExactly(7, 13, 29);
+        assertThat(response.materialCosts()).containsExactly(2, 5, 9);
+        ArgumentCaptor<Upgrade> saved = ArgumentCaptor.forClass(Upgrade.class);
+        verify(upgradeRepository).saveAndFlush(saved.capture());
+        when(upgradeRepository.findById("atk")).thenReturn(Optional.of(saved.getValue()));
+        UpgradeRequest update = updateRequest(3, "mat.wood", null);
+        ReflectionTestUtils.setField(update, "levelCosts", List.of(11, 17, 31));
+        ReflectionTestUtils.setField(update, "materialCosts", List.of(3, 6, 10));
+        UpgradeResponse changed = upgradeService.updateUpgrade("atk", update);
+        assertThat(changed.levelCosts()).containsExactly(11, 17, 31);
+        assertThat(upgradeService.getUpgrade("atk").materialCosts()).containsExactly(3, 6, 10);
+    }
+
+    @Test
+    @DisplayName("존재하는 잘못된 배열은 기본 비용이 있어도 선형식으로 대체하지 않는다")
+    void shouldRejectInvalidCostArraysWithoutFallback() {
+        for (String field : List.of("levelCosts", "materialCosts")) {
+            for (List<Integer> costs :
+                    List.of(
+                            List.<Integer>of(),
+                            List.of(1, 2),
+                            List.of(1, 2, 3, 4),
+                            List.of(1, 0, 3),
+                            List.of(1, -2, 3),
+                            java.util.Arrays.asList(1, null, 3))) {
+                UpgradeCreateRequest request = createRequest("atk", 3, "mat.wood", null);
+                ReflectionTestUtils.setField(request, "costBase", 9);
+                ReflectionTestUtils.setField(request, field, costs);
+
+                assertStatus(
+                        () -> upgradeService.createUpgrade(request),
+                        HttpStatus.BAD_REQUEST,
+                        ErrorCode.UPGRADE_DATA_INVALID,
+                        field + "는 maxLevel개 양수여야 합니다");
+            }
+        }
+        verify(upgradeRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("재료 아이템이 없는 재료 배열과 오버플로 선형 비용은 등록하지 않는다")
+    void shouldRejectMissingMaterialItemOrOverflowingCost() {
+        UpgradeCreateRequest request = createRequest("atk", 3, null, null);
+        ReflectionTestUtils.setField(request, "materialCosts", List.of(1, 2, 3));
+        assertThatThrownBy(() -> upgradeService.createUpgrade(request))
+                .isInstanceOf(ResponseStatusException.class);
+        ReflectionTestUtils.setField(request, "materialCosts", null);
+        ReflectionTestUtils.setField(request, "costBase", Integer.MAX_VALUE);
+        ReflectionTestUtils.setField(request, "costStep", 1);
+        assertThatThrownBy(() -> upgradeService.createUpgrade(request))
+                .isInstanceOf(ResponseStatusException.class);
+        verify(upgradeRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("조회에서 원본 강화 해금과 실제 스킬 구매 해금 레벨을 구분한다")
+    void shouldExposeEffectiveSkillUnlockSeparately() {
+        var linked = mock(SkillRepository.UpgradeUnlock.class);
+        when(linked.getProgressionId()).thenReturn("test.skill");
+        when(linked.getUnlockLevel()).thenReturn(4);
+        when(skillRepository.findUpgradeUnlockLevels()).thenReturn(List.of(linked));
+        when(upgradeRepository.findAll(Sort.by("upgradeId")))
+                .thenReturn(
+                        List.of(
+                                new Upgrade(
+                                        "test.skill",
+                                        3,
+                                        1,
+                                        null,
+                                        11,
+                                        7,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null)));
+
+        var response = upgradeService.getUpgradeList().getFirst();
+
+        assertThat(response.unlockLevel()).isEqualTo(1);
+        assertThat(response.effectiveUnlockLevel()).isEqualTo(4);
     }
 
     private static void assertStatus(

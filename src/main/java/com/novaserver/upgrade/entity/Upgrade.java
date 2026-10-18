@@ -46,6 +46,12 @@ public class Upgrade {
     @JdbcTypeCode(SqlTypes.JSON)
     private List<UpgradeEffect> effects;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    private List<Integer> levelCosts;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    private List<Integer> materialCosts;
+
     /** 강화 정보를 생성한다. */
     public Upgrade(
             String upgradeId,
@@ -56,7 +62,9 @@ public class Upgrade {
             Integer costStep,
             Integer materialBase,
             Integer materialStep,
-            List<UpgradeEffect> effects) {
+            List<UpgradeEffect> effects,
+            List<Integer> levelCosts,
+            List<Integer> materialCosts) {
         this.upgradeId = upgradeId;
         update(
                 maxLevel,
@@ -66,7 +74,9 @@ public class Upgrade {
                 costStep,
                 materialBase,
                 materialStep,
-                effects);
+                effects,
+                levelCosts,
+                materialCosts);
     }
 
     /** 강화 정보를 수정한다. */
@@ -78,7 +88,9 @@ public class Upgrade {
             Integer costStep,
             Integer materialBase,
             Integer materialStep,
-            List<UpgradeEffect> effects) {
+            List<UpgradeEffect> effects,
+            List<Integer> levelCosts,
+            List<Integer> materialCosts) {
         this.maxLevel = maxLevel;
         this.unlockLevel = unlockLevel;
         this.materialItem = materialItem;
@@ -87,5 +99,7 @@ public class Upgrade {
         this.materialBase = materialBase;
         this.materialStep = materialStep;
         this.effects = effects;
+        this.levelCosts = levelCosts;
+        this.materialCosts = materialCosts;
     }
 }

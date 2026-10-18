@@ -35,7 +35,12 @@ public class UserController {
         return userService.getMe(userId);
     }
 
-    @Operation(summary = "강화 레벨업", description = "골드를 사용해 영구 강화 레벨을 올립니다.")
+    @Operation(
+            summary = "강화 레벨업",
+            description =
+                    "저장된 누적 경험치로 해금을 검사하고 골드·재료를 차감합니다. 현재 강화 레벨 L에서 "
+                            + "levelCosts[L]·materialCosts[L] 우선, 각 배열이 null일 때만 기본값+증가값*L. "
+                            + "해금 전·최대 레벨·잔액/재료 부족은 409. 같은 createId는 최초 결과를 반환합니다.")
     @PostMapping("/upgrades")
     public UserUpgradeResponse levelUpUpgrade(
             @AuthenticationPrincipal Long userId,
