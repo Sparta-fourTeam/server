@@ -589,6 +589,46 @@ class TutorialAccountTransactionTest {
         assertThat(cap).isEqualTo(results.get(0) ? (player ? 8 : 4) : (player ? 4 : 3));
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void firstStateCreationAndDefinitionDeletionHaveAnOrderedOutcome(boolean dialogue)
+            throws Exception {
+        String id = "fixture_delete";
+        config.save(id, request(null, 1, null, STAGE, null, 0, 0, 0, rewardId));
+        clear(userId, STAGE);
+        String recordId = id + (dialogue ? ".dialogue" : "");
+        var results =
+                race(
+                        () -> {
+                            try {
+                                service.complete(userId, recordId);
+                                return true;
+                            } catch (ResponseStatusException error) {
+                                assertThat(error.getStatusCode().value()).isEqualTo(404);
+                                return false;
+                            }
+                        },
+                        () -> {
+                            try {
+                                config.delete(id);
+                                return true;
+                            } catch (ResponseStatusException error) {
+                                assertThat(error.getStatusCode().value()).isEqualTo(409);
+                                return false;
+                            }
+                        });
+        boolean recorded = results.getFirst();
+        assertThat(results.get(1)).isNotEqualTo(recorded);
+        assertThat(tutorials.existsById(id)).isEqualTo(recorded);
+        assertThat(states.findByUserIdAndTutorialsId(userId, id).isPresent()).isEqualTo(recorded);
+        assertState(recorded && !dialogue ? 13 : 0, recorded && !dialogue ? 2 : 0, 0);
+        if (recorded) {
+            var receipt = service.complete(userId, recordId);
+            assertThat(receipt.dialogueOnly()).isEqualTo(dialogue);
+            assertThat(service.complete(userId, recordId)).isEqualTo(receipt);
+        }
+    }
+
     private UpgradeRequest upgradeRequest(int maxLevel) {
         var request = new UpgradeRequest();
         ReflectionTestUtils.setField(request, "maxLevel", maxLevel);
