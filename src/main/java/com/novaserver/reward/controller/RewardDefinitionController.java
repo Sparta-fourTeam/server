@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class RewardDefinitionController {
     private final RewardDefinitionService service;
 
-    @Operation(summary = "고정 보상 묶음 목록", description = "실제 아이템·수량과 버전·영향받는 별등급·튜토리얼 참조 수를 조회합니다.")
+    @Operation(summary = "고정 보상 묶음 목록", description = "실제 아이템·수량과 버전·별등급·튜토리얼·퀘스트·도감 참조 수를 조회합니다.")
     @GetMapping
     public List<RewardDefinitionResponse> list() {
         return service.list();
@@ -49,14 +49,14 @@ public class RewardDefinitionController {
             summary = "공유 고정 보상 묶음 전체 교체",
             description =
                     "현재 expectedVersion 필수. 불일치는 409입니다. "
-                            + "모든 참조 레이팅의 미래 수령에 반영되며 과거 영수증은 바뀌지 않습니다.")
+                            + "모든 참조의 미래 수령에 반영되며 과거 영수증은 바뀌지 않습니다. 도감 참조 중에는 양수 골드 전용만 허용합니다.")
     @PutMapping("/{id}")
     public RewardDefinitionResponse update(
             @PathVariable Long id, @Valid @RequestBody RewardDefinitionRequest request) {
         return service.update(id, request);
     }
 
-    @Operation(summary = "고정 보상 묶음 삭제", description = "별등급 또는 튜토리얼이 참조 중이면 409로 거절합니다.")
+    @Operation(summary = "고정 보상 묶음 삭제", description = "별등급·튜토리얼·퀘스트·도감이 참조 중이면 409로 거절합니다.")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
