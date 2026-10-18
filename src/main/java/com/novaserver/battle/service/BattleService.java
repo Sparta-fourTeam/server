@@ -114,6 +114,9 @@ public class BattleService {
                 stageRewardService.calculateClearReward(
                         request.getStageId(), request.getClearedWave(), request.getRating());
         if (reward.exp() < 0
+                || reward.threeStarBonusExp() < 0
+                || reward.threeStarBonusExp() > reward.exp()
+                || (request.getRating() != 3 && reward.threeStarBonusExp() != 0)
                 || reward.gold() < 0
                 || reward.items() == null
                 || reward.items().entrySet().stream()

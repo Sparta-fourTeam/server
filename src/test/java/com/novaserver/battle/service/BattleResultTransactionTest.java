@@ -123,7 +123,7 @@ class BattleResultTransactionTest {
                     userId = user.getId();
                     users.createInitialState(user);
                 });
-        doReturn(new ClearRewardResult(13, 17, Map.of(ITEM, 9)))
+        doReturn(new ClearRewardResult(13, 17, Map.of(ITEM, 9), 0))
                 .when(rewards)
                 .calculateClearReward(eq(901), anyInt(), anyInt());
     }
@@ -153,7 +153,7 @@ class BattleResultTransactionTest {
         transaction.executeWithoutResult(
                 status -> wallets.findByUserIdForUpdate(userId).orElseThrow().addGold(31));
         // 새 트랜잭션에서 DB를 읽는다. 이후 계산 기준 변경도 과거 결과를 바꾸지 않는다.
-        doReturn(new ClearRewardResult(999, 999, Map.of()))
+        doReturn(new ClearRewardResult(999, 999, Map.of(), 0))
                 .when(rewards)
                 .calculateClearReward(eq(901), anyInt(), anyInt());
         assertThat(battles.endBattle(userId, request)).isEqualTo(first);
@@ -262,10 +262,12 @@ class BattleResultTransactionTest {
         assertBalances(13, 17, 9);
     }
 
-    @Test
-    void invalidCalculatedRewardCannotLeaveReceiptForAnAmountThatWasNotGranted() {
+    @ParameterizedTest
+    @CsvSource({"-1,0", "17,-1", "17,14", "17,1"})
+    void invalidCalculatedRewardCannotLeaveReceiptForAnAmountThatWasNotGranted(
+            int gold, int bonusExp) {
         String id = battles.createBattle(userId, "invalid-reward").getBattleId();
-        doReturn(new ClearRewardResult(13, -1, Map.of(ITEM, 9)))
+        doReturn(new ClearRewardResult(13, gold, Map.of(ITEM, 9), bonusExp))
                 .when(rewards)
                 .calculateClearReward(eq(901), anyInt(), anyInt());
         assertThatThrownBy(() -> battles.endBattle(userId, request(id, 12, 2)))
@@ -277,9 +279,16 @@ class BattleResultTransactionTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"0,0,0,0,0,0,0", "20,3,30,67,83,26,49"})
+    @CsvSource({"0,0,0,3,2,1,2,0", "20,3,30,67,83,26,49,17"})
     void realCalculationIsGrantedAndReceiptedOnce(
-            int wave, int rating, int exp, int gold, int skill, int equipment, int chest)
+            int wave,
+            int rating,
+            int exp,
+            int gold,
+            int skill,
+            int equipment,
+            int chest,
+            int bonusExp)
             throws Exception {
         transaction.executeWithoutResult(
                 status -> {
@@ -319,6 +328,7 @@ class BattleResultTransactionTest {
                                         .content(payload))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.exp").value(exp))
+                        .andExpect(jsonPath("$.threeStarBonusExp").value(bonusExp))
                         .andExpect(jsonPath("$.gold").value(gold))
                         .andReturn()
                         .getResponse()
@@ -331,17 +341,8 @@ class BattleResultTransactionTest {
                 .andExpect(status().isOk())
                 .andExpect(content().json(first));
         assertBalances(exp, gold, 0);
-        assertThat(
-                        inventory
-                                .findByUserIdAndItemId(userId, SKILL)
-                                .map(item -> item.getQuantity())
-                                .orElse(0))
+        assertThat(inventory.findByUserIdAndItemId(userId, SKILL).orElseThrow().getQuantity())
                 .isEqualTo(skill);
-        if (wave == 0) {
-            assertThat(inventory.findByUserIdAndItemId(userId, SKILL)).isEmpty();
-            assertThat(inventory.findByUserIdAndItemId(userId, EQUIPMENT)).isEmpty();
-            assertThat(inventory.findByUserIdAndItemId(userId, CHEST)).isEmpty();
-        }
         assertThat(
                         inventory
                                 .findByUserIdAndItemId(userId, EQUIPMENT)
@@ -359,6 +360,11 @@ class BattleResultTransactionTest {
         nextSchedules.put("Coin", new StageRewardSchedule(9, 2, 3));
         nextSchedules.put("SkillMaterial", new StageRewardSchedule(2, 1, 2));
         var updated = rulesService.saveConfig(new RewardRulesData(nextSchedules, ruleData.items()));
+        transaction.executeWithoutResult(
+                status -> {
+                    var changed = stageRewards.findById(901).orElseThrow();
+                    changed.update(19, 31, changed.getFinalCoin(), changed.getItems());
+                });
         mvc.perform(get("/api/reward-rules").header("Authorization", authorization))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.schedules.Coin.start").value(9))
@@ -372,13 +378,12 @@ class BattleResultTransactionTest {
                 .andExpect(status().isOk())
                 .andExpect(content().json(first));
         String nextId = battles.createBattle(userId, "updated-rules").getBattleId();
-        var nextResult = battles.endBattle(userId, request(nextId, 1, 0));
-        assertThat(nextResult.gold()).isEqualTo(11);
-        assertThat(nextResult.exp()).isEqualTo(13);
-        assertThat(nextResult.items()).containsEntry(SKILL, 3);
-        assertBalances(exp + 13, gold + 11, 0);
+        var nextResult = battles.endBattle(userId, request(nextId, 0, 0));
+        assertThat(nextResult.gold()).isEqualTo(9);
+        assertThat(nextResult.items()).containsEntry(SKILL, 2);
+        assertBalances(exp, gold + 9, 0);
         assertThat(inventory.findByUserIdAndItemId(userId, SKILL).orElseThrow().getQuantity())
-                .isEqualTo(skill + 3);
+                .isEqualTo(skill + 2);
     }
 
     @Test

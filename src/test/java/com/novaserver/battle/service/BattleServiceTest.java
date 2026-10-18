@@ -141,7 +141,7 @@ class BattleServiceTest {
         when(battleRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(battleRepository.deleteByUserIdAndBattleId(1L, "battle-1")).thenReturn(1);
         when(stageRewardService.calculateClearReward(1, 10, 3))
-                .thenReturn(new ClearRewardResult(100, 50, Map.of("mat.wood", 5)));
+                .thenReturn(new ClearRewardResult(100, 50, Map.of("mat.wood", 5), 0));
         Stage stage = mock(Stage.class);
         when(stageService.findStage(1)).thenReturn(stage);
         when(userStageProgressRepository.findByUserIdAndStageId(1L, 1))
@@ -181,7 +181,7 @@ class BattleServiceTest {
     @Test
     void replaysReceiptWithoutRecalculatingRewardsOrRequiringActiveSession() {
         var request = endRequest("finished", 10, 3);
-        var reward = new ClearRewardResult(13, 17, Map.of("mat.saved", 9));
+        var reward = new ClearRewardResult(13, 17, Map.of("mat.saved", 9), 0);
         final var receipt = new BattleResult(1L, request, reward, 3, clock.instant());
         when(results.findByUserIdAndBattleId(1L, "finished")).thenReturn(Optional.of(receipt));
         var response = battleService.endBattle(1L, request);

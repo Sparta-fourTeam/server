@@ -79,7 +79,7 @@ class StageRewardServiceTest {
 
     @ParameterizedTest
     @CsvSource({
-        "0,0,0,0,0,0",
+        "0,3,0,2,1,2",
         "1,5,13,5,2,4",
         "3,9,13,11,4,8",
         "4,11,13,35,5,10",
@@ -95,19 +95,17 @@ class StageRewardServiceTest {
         var result = rewards.calculateClearReward(1, wave, 0);
         assertThat(result.gold()).isEqualTo(gold);
         assertThat(result.exp()).isEqualTo(exp);
-        assertThat(result.items().getOrDefault(SKILL, 0)).isEqualTo(skill);
-        if (wave == 0) {
-            assertThat(result.items()).isEmpty();
-        }
+        assertThat(result.items()).containsEntry(SKILL, skill);
         assertThat(result.items().getOrDefault(EQUIPMENT, 0)).isEqualTo(equipment);
         assertThat(result.items().getOrDefault(CHEST, 0)).isEqualTo(chest);
     }
 
     @ParameterizedTest
-    @CsvSource({"1,13", "2,13", "3,30"})
-    void paysBaseExpOnceAndOnlyThreeStarsAddBonus(int rating, int exp) {
+    @CsvSource({"1,13,0", "2,13,0", "3,30,17"})
+    void paysBaseExpOnceAndOnlyThreeStarsAddBonus(int rating, int exp, int bonusExp) {
         var result = rewards.calculateClearReward(1, 20, rating);
         assertThat(result.exp()).isEqualTo(exp);
+        assertThat(result.threeStarBonusExp()).isEqualTo(bonusExp);
         assertThat(result.gold()).isEqualTo(FINAL_COIN);
         assertThat(result.items())
                 .containsEntry(SKILL, SKILL_FINAL)
