@@ -7,6 +7,7 @@ import com.novaserver.item.dto.ItemResponse;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
 import com.novaserver.skill.repository.SkillRepository;
+import com.novaserver.stage.service.RewardRulesService;
 import com.novaserver.upgrade.repository.UpgradeRepository;
 import com.novaserver.user.repository.UserItemRepository;
 import java.util.List;
@@ -24,6 +25,7 @@ public class ItemService {
     private final UserItemRepository userItemRepository;
     private final SkillRepository skillRepository;
     private final UpgradeRepository upgradeRepository;
+    private final RewardRulesService rewardRules;
 
     /** 아이템 데이터를 전체 조회한다. 유니티와 관리자 목록에서 함께 쓴다. */
     @Transactional(readOnly = true)
@@ -66,9 +68,10 @@ public class ItemService {
         return ItemResponse.from(item);
     }
 
-    /** 아이템을 삭제한다. 유저가 이미 보유 중이거나 강화 재료로 쓰이고 있으면 409를 던진다. */
+    /** 아이템을 삭제한다. 보상 규칙·강화에서 참조하거나 유저가 보유 중이면 409를 던진다. */
     @Transactional
     public void deleteItem(String id) {
+        rewardRules.checkItemRemovable(id);
         Item item = findItem(id);
         if (userItemRepository.existsByItemId(id)) {
             throw ErrorCode.ITEM_IN_USE.exception(id);

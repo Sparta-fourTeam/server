@@ -48,7 +48,8 @@ public class BattleController {
             summary = "배틀 종료",
             description =
                     "보상·진척과 최초 확정 결과를 함께 저장합니다. 같은 payload 재제출은 최초 결과를 반환하며 "
-                            + "같은 battleId의 다른 payload는 409로 거절합니다. 현재 잔액은 포함하지 않습니다.")
+                            + "같은 battleId의 다른 payload는 409로 거절합니다. "
+                            + "별 등급 1~3은 20웨이브 완료 때만 허용합니다. 현재 잔액은 포함하지 않습니다.")
     @PostMapping("/end")
     public BattleResultResponse endBattle(
             @AuthenticationPrincipal Long userId, @Valid @RequestBody BattleEndRequest request) {

@@ -3,6 +3,7 @@ package com.novaserver.item.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -14,6 +15,7 @@ import com.novaserver.item.dto.ItemResponse;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
 import com.novaserver.skill.repository.SkillRepository;
+import com.novaserver.stage.service.RewardRulesService;
 import com.novaserver.upgrade.repository.UpgradeRepository;
 import com.novaserver.user.repository.UserItemRepository;
 import java.util.List;
@@ -37,6 +39,7 @@ class ItemServiceTest {
     @Mock private UserItemRepository userItemRepository;
     @Mock private SkillRepository skillRepository;
     @Mock private UpgradeRepository upgradeRepository;
+    @Mock private RewardRulesService rewardRules;
 
     @InjectMocks private ItemService itemService;
 
@@ -199,6 +202,19 @@ class ItemServiceTest {
                 HttpStatus.CONFLICT,
                 ErrorCode.ITEM_LINKED_TO_UPGRADE,
                 "mat.wood");
+    }
+
+    @Test
+    @DisplayName("보상 기준에 분류된 아이템 삭제를 차단한다")
+    void shouldRejectDeletingRewardItem() {
+        doThrow(ErrorCode.ITEM_LINKED_TO_REWARD_RULES.exception("test.material"))
+                .when(rewardRules)
+                .checkItemRemovable("test.material");
+        assertStatus(
+                () -> itemService.deleteItem("test.material"),
+                HttpStatus.CONFLICT,
+                ErrorCode.ITEM_LINKED_TO_REWARD_RULES,
+                "test.material");
     }
 
     @Test

@@ -24,22 +24,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class StageRewardService {
-    /** 배틀 종료 시 기본 보상 계산에 쓰이는 고정값. 모든 스테이지에 동일하게 적용된다. */
-    private static final int TOTAL_WAVES = 20;
-
-    private static final int COIN_START = 25;
-    private static final int COIN_INCREMENT = 5;
-    private static final int COIN_BONUS_WAVE = 6;
-    private static final int MATERIAL_START = 1;
-    private static final int MATERIAL_INCREMENT = 1;
-    private static final int SKILL_MATERIAL_BONUS_WAVE = 3;
-    private static final int EQUIPMENT_MATERIAL_WAVE = 4;
-    private static final int THREE_STAR_RATING = 3;
-
     private final StageRewardRepository stageRewardRepository;
     private final StageService stageService;
     private final ItemRepository itemRepository;
     private final StageRewardItemValidator itemValidator;
+    private final RewardRulesService rulesService;
 
     /** 스테이지 보상 목록을 조회한다. */
     @Transactional(readOnly = true)
@@ -61,10 +50,12 @@ public class StageRewardService {
     /** 스테이지 보상을 등록한다. 없는 stageId면 404, 이미 보상이 등록되어 있으면 409를 던진다. */
     @Transactional
     public StageRewardResponse createStageReward(Integer stageId, StageRewardRequest request) {
-        Stage stage = stageService.findStage(stageId);
+        rulesService.lockRules();
+        final Stage stage = stageService.findStage(stageId);
         if (stageRewardRepository.existsById(stageId)) {
             throw ErrorCode.STAGE_REWARD_DUPLICATED.exception(stageId);
         }
+        validateBalance(request);
         List<StageRewardItem> items = itemValidator.validate(request.getItems());
         try {
             StageReward saved =
@@ -84,7 +75,9 @@ public class StageRewardService {
     /** 스테이지 보상을 수정한다. 없는 stageId면 404를 던진다. */
     @Transactional
     public StageRewardResponse updateStageReward(Integer stageId, StageRewardRequest request) {
+        rulesService.lockRules();
         StageReward reward = findStageReward(stageId);
+        validateBalance(request);
         List<StageRewardItem> items = itemValidator.validate(request.getItems());
         reward.update(
                 request.getBaseExp(),
@@ -106,59 +99,63 @@ public class StageRewardService {
                 .orElseThrow(() -> ErrorCode.STAGE_REWARD_NOT_FOUND.exception(stageId));
     }
 
-    /**
-     * 배틀 종료 시 즉시 지급할 기본 보상을 계산한다. clearedWave가 0이면 보상이 없다.
-     *
-     * @param stageId 스테이지 id
-     * @param clearedWave 이번 배틀에서 클리어한 웨이브
-     * @param rating 이번 배틀의 클리어 등급(0~3)
-     */
+    /** 완료 웨이브의 기본 보상. 별이 있으면 최종 웨이브까지 완료한 결과여야 한다. */
     public ClearRewardResult calculateClearReward(Integer stageId, int clearedWave, int rating) {
+        if (clearedWave < 0
+                || clearedWave > StageRewardSchedule.WAVE_COUNT
+                || rating < 0
+                || rating > 3
+                || (rating > 0 && clearedWave != StageRewardSchedule.WAVE_COUNT)) {
+            throw ErrorCode.BATTLE_RESULT_INVALID.exception();
+        }
+        var rules = rulesService.getRules();
         StageReward reward = findStageReward(stageId);
-        if (clearedWave <= 0) {
-            return new ClearRewardResult(0, 0, Map.of());
+        var coinSchedule = rules.schedules().get("Coin");
+        if (reward.getBaseExp() < 0
+                || reward.getThreeStarBonusExp() < 0
+                || reward.getFinalCoin() < coinSchedule.minimumFinal()) {
+            throw ErrorCode.BATTLE_REWARD_UNAVAILABLE.exception();
         }
-
-        int exp = reward.getBaseExp() * clearedWave;
-        if (rating == THREE_STAR_RATING) {
-            exp += reward.getThreeStarBonusExp();
-        }
-
-        int gold = COIN_START + COIN_INCREMENT * (clearedWave - 1);
-        if (clearedWave >= COIN_BONUS_WAVE) {
-            gold += reward.getFinalCoin() - COIN_START - COIN_INCREMENT * TOTAL_WAVES;
-        }
-
-        List<String> itemIds = reward.getItems().stream().map(StageRewardItem::itemId).toList();
-        Map<String, Item> catalogItems =
-                itemRepository.findAllById(itemIds).stream()
-                        .collect(Collectors.toMap(Item::getItemId, item -> item));
-
-        Map<String, Integer> items = new HashMap<>();
-        for (StageRewardItem item : reward.getItems()) {
-            Item catalogItem = catalogItems.get(item.itemId());
-            if (catalogItem == null) {
-                throw ErrorCode.ITEM_NOT_FOUND.exception(item.itemId());
+        try {
+            int exp = clearedWave >= 1 ? reward.getBaseExp() : 0;
+            if (rating == 3) {
+                exp = Math.addExact(exp, reward.getThreeStarBonusExp());
             }
-            int amount = calculateItemAmount(item, catalogItem, clearedWave);
-            if (amount > 0) {
-                items.put(item.itemId(), amount);
+            int gold = coinSchedule.amount(clearedWave, reward.getFinalCoin());
+            List<String> itemIds = reward.getItems().stream().map(StageRewardItem::itemId).toList();
+            Map<String, Item> catalogItems =
+                    itemRepository.findAllById(itemIds).stream()
+                            .collect(Collectors.toMap(Item::getItemId, item -> item));
+            Map<String, Integer> items = new HashMap<>();
+            var seen = new java.util.HashSet<String>();
+            for (StageRewardItem item : reward.getItems()) {
+                if (!catalogItems.containsKey(item.itemId())) {
+                    throw ErrorCode.ITEM_NOT_FOUND.exception(item.itemId());
+                }
+                StageRewardSchedule schedule =
+                        rules.fixedItemSchedule(item.itemId())
+                                .orElseThrow(ErrorCode.BATTLE_REWARD_UNAVAILABLE::exception);
+                if (item.finalAmount() < schedule.minimumFinal() || !seen.add(item.itemId())) {
+                    throw ErrorCode.BATTLE_REWARD_UNAVAILABLE.exception();
+                }
+                int amount = schedule.amount(clearedWave, item.finalAmount());
+                if (amount > 0) {
+                    items.put(item.itemId(), amount);
+                }
             }
+            return new ClearRewardResult(exp, gold, items);
+        } catch (ArithmeticException error) {
+            throw ErrorCode.BATTLE_REWARD_UNAVAILABLE.exception();
         }
-
-        return new ClearRewardResult(exp, gold, items);
     }
 
-    /** 스킬 재료(Item.targetId 있음)는 웨이브마다 누적 증가, 장비 재료는 지정 웨이브 클리어 시 전량 지급된다. */
-    private int calculateItemAmount(StageRewardItem item, Item catalogItem, int clearedWave) {
-        if (catalogItem.getTargetId() != null) {
-            int amount = MATERIAL_START + MATERIAL_INCREMENT * (clearedWave - 1);
-            if (clearedWave >= SKILL_MATERIAL_BONUS_WAVE) {
-                amount += item.finalAmount() - MATERIAL_START - MATERIAL_INCREMENT * TOTAL_WAVES;
-            }
-            return amount;
+    private void validateBalance(StageRewardRequest request) {
+        if (request.getBaseExp() < 0
+                || request.getThreeStarBonusExp() < 0
+                || (long) request.getBaseExp() + request.getThreeStarBonusExp() > Integer.MAX_VALUE
+                || request.getFinalCoin()
+                        < rulesService.getRules().schedules().get("Coin").minimumFinal()) {
+            throw ErrorCode.STAGE_REWARD_BALANCE_INVALID.exception();
         }
-
-        return clearedWave >= EQUIPMENT_MATERIAL_WAVE ? item.finalAmount() : 0;
     }
 }

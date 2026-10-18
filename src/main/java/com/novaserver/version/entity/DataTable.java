@@ -14,6 +14,7 @@ public enum DataTable {
     UPGRADES("Upgrades"),
     ENERGY("Energy"),
     PLAYER_LEVELS("PlayerLevels"),
+    REWARD_RULES("RewardRules"),
     CARDS("Cards");
 
     private final String key;
