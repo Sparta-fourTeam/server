@@ -72,6 +72,18 @@ public class RewardRulesService {
         }
     }
 
+    /** 추첨 전용 ID와 실제 아이템 ID가 겹치지 않게 등록을 검증한다. */
+    @Transactional
+    public void checkItemCreatable(String itemId) {
+        lockVersion();
+        if (repository.existsById(RewardRulesConfig.CONFIG_ID)) {
+            var rule = getRules().items().get(itemId);
+            if (rule != null && rule.random()) {
+                throw ErrorCode.REWARD_RULES_INVALID.exception();
+            }
+        }
+    }
+
     /** 검증한 기준을 한 번에 저장하고 테이블·전체 버전을 함께 증가시킨다. */
     @Transactional
     public RewardRulesResponse saveConfig(RewardRulesData data) {
@@ -79,18 +91,16 @@ public class RewardRulesService {
             throw ErrorCode.REWARD_RULES_INVALID.exception();
         }
         lockVersion();
-        var fixedIds =
-                data.items().entrySet().stream()
-                        .filter(entry -> !entry.getValue().random())
-                        .map(entry -> entry.getKey())
-                        .toList();
         var catalog =
-                items.findAllById(fixedIds).stream()
+                items.findAllById(data.items().keySet()).stream()
                         .map(Item::getItemId)
                         .collect(Collectors.toSet());
-        for (String id : fixedIds) {
-            if (!catalog.contains(id)) {
-                throw ErrorCode.ITEM_NOT_FOUND.exception(id);
+        for (var entry : data.items().entrySet()) {
+            if (entry.getValue().random() && catalog.contains(entry.getKey())) {
+                throw ErrorCode.REWARD_RULES_INVALID.exception();
+            }
+            if (!entry.getValue().random() && !catalog.contains(entry.getKey())) {
+                throw ErrorCode.ITEM_NOT_FOUND.exception(entry.getKey());
             }
         }
         for (var reward : stageRewards.findAll()) {
