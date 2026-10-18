@@ -3,6 +3,7 @@ package com.novaserver.tutorial.service;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.playerlevel.dto.PlayerLevelConfigResponse;
 import com.novaserver.playerlevel.service.PlayerLevelService;
+import com.novaserver.stage.service.RewardRulesService;
 import com.novaserver.tutorial.dto.TutorialReceiptResponse;
 import com.novaserver.tutorial.dto.TutorialStateResponse;
 import com.novaserver.tutorial.entity.Tutorials;
@@ -35,6 +36,7 @@ public class UserTutorialService {
     private final PlayerLevelService levels;
     private final UserRewardService rewards;
     private final Clock clock;
+    private final RewardRulesService referenceLocks;
 
     @Transactional(readOnly = true)
     public List<TutorialStateResponse> list(Long userId) {
@@ -57,6 +59,10 @@ public class UserTutorialService {
                         ? previous.get().getDialogueSeenAt() != null
                         : previous.get().getCompletedAt() != null)) {
             return TutorialReceiptResponse.from(previous.get(), dialogue);
+        }
+        // 기존 상태 행은 FK로 정의 삭제를 막는다. 첫 생성은 정의 삭제와 같은 잠금으로 정렬한다.
+        if (previous.isEmpty()) {
+            referenceLocks.lockItemReferences();
         }
         // 조건과 실제 보상 항목을 동일 SELECT에서 읽어 공유 편집의 중간값을 섞지 않는다.
         Tutorials definition =
