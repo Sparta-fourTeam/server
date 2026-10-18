@@ -187,6 +187,11 @@ public enum ErrorCode {
     QUEST_IN_USE(HttpStatus.CONFLICT, "수령 이력이 있는 정의는 새 ID로 등록해야 합니다"),
     REWARD_GEM_OVERFLOW(HttpStatus.CONFLICT, "보상 젬이 저장 범위를 초과합니다"),
 
+    // 잼→골드팩 교환
+    GOLD_PACK_INVALID(HttpStatus.BAD_REQUEST, "골드팩 입력이나 서버 설정이 올바르지 않습니다"),
+    GOLD_PACK_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "골드팩 교환 기준이 준비되지 않았습니다"),
+    GOLD_PACK_CATALOG_CHANGED(HttpStatus.CONFLICT, "골드팩 카탈로그가 바뀌었습니다. 다시 조회하세요"),
+
     // 일일 상점
     SHOP_INVALID(HttpStatus.BAD_REQUEST, "상점 입력이나 서버 설정이 올바르지 않습니다"),
     SHOP_CONFIG_CONFLICT(HttpStatus.CONFLICT, "상점 설정 버전이 변경됐습니다"),

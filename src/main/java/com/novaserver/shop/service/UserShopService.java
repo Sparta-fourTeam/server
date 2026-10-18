@@ -11,6 +11,7 @@ import com.novaserver.shop.entity.UserShopReceipt;
 import com.novaserver.shop.entity.UserShopState;
 import com.novaserver.shop.repository.ShopConfigurationRepository;
 import com.novaserver.shop.repository.ShopOfferRepository;
+import com.novaserver.shop.repository.UserGoldPackReceiptRepository;
 import com.novaserver.shop.repository.UserShopReceiptRepository;
 import com.novaserver.shop.repository.UserShopStateRepository;
 import com.novaserver.stage.service.RewardRulesService;
@@ -51,6 +52,7 @@ public class UserShopService {
     private final EnergyPurchasePolicy days;
     private final ShopRoller roller;
     private final Clock clock;
+    private final UserGoldPackReceiptRepository goldPackReceipts;
 
     /** 설정 참조 잠금 아래 최초 진열을 만들며 계정 조회의 다른 일관 읽기보다 먼저 호출한다. */
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -165,6 +167,7 @@ public class UserShopService {
     /** 계정 삭제 트랜잭션에서 영수증과 현재 진열의 아이템 연결도 함께 제거한다. */
     @Transactional
     public void deleteRecords(Long userId) {
+        goldPackReceipts.deleteByUserId(userId);
         receipts.deleteByUserId(userId);
         states.findByUserId(userId).ifPresent(states::delete);
         states.flush();
@@ -174,6 +177,9 @@ public class UserShopService {
             Long userId, String key, String operation, String day, int reroll, Integer slot) {
         if (key == null || !key.matches("[A-Za-z0-9_-]{1,64}") || reroll < 0) {
             throw ErrorCode.SHOP_INVALID.exception();
+        }
+        if (goldPackReceipts.existsByUserIdAndRequestId(userId, key)) {
+            throw ErrorCode.SHOP_REQUEST_CONFLICT.exception();
         }
         var prior = receipts.findByUserIdAndRequestId(userId, key);
         if (prior.isEmpty()) {
