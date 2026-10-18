@@ -9,6 +9,7 @@ import com.novaserver.reward.entity.RewardDefinition;
 import com.novaserver.reward.repository.RewardDefinitionRepository;
 import com.novaserver.stage.repository.StageRatingRewardRepository;
 import com.novaserver.stage.service.RewardRulesService;
+import com.novaserver.tutorial.repository.TutorialRepository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,7 @@ public class RewardDefinitionService {
     private final ItemRepository items;
     private final StageRatingRewardRepository ratings;
     private final RewardRulesService referenceLocks;
+    private final TutorialRepository tutorials;
 
     /** 전체 묶음과 참조 수를 일괄 조회한다. */
     @Transactional(readOnly = true)
@@ -37,11 +39,19 @@ public class RewardDefinitionService {
                                                 ::getDefinitionId,
                                         StageRatingRewardRepository.DefinitionUsage
                                                 ::getReferenceCount));
+        var tutorialUsage =
+                tutorials.findDefinitionUsage().stream()
+                        .collect(
+                                Collectors.toMap(
+                                        TutorialRepository.DefinitionUsage::getDefinitionId,
+                                        TutorialRepository.DefinitionUsage::getReferenceCount));
         return definitions.findAll().stream()
                 .map(
                         definition ->
                                 RewardDefinitionResponse.from(
-                                        definition, usage.getOrDefault(definition.getId(), 0L)))
+                                        definition,
+                                        usage.getOrDefault(definition.getId(), 0L),
+                                        tutorialUsage.getOrDefault(definition.getId(), 0L)))
                 .toList();
     }
 
@@ -85,14 +95,15 @@ public class RewardDefinitionService {
     public void delete(Long id) {
         referenceLocks.lockItemReferences();
         var definition = findDefinition(id);
-        if (ratings.countByRewardDefinitionId(id) > 0) {
+        if (ratings.countByRewardDefinitionId(id) > 0
+                || tutorials.countByRewardDefinitionId(id) > 0) {
             throw ErrorCode.REWARD_DEFINITION_IN_USE.exception(id);
         }
         definitions.delete(definition);
         definitions.flush();
     }
 
-    /** 레이팅이 참조할 기존 묶음을 읽는다. 변경 경로는 참조 잠금 안에서 호출한다. */
+    /** 지급 조건이 참조할 기존 묶음을 읽는다. 변경 경로는 참조 잠금 안에서 호출한다. */
     public RewardDefinition findDefinition(Long id) {
         return definitions
                 .findById(id)
@@ -101,7 +112,9 @@ public class RewardDefinitionService {
 
     private RewardDefinitionResponse response(RewardDefinition definition) {
         return RewardDefinitionResponse.from(
-                definition, ratings.countByRewardDefinitionId(definition.getId()));
+                definition,
+                ratings.countByRewardDefinitionId(definition.getId()),
+                tutorials.countByRewardDefinitionId(definition.getId()));
     }
 
     private Map<Item, Integer> validate(RewardDefinitionRequest request) {

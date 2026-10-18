@@ -9,6 +9,12 @@ import org.springframework.web.server.ResponseStatusException;
 @Getter
 @RequiredArgsConstructor
 public enum ErrorCode {
+    TUTORIAL_NOT_FOUND(HttpStatus.NOT_FOUND, "튜토리얼이 없습니다: %s"),
+    TUTORIAL_INVALID(HttpStatus.BAD_REQUEST, "튜토리얼 조건·보상 참조가 올바르지 않습니다"),
+    TUTORIAL_NOT_READY(HttpStatus.CONFLICT, "튜토리얼 완료 조건을 충족하지 않았습니다"),
+    TUTORIAL_IN_USE(HttpStatus.CONFLICT, "계정 상태 또는 튜토리얼 조건에서 참조 중입니다"),
+    TUTORIAL_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "튜토리얼 레벨 기준을 적용할 수 없습니다"),
+
     // 공통
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "요청 형식이 올바르지 않습니다"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다"),

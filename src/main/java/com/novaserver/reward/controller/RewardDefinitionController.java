@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class RewardDefinitionController {
     private final RewardDefinitionService service;
 
-    @Operation(summary = "고정 보상 묶음 목록", description = "실제 아이템·수량과 버전·영향받는 레이팅 참조 수를 조회합니다.")
+    @Operation(summary = "고정 보상 묶음 목록", description = "실제 아이템·수량과 버전·영향받는 별등급·튜토리얼 참조 수를 조회합니다.")
     @GetMapping
     public List<RewardDefinitionResponse> list() {
         return service.list();
@@ -56,7 +56,7 @@ public class RewardDefinitionController {
         return service.update(id, request);
     }
 
-    @Operation(summary = "고정 보상 묶음 삭제", description = "레이팅이 참조 중이면 409로 거절합니다.")
+    @Operation(summary = "고정 보상 묶음 삭제", description = "별등급 또는 튜토리얼이 참조 중이면 409로 거절합니다.")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {

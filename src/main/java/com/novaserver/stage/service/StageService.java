@@ -7,6 +7,7 @@ import com.novaserver.stage.entity.Stage;
 import com.novaserver.stage.repository.StageRatingRewardRepository;
 import com.novaserver.stage.repository.StageRepository;
 import com.novaserver.stage.repository.StageRewardRepository;
+import com.novaserver.tutorial.repository.TutorialRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -17,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class StageService {
+    private final TutorialRepository tutorials;
+    private final RewardRulesService referenceLocks;
     private final StageRepository stageRepository;
     private final StageRewardRepository stageRewardRepository;
     private final StageRatingRewardRepository stageRatingRewardRepository;
@@ -49,7 +52,11 @@ public class StageService {
     /** 스테이지를 삭제한다. 없는 stageId면 404, 등록된 보상(기본 보상·별등급 보상)이 있으면 409를 던진다. */
     @Transactional
     public void deleteStage(Integer stageId) {
-        Stage stage = findStage(stageId);
+        referenceLocks.lockItemReferences();
+        final Stage stage = findStage(stageId);
+        if (tutorials.existsByStartStageStageIdOrClearStageStageId(stageId, stageId)) {
+            throw ErrorCode.TUTORIAL_IN_USE.exception();
+        }
         if (stageRewardRepository.existsById(stageId)) {
             throw ErrorCode.STAGE_REWARD_EXISTS.exception(stageId);
         }
