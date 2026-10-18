@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.novaserver.item.repository.ItemRepository;
+import com.novaserver.reward.entity.RewardDefinition;
 import com.novaserver.stage.entity.Stage;
 import com.novaserver.stage.entity.StageRatingReward;
 import com.novaserver.stage.repository.StageRatingRewardRepository;
@@ -86,8 +87,12 @@ class UserStageProgressServiceTest {
         when(userStageProgressRepository.findByUserIdAndStageIdForUpdate(1L, 10))
                 .thenReturn(Optional.of(progress));
 
-        StageRatingReward rating1 = new StageRatingReward(stage, 1, 100);
-        StageRatingReward rating2 = new StageRatingReward(stage, 2, 200);
+        StageRatingReward rating1 =
+                new StageRatingReward(
+                        stage, 1, new RewardDefinition("fixture", 100, java.util.Map.of()));
+        StageRatingReward rating2 =
+                new StageRatingReward(
+                        stage, 2, new RewardDefinition("fixture", 200, java.util.Map.of()));
         when(stageRatingRewardRepository.findByStageIdAndRatingBetween(10, 1, 2))
                 .thenReturn(List.of(rating1, rating2));
 
@@ -109,7 +114,9 @@ class UserStageProgressServiceTest {
         when(userStageProgressRepository.findByUserIdAndStageIdForUpdate(1L, 10))
                 .thenReturn(Optional.of(progress));
 
-        StageRatingReward rating3 = new StageRatingReward(stage, 3, 300);
+        StageRatingReward rating3 =
+                new StageRatingReward(
+                        stage, 3, new RewardDefinition("fixture", 300, java.util.Map.of()));
         when(stageRatingRewardRepository.findByStageIdAndRatingBetween(10, 3, 3))
                 .thenReturn(List.of(rating3));
 

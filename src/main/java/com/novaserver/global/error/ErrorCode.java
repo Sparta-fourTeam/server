@@ -127,7 +127,11 @@ public enum ErrorCode {
     ITEM_DATA_INVALID(HttpStatus.BAD_REQUEST, "아이템 데이터가 올바르지 않습니다: %s"),
     REWARD_QUANTITY_OVERFLOW(HttpStatus.CONFLICT, "보상 아이템 수량이 저장 범위를 초과합니다"),
     ITEM_QUANTITY_NOT_ENOUGH(HttpStatus.CONFLICT, "재료가 부족합니다: %s"),
-    ITEM_LINKED_TO_RATING_REWARD(HttpStatus.CONFLICT, "별등급 보상에서 참조 중인 아이템입니다: %s"),
+    REWARD_DEFINITION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 보상 묶음입니다: %s"),
+    REWARD_DEFINITION_INVALID(HttpStatus.BAD_REQUEST, "고정 보상 묶음 설정이 올바르지 않습니다"),
+    REWARD_DEFINITION_VERSION_CONFLICT(HttpStatus.CONFLICT, "보상 묶음 버전이 변경됐습니다. 다시 조회하세요"),
+    REWARD_DEFINITION_IN_USE(HttpStatus.CONFLICT, "레이팅이 참조 중인 보상 묶음입니다: %s"),
+    ITEM_LINKED_TO_REWARD_DEFINITION(HttpStatus.CONFLICT, "고정 보상 묶음에서 참조 중인 아이템입니다: %s"),
     ITEM_LINKED_TO_UPGRADE(HttpStatus.CONFLICT, "강화에서 재료로 사용 중이어서 삭제할 수 없습니다: %s"),
 
     // 스테이지
@@ -143,7 +147,7 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST, "아이템 보상 총수량이 지급 규칙의 최소 누적량보다 작습니다: %s"),
 
     // 스테이지 별등급 보상
-    STAGE_RATING_REWARD_INVALID(HttpStatus.BAD_REQUEST, "별등급 아이템 보상 설정이 올바르지 않습니다"),
+    STAGE_RATING_REWARD_INVALID(HttpStatus.BAD_REQUEST, "별등급 보상 묶음 ID가 올바르지 않습니다"),
     STAGE_RATING_REWARD_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "별등급 보상 기준이 없거나 올바르지 않습니다"),
     STAGE_RATING_CLAIM_TARGET_INVALID(HttpStatus.CONFLICT, "수령 목표 별 등급이 달성한 등급을 벗어납니다"),
     STAGE_RATING_CLAIM_CONFLICT(HttpStatus.CONFLICT, "같은 수령 요청 키의 스테이지·목표 등급을 변경할 수 없습니다"),

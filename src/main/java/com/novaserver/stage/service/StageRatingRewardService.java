@@ -1,16 +1,14 @@
 package com.novaserver.stage.service;
 
 import com.novaserver.global.error.ErrorCode;
-import com.novaserver.item.entity.Item;
-import com.novaserver.item.repository.ItemRepository;
+import com.novaserver.reward.entity.RewardDefinition;
+import com.novaserver.reward.service.RewardDefinitionService;
 import com.novaserver.stage.dto.StageRatingRewardRequest;
 import com.novaserver.stage.dto.StageRatingRewardResponse;
 import com.novaserver.stage.entity.Stage;
 import com.novaserver.stage.entity.StageRatingReward;
 import com.novaserver.stage.repository.StageRatingRewardRepository;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -22,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class StageRatingRewardService {
     private final StageRatingRewardRepository stageRatingRewardRepository;
     private final StageService stageService;
-    private final ItemRepository items;
+    private final RewardDefinitionService definitions;
     private final RewardRulesService rewardRules;
 
     /** 스테이지의 별등급 보상 목록을 조회한다. */
@@ -51,8 +49,7 @@ public class StageRatingRewardService {
         try {
             StageRatingReward saved =
                     stageRatingRewardRepository.save(
-                            new StageRatingReward(
-                                    stage, rating, request.getGold(), validateItems(request)));
+                            new StageRatingReward(stage, rating, resolveDefinition(request)));
             return StageRatingRewardResponse.from(saved);
         } catch (DataIntegrityViolationException e) {
             throw ErrorCode.STAGE_RATING_REWARD_DUPLICATED.exception(stageId, rating);
@@ -65,38 +62,23 @@ public class StageRatingRewardService {
             Integer stageId, int rating, StageRatingRewardRequest request) {
         rewardRules.lockItemReferences();
         StageRatingReward reward = findStageRatingReward(stageId, rating);
-        reward.update(request.getGold(), validateItems(request));
+        reward.linkDefinition(resolveDefinition(request));
         return StageRatingRewardResponse.from(reward);
     }
 
     @Transactional
     public void deleteStageRatingReward(Integer stageId, int rating) {
+        rewardRules.lockItemReferences();
         stageRatingRewardRepository.delete(findStageRatingReward(stageId, rating));
     }
 
-    private Map<String, Integer> validateItems(StageRatingRewardRequest request) {
-        var requested = request.getItems() == null ? Map.<String, Integer>of() : request.getItems();
-        if (request.getGold() == null
-                || request.getGold() < 0
-                || requested.entrySet().stream()
-                        .anyMatch(
-                                entry ->
-                                        entry.getKey() == null
-                                                || entry.getKey().isBlank()
-                                                || entry.getValue() == null
-                                                || entry.getValue() <= 0)) {
+    private RewardDefinition resolveDefinition(StageRatingRewardRequest request) {
+        if (request == null
+                || request.getRewardDefinitionId() == null
+                || request.getRewardDefinitionId() <= 0) {
             throw ErrorCode.STAGE_RATING_REWARD_INVALID.exception();
         }
-        var catalog =
-                items.findAllById(requested.keySet()).stream()
-                        .map(Item::getItemId)
-                        .collect(Collectors.toSet());
-        for (String id : requested.keySet()) {
-            if (!catalog.contains(id)) {
-                throw ErrorCode.ITEM_NOT_FOUND.exception(id);
-            }
-        }
-        return Map.copyOf(requested);
+        return definitions.findDefinition(request.getRewardDefinitionId());
     }
 
     private StageRatingReward findStageRatingReward(Integer stageId, int rating) {

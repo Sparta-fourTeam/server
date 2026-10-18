@@ -6,8 +6,8 @@ import com.novaserver.item.dto.ItemRequest;
 import com.novaserver.item.dto.ItemResponse;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
+import com.novaserver.reward.repository.RewardDefinitionRepository;
 import com.novaserver.skill.repository.SkillRepository;
-import com.novaserver.stage.repository.StageRatingRewardRepository;
 import com.novaserver.stage.service.RewardRulesService;
 import com.novaserver.upgrade.repository.UpgradeRepository;
 import com.novaserver.user.repository.UserItemRepository;
@@ -27,7 +27,7 @@ public class ItemService {
     private final SkillRepository skillRepository;
     private final UpgradeRepository upgradeRepository;
     private final RewardRulesService rewardRules;
-    private final StageRatingRewardRepository ratingRewards;
+    private final RewardDefinitionRepository fixedRewards;
 
     /** 아이템 데이터를 전체 조회한다. 유니티와 관리자 목록에서 함께 쓴다. */
     @Transactional(readOnly = true)
@@ -75,9 +75,8 @@ public class ItemService {
     public void deleteItem(String id) {
         rewardRules.checkItemRemovable(id);
         final Item item = findItem(id);
-        if (ratingRewards.findAll().stream()
-                .anyMatch(reward -> reward.getItems().containsKey(id))) {
-            throw ErrorCode.ITEM_LINKED_TO_RATING_REWARD.exception(id);
+        if (fixedRewards.existsByItemId(id)) {
+            throw ErrorCode.ITEM_LINKED_TO_REWARD_DEFINITION.exception(id);
         }
         if (userItemRepository.existsByItemId(id)) {
             throw ErrorCode.ITEM_IN_USE.exception(id);
