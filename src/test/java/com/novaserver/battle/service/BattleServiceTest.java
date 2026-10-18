@@ -25,12 +25,16 @@ import com.novaserver.user.repository.UserRepository;
 import com.novaserver.user.repository.UserStageProgressRepository;
 import com.novaserver.user.service.UserRewardService;
 import com.novaserver.user.service.UserService;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
@@ -45,6 +49,7 @@ class BattleServiceTest {
     @Mock private UserStageProgressRepository userStageProgressRepository;
     @Mock private StageRewardService stageRewardService;
     @Mock private StageService stageService;
+    @Spy private Clock clock = Clock.fixed(Instant.parse("2026-10-18T19:00:00Z"), ZoneOffset.UTC);
 
     @InjectMocks private BattleService battleService;
 
@@ -64,7 +69,12 @@ class BattleServiceTest {
         BattleResponse response = battleService.createBattle(1L, "key-1");
 
         assertThat(response.getBattleId()).isNotBlank();
-        verify(battleRepository).upsert(eq(1L), eq(response.getBattleId()), eq("key-1"), any());
+        verify(battleRepository)
+                .upsert(
+                        eq(1L),
+                        eq(response.getBattleId()),
+                        eq("key-1"),
+                        eq(Instant.parse("2026-10-18T19:00:00Z")));
     }
 
     @Test

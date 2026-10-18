@@ -1,7 +1,7 @@
 package com.novaserver.cards.dto;
 
 import com.novaserver.cards.entity.SkillForm;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.Getter;
 
 /** 스킬 형태 응답. */
@@ -10,7 +10,7 @@ public class SkillFormResponse {
     private final Long id;
     private final String name;
     private final String label;
-    private final LocalDateTime updatedAt;
+    private final Instant updatedAt;
 
     /** 스킬 형태 엔티티로 응답을 만든다. */
     public SkillFormResponse(SkillForm form) {

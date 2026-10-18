@@ -37,7 +37,7 @@ import com.novaserver.user.repository.UserUpgradeRepository;
 import com.novaserver.user.repository.UserUpgradeRequestRepository;
 import com.novaserver.user.repository.WalletRepository;
 import java.time.Clock;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
@@ -58,7 +58,7 @@ import org.springframework.web.server.ResponseStatusException;
 class UserServiceTest {
 
     private static final Long USER_ID = 1L;
-    private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 14, 12, 0);
+    private static final Instant NOW = Instant.parse("2026-10-14T12:00:00Z");
 
     @Mock private UserRepository userRepository;
     @Mock private UserDataRepository userDataRepository;
@@ -79,7 +79,7 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         ZoneId zone = ZoneId.systemDefault();
-        Clock clock = Clock.fixed(NOW.atZone(zone).toInstant(), zone);
+        Clock clock = Clock.fixed(NOW, zone);
 
         userService =
                 new UserService(
@@ -166,7 +166,7 @@ class UserServiceTest {
     void shouldReturnAggregatedStatus_onGetMe() {
         // given
         UserEnergy energy = new UserEnergy(null, 25, NOW);
-        LocalDateTime energyUpdatedAt = NOW;
+        Instant energyUpdatedAt = NOW;
         ReflectionTestUtils.setField(energy, "energyUpdatedAt", energyUpdatedAt);
 
         Stage stage = mock(Stage.class);
@@ -300,7 +300,7 @@ class UserServiceTest {
     @DisplayName("상태를 조회하면 지난 시간만큼 회복된 에너지를 반영한다")
     void shouldReflectRecoveredEnergy_onGetMe() {
         // given
-        UserEnergy energy = energyOf(10, NOW.minusMinutes(50));
+        UserEnergy energy = energyOf(10, NOW.minusSeconds(3000));
         when(userDataRepository.findByUserId(USER_ID))
                 .thenReturn(Optional.of(new UserData(null, 0)));
         when(walletRepository.findByUserId(USER_ID))
@@ -319,7 +319,7 @@ class UserServiceTest {
     @DisplayName("에너지를 소모하면 회복분을 먼저 반영한 뒤 차감한다")
     void shouldRecoverThenConsume_onUseEnergy() {
         // given
-        UserEnergy energy = energyOf(10, NOW.minusMinutes(50));
+        UserEnergy energy = energyOf(10, NOW.minusSeconds(3000));
         when(userEnergyRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(energy));
 
         // when
@@ -334,7 +334,7 @@ class UserServiceTest {
     @DisplayName("최대치에서 에너지를 소모하면 회복 타이머가 지금부터 시작된다")
     void shouldStartRecoveryTimerNow_whenConsumeFromFull() {
         // given
-        UserEnergy energy = energyOf(UserEnergy.MAX_ENERGY, NOW.minusDays(3));
+        UserEnergy energy = energyOf(UserEnergy.MAX_ENERGY, NOW.minusSeconds(259200));
         when(userEnergyRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(energy));
 
         // when
@@ -406,7 +406,7 @@ class UserServiceTest {
     @DisplayName("최대치 미만이면 보상을 받아도 회복 타이머는 초기화되지 않는다")
     void shouldKeepRecoveryTimer_onGrantEnergy_whenBelowMax() {
         // given: 50분 30초 경과
-        UserEnergy energy = energyOf(10, NOW.minusMinutes(50).minusSeconds(30));
+        UserEnergy energy = energyOf(10, NOW.minusSeconds(3000).minusSeconds(30));
         when(userEnergyRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(energy));
 
         // when
@@ -421,7 +421,7 @@ class UserServiceTest {
     @DisplayName("보상으로 최대치를 넘겨도 밀려 있던 회복분이 사라지지 않는다")
     void shouldKeepPendingRecovery_onGrantEnergy_whenExceedMax() {
         // given
-        UserEnergy energy = energyOf(20, NOW.minusMinutes(50));
+        UserEnergy energy = energyOf(20, NOW.minusSeconds(3000));
         when(userEnergyRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(energy));
 
         // when
@@ -446,7 +446,7 @@ class UserServiceTest {
                 USER_ID);
     }
 
-    private static UserEnergy energyOf(int stored, LocalDateTime updatedAt) {
+    private static UserEnergy energyOf(int stored, Instant updatedAt) {
         UserEnergy energy = new UserEnergy(null, stored, NOW);
         ReflectionTestUtils.setField(energy, "energyUpdatedAt", updatedAt);
         return energy;

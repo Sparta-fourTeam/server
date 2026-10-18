@@ -2,6 +2,7 @@ package com.novaserver.user.service;
 
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.user.EnergyRecoverySource;
+import com.novaserver.user.dto.EnergyPurchaseStateResponse;
 import com.novaserver.user.dto.EnergyRecoveryRequest;
 import com.novaserver.user.dto.EnergyRecoveryResponse;
 import com.novaserver.user.entity.UserEnergy;
@@ -33,6 +34,39 @@ public class UserEnergyRecoveryService {
     private final UserService users;
     private final EnergyPurchasePolicy policy;
     private final Clock clock;
+
+    /** 조회만으로 구매 상태 생성·기간 초기화·자연회복 정산 등 어떤 저장도 수행하지 않는다. */
+    @Transactional(readOnly = true)
+    public EnergyPurchaseStateResponse getPurchaseState(Long userId) {
+        Instant now = clock.instant();
+        LocalDate day = policy.purchaseDay(now);
+        wallets.findByUserId(userId)
+                .orElseThrow(() -> ErrorCode.WALLET_NOT_FOUND.exception(userId));
+        int count =
+                purchaseStates
+                        .findByUserId(userId)
+                        .map(
+                                state ->
+                                        day.equals(state.getPurchaseDay())
+                                                ? state.getPurchaseCount()
+                                                : 0)
+                        .orElseGet(
+                                () ->
+                                        Math.toIntExact(
+                                                receipts.countByUserIdAndSourceAndPurchaseDay(
+                                                        userId,
+                                                        EnergyRecoverySource.PURCHASE,
+                                                        day)));
+        return new EnergyPurchaseStateResponse(
+                now,
+                day,
+                count,
+                Math.max(0, EnergyPurchasePolicy.DAILY_LIMIT - count),
+                policy.nextResetAt(day),
+                EnergyPurchasePolicy.GEM_COST,
+                EnergyPurchasePolicy.ENERGY_AMOUNT,
+                EnergyPurchasePolicy.DAILY_LIMIT);
+    }
 
     /** 지갑 잠금으로 일일 한도와 차감·지급·영수증을 원자적으로 처리한다. */
     @Transactional(isolation = Isolation.READ_COMMITTED)

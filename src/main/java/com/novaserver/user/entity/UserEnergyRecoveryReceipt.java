@@ -19,8 +19,6 @@ import java.time.LocalDate;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 /** 계정별 최초 회복 결과를 UTC 시각과 함께 영구 보존하는 멱등 영수증. */
 @Entity
@@ -62,7 +60,6 @@ public class UserEnergyRecoveryReceipt {
     private int purchaseCount;
 
     @Column(nullable = false)
-    @JdbcTypeCode(SqlTypes.TIMESTAMP_UTC)
     private Instant completedAt;
 
     /** 차감·지급과 같은 트랜잭션에서 확정한 최초 구매 결과를 기록한다. */

@@ -3,7 +3,7 @@ package com.novaserver.battle.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.novaserver.battle.entity.BattleSession;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -17,7 +17,7 @@ class BattleRepositoryTest {
 
     @Test
     void createsNewRowOnFirstUpsert() {
-        int affected = battleRepository.upsert(1L, "battle-1", "key-1", LocalDateTime.now());
+        int affected = battleRepository.upsert(1L, "battle-1", "key-1", Instant.now());
 
         assertThat(affected).isGreaterThan(0);
         assertThat(battleRepository.findById(1L))
@@ -28,9 +28,9 @@ class BattleRepositoryTest {
 
     @Test
     void overwritesBattleIdWhenRowExists() {
-        battleRepository.upsert(1L, "battle-1", "key-1", LocalDateTime.now());
+        battleRepository.upsert(1L, "battle-1", "key-1", Instant.now());
 
-        battleRepository.upsert(1L, "battle-2", "key-2", LocalDateTime.now());
+        battleRepository.upsert(1L, "battle-2", "key-2", Instant.now());
 
         assertThat(battleRepository.findAll()).hasSize(1);
         assertThat(battleRepository.findById(1L))
@@ -41,7 +41,7 @@ class BattleRepositoryTest {
 
     @Test
     void deletesWhenUserAndBattleIdMatch() {
-        battleRepository.upsert(1L, "battle-1", "key-1", LocalDateTime.now());
+        battleRepository.upsert(1L, "battle-1", "key-1", Instant.now());
 
         int deleted = battleRepository.deleteByUserIdAndBattleId(1L, "battle-1");
 
@@ -51,7 +51,7 @@ class BattleRepositoryTest {
 
     @Test
     void doesNotDeleteWhenBattleIdMismatches() {
-        battleRepository.upsert(1L, "battle-1", "key-1", LocalDateTime.now());
+        battleRepository.upsert(1L, "battle-1", "key-1", Instant.now());
 
         int deleted = battleRepository.deleteByUserIdAndBattleId(1L, "wrong-id");
 

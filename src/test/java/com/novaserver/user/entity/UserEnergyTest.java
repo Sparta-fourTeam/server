@@ -3,7 +3,7 @@ package com.novaserver.user.entity;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -14,7 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 /** 유저 에너지 소모·자동회복·보상 획득 규칙 테스트. */
 class UserEnergyTest {
 
-    private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 14, 12, 0);
+    private static final Instant NOW = Instant.parse("2026-10-14T12:00:00Z");
 
     @ParameterizedTest
     @CsvSource({"599, 10, 0", "600, 11, 600", "1200, 12, 1200"})
@@ -38,11 +38,11 @@ class UserEnergyTest {
         UserEnergy energy = energyOf(10, NOW);
 
         // when
-        energy.recover(NOW.plusMinutes(30).plusSeconds(30));
+        energy.recover(NOW.plusSeconds(1800).plusSeconds(30));
 
         // then
         assertThat(energy.getEnergyStored()).isEqualTo(13);
-        assertThat(energy.getEnergyUpdatedAt()).isEqualTo(NOW.plusMinutes(30));
+        assertThat(energy.getEnergyUpdatedAt()).isEqualTo(NOW.plusSeconds(1800));
     }
 
     @Test
@@ -52,25 +52,25 @@ class UserEnergyTest {
         UserEnergy energy = energyOf(28, NOW);
 
         // when
-        energy.recover(NOW.plusHours(1));
+        energy.recover(NOW.plusSeconds(3600));
 
         // then
         assertThat(energy.getEnergyStored()).isEqualTo(UserEnergy.MAX_ENERGY);
-        assertThat(energy.getEnergyUpdatedAt()).isEqualTo(NOW.plusHours(1));
+        assertThat(energy.getEnergyUpdatedAt()).isEqualTo(NOW.plusSeconds(3600));
     }
 
     @Test
     @DisplayName("기준 시각이 미래여도 에너지가 줄거나 변하지 않는다")
     void shouldNotChange_whenUpdatedAtIsInFuture() {
         // given
-        UserEnergy energy = energyOf(10, NOW.plusMinutes(10));
+        UserEnergy energy = energyOf(10, NOW.plusSeconds(600));
 
         // when
         energy.recover(NOW);
 
         // then
         assertThat(energy.getEnergyStored()).isEqualTo(10);
-        assertThat(energy.getEnergyUpdatedAt()).isEqualTo(NOW.plusMinutes(10));
+        assertThat(energy.getEnergyUpdatedAt()).isEqualTo(NOW.plusSeconds(600));
     }
 
     @Test
@@ -91,7 +91,7 @@ class UserEnergyTest {
     @DisplayName("최대치에서 소모하면 회복 타이머가 지금부터 시작되어 바로 회복되지 않는다")
     void shouldNotRecoverImmediately_afterConsumeFromFull() {
         // given: 기준 시각이 3일 전인 만땅 상태
-        UserEnergy energy = energyOf(UserEnergy.MAX_ENERGY, NOW.minusDays(3));
+        UserEnergy energy = energyOf(UserEnergy.MAX_ENERGY, NOW.minusSeconds(259200));
 
         // when
         energy.recover(NOW);
@@ -107,7 +107,7 @@ class UserEnergyTest {
     @DisplayName("최대치를 초과한 상태에서 소모해도 바로 회복되지 않는다")
     void shouldNotRecoverImmediately_afterConsumeFromOverMax() {
         // given: 보상으로 최대치를 넘긴 상태, 기준 시각은 오래전
-        UserEnergy energy = energyOf(UserEnergy.MAX_ENERGY + 10, NOW.minusDays(3));
+        UserEnergy energy = energyOf(UserEnergy.MAX_ENERGY + 10, NOW.minusSeconds(259200));
 
         // when: 최대치 아래로 떨어지도록 소모
         energy.consume(15, NOW);
@@ -189,7 +189,7 @@ class UserEnergyTest {
     @DisplayName("보상은 최대치를 넘길 수 있고, 이때 기준 시각이 현재로 갱신된다")
     void shouldAllowOverMax_onAddEnergy_andResetTimer() {
         // given
-        UserEnergy energy = energyOf(25, NOW.minusDays(1));
+        UserEnergy energy = energyOf(25, NOW.minusSeconds(86400));
 
         // when
         energy.addEnergy(10, NOW);
@@ -206,7 +206,7 @@ class UserEnergyTest {
         UserEnergy energy = energyOf(UserEnergy.MAX_ENERGY + 5, NOW);
 
         // when
-        energy.recover(NOW.plusHours(1));
+        energy.recover(NOW.plusSeconds(3600));
 
         // then
         assertThat(energy.getEnergyStored()).isEqualTo(UserEnergy.MAX_ENERGY + 5);
@@ -226,7 +226,7 @@ class UserEnergyTest {
         assertThat(energy.getEnergyStored()).isEqualTo(10);
     }
 
-    private static UserEnergy energyOf(int stored, LocalDateTime updatedAt) {
+    private static UserEnergy energyOf(int stored, Instant updatedAt) {
         UserEnergy energy = new UserEnergy(null, stored, NOW);
         ReflectionTestUtils.setField(energy, "energyUpdatedAt", updatedAt);
         return energy;

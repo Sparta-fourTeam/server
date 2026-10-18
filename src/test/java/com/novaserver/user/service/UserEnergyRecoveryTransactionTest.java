@@ -101,7 +101,9 @@ class UserEnergyRecoveryTransactionTest {
                     userId = user.getId();
                     dataRepository.save(new UserData(user, 0));
                     wallets.save(new Wallet(user, 321, INITIAL_GEMS));
-                    energies.save(new UserEnergy(user, 2, NOW.minusSeconds(30)));
+                    energies.save(
+                            new UserEnergy(
+                                    user, 2, NOW.minusSeconds(30).atZone(SEOUL).toInstant()));
                 });
     }
 
@@ -127,8 +129,10 @@ class UserEnergyRecoveryTransactionTest {
         assertThat(first.purchaseDay()).isEqualTo(NOW.toLocalDate());
         assertThat(first.completedAt()).isEqualTo(Instant.parse("2026-10-18T19:00:00.123456Z"));
         assertPurchaseState(NOW.toLocalDate(), 2);
+        assertThat(purchases.getPurchaseState(userId).purchaseCount()).isZero();
         purchases.recover(userId, request("next-day"));
         assertThat(purchases.recover(userId, request("first"))).isEqualTo(first);
+        assertThat(purchases.getPurchaseState(userId).purchaseCount()).isEqualTo(1);
         assertPurchaseState(NOW.toLocalDate().plusDays(1), 1);
         assertState(INITIAL_GEMS - 3 * PRICE, 2 + 3 * AMOUNT, 3);
     }
@@ -178,7 +182,7 @@ class UserEnergyRecoveryTransactionTest {
         assertState(PRICE - 1, 2, 0);
         assertThat(purchaseStates.findByUserId(userId)).isEmpty();
         assertThat(energies.findByUserId(userId).orElseThrow().getEnergyUpdatedAt())
-                .isEqualTo(NOW.minusMinutes(20));
+                .isEqualTo(NOW.minusMinutes(20).atZone(SEOUL).toInstant());
     }
 
     @Test
@@ -193,7 +197,7 @@ class UserEnergyRecoveryTransactionTest {
         assertState(INITIAL_GEMS, 2, 0);
         assertThat(purchaseStates.findByUserId(userId)).isEmpty();
         assertThat(energies.findByUserId(userId).orElseThrow().getEnergyUpdatedAt())
-                .isEqualTo(NOW.minusMinutes(20));
+                .isEqualTo(NOW.minusMinutes(20).atZone(SEOUL).toInstant());
     }
 
     @Test
@@ -203,7 +207,7 @@ class UserEnergyRecoveryTransactionTest {
         purchases.recover(userId, request("natural"));
         assertState(INITIAL_GEMS - PRICE, 3 + AMOUNT, 1);
         assertThat(energies.findByUserId(userId).orElseThrow().getEnergyUpdatedAt())
-                .isEqualTo(NOW.minusSeconds(30));
+                .isEqualTo(NOW.minusSeconds(30).atZone(SEOUL).toInstant());
     }
 
     @Test
@@ -310,6 +314,7 @@ class UserEnergyRecoveryTransactionTest {
         mvc.perform(get("/api/user/me").header("Authorization", authorization()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.gem").value(INITIAL_GEMS - PRICE))
+                .andExpect(jsonPath("$.energyUpdatedAt").value("2026-10-18T18:59:30Z"))
                 .andExpect(jsonPath("$.energyStored").value(2 + AMOUNT));
         assertState(INITIAL_GEMS - PRICE, 2 + AMOUNT, 1);
     }
@@ -377,6 +382,7 @@ class UserEnergyRecoveryTransactionTest {
     @Test
     @DisplayName("인증 없는 요청과 서버 검증 없는 광고 요청은 지급할 수 없다")
     void rejectsUnauthenticatedAndUnverifiedAdHttpRequests() throws Exception {
+        mvc.perform(get("/api/user/energy/purchase-state")).andExpect(status().isUnauthorized());
         mvc.perform(
                         post("/api/user/energy/recover")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -418,6 +424,13 @@ class UserEnergyRecoveryTransactionTest {
         assertThat(result.completedAt()).isEqualTo(expected);
         assertThat(stored.getOffset()).isEqualTo(ZoneOffset.UTC);
         assertThat(stored.toInstant()).isEqualTo(expected);
+        OffsetDateTime energyTime =
+                jdbc.queryForObject(
+                        "select energy_updated_at from energy where user_id = ?",
+                        OffsetDateTime.class,
+                        userId);
+        assertThat(energyTime.getOffset()).isEqualTo(ZoneOffset.UTC);
+        assertThat(energyTime.toInstant()).isEqualTo(Instant.parse("2026-10-18T18:59:30Z"));
         assertThat(receipts.findByUserIdAndCreateId(userId, "utc").orElseThrow().getCompletedAt())
                 .isEqualTo(expected);
         assertPurchaseState(java.time.LocalDate.of(2026, 10, 19), 1);
@@ -437,7 +450,7 @@ class UserEnergyRecoveryTransactionTest {
         assertPurchaseState(NOW.toLocalDate(), 1);
         assertState(INITIAL_GEMS - PRICE, 2 + AMOUNT, 1);
         assertThat(energies.findByUserId(userId).orElseThrow().getEnergyUpdatedAt())
-                .isEqualTo(NOW.minusSeconds(30));
+                .isEqualTo(NOW.minusSeconds(30).atZone(SEOUL).toInstant());
     }
 
     @Test
@@ -458,6 +471,121 @@ class UserEnergyRecoveryTransactionTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("일일 에너지 구매 한도");
         assertState(INITIAL_GEMS - LIMIT * PRICE, 2 + LIMIT * AMOUNT, LIMIT);
+    }
+
+    @Test
+    @DisplayName("무구매 조회는 서버 UTC·서울 영업일·정책을 반환하고 어떤 상태도 저장하지 않는다")
+    void readsUnpurchasedStateAndUtcPolicyWithoutWriting() throws Exception {
+        at(NOW.withNano(123456789));
+        when(clock.getZone()).thenReturn(ZoneOffset.UTC);
+        mvc.perform(get("/api/user/energy/purchase-state").header("Authorization", authorization()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.serverTime").value("2026-10-18T19:00:00.123456789Z"))
+                .andExpect(jsonPath("$.purchaseDay").value("2026-10-19"))
+                .andExpect(jsonPath("$.purchaseCount").value(0))
+                .andExpect(jsonPath("$.remainingPurchases").value(LIMIT))
+                .andExpect(jsonPath("$.resetsAt").value("2026-10-19T19:00:00Z"))
+                .andExpect(jsonPath("$.gemCost").value(PRICE))
+                .andExpect(jsonPath("$.energyGranted").value(AMOUNT))
+                .andExpect(jsonPath("$.dailyLimit").value(LIMIT));
+        assertThat(purchases.getPurchaseState(userId).purchaseCount()).isZero();
+        assertThat(purchaseStates.findByUserId(userId)).isEmpty();
+        assertState(INITIAL_GEMS, 2, 0);
+        assertThat(energies.findByUserId(userId).orElseThrow().getEnergyUpdatedAt())
+                .isEqualTo(NOW.minusSeconds(30).atZone(SEOUL).toInstant());
+    }
+
+    @Test
+    @DisplayName("한도 도달 조회는 03:59:59까지 유지되고 04시부터 저장 없이 새 기간 0회로 표시한다")
+    void readsQuotaAcrossFourAmWithoutResettingPersistedCounter() {
+        at(NOW.minusSeconds(1));
+        for (int i = 0; i < LIMIT; i++) {
+            purchases.recover(userId, request("query-limit-" + i));
+        }
+        final var before = purchases.getPurchaseState(userId);
+        assertThat(before.serverTime()).isEqualTo(Instant.parse("2026-10-18T18:59:59Z"));
+        assertThat(before.purchaseDay()).isEqualTo(java.time.LocalDate.of(2026, 10, 18));
+        assertThat(before.purchaseCount()).isEqualTo(LIMIT);
+        assertThat(before.remainingPurchases()).isZero();
+        assertThat(before.resetsAt()).isEqualTo(Instant.parse("2026-10-18T19:00:00Z"));
+
+        for (int seconds = 0; seconds <= 1; seconds++) {
+            at(NOW.plusSeconds(seconds));
+            var current = purchases.getPurchaseState(userId);
+            assertThat(current.purchaseDay()).isEqualTo(java.time.LocalDate.of(2026, 10, 19));
+            assertThat(current.purchaseCount()).isZero();
+            assertThat(current.remainingPurchases()).isEqualTo(LIMIT);
+            assertThat(current.resetsAt()).isEqualTo(Instant.parse("2026-10-19T19:00:00Z"));
+            assertThat(current.serverTime())
+                    .isEqualTo(Instant.parse("2026-10-18T19:00:00Z").plusSeconds(seconds));
+        }
+        assertPurchaseState(NOW.toLocalDate().minusDays(1), LIMIT);
+        assertState(INITIAL_GEMS - LIMIT * PRICE, 2 + LIMIT * AMOUNT, LIMIT);
+        assertThat(energies.findByUserId(userId).orElseThrow().getEnergyUpdatedAt())
+                .isEqualTo(NOW.minusSeconds(1).atZone(SEOUL).toInstant());
+    }
+
+    @Test
+    @DisplayName("상태 행 없이 영수증만 있어도 당일 횟수를 읽고 행 생성이나 과거 영수증 변경은 하지 않는다")
+    void readsExistingReceiptsWithoutRestoringOrChangingCounter() {
+        final var first = purchases.recover(userId, request("query-legacy-first"));
+        purchases.recover(userId, request("query-legacy-second"));
+        transaction.executeWithoutResult(status -> purchaseStates.deleteByUserId(userId));
+
+        final var current = purchases.getPurchaseState(userId);
+        assertThat(current.purchaseCount()).isEqualTo(2);
+        assertThat(current.remainingPurchases()).isEqualTo(LIMIT - 2);
+        assertThat(purchaseStates.findByUserId(userId)).isEmpty();
+        assertThat(purchases.recover(userId, request("query-legacy-first"))).isEqualTo(first);
+        at(NOW.plusDays(1));
+        assertThat(purchases.getPurchaseState(userId).purchaseCount()).isZero();
+        assertThat(purchaseStates.findByUserId(userId)).isEmpty();
+        assertState(INITIAL_GEMS - 2 * PRICE, 2 + 2 * AMOUNT, 2);
+    }
+
+    @Test
+    @DisplayName("조회는 JWT 계정만 사용하고 다른 기기의 후속 구매 횟수를 새 조회에 반영한다")
+    void isolatesAuthenticatedReadAndReflectsLaterPurchases() throws Exception {
+        Long other =
+                transaction.execute(
+                        status -> {
+                            User user =
+                                    userRepository.saveAndFlush(
+                                            new User(Provider.GUEST, UUID.randomUUID().toString()));
+                            users.createInitialState(user);
+                            return user.getId();
+                        });
+        try {
+            final var first = purchases.recover(userId, request("query-device-a"));
+            mvc.perform(
+                            get("/api/user/energy/purchase-state")
+                                    .param("userId", other.toString())
+                                    .header("Authorization", authorization()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.purchaseCount").value(1))
+                    .andExpect(jsonPath("$.remainingPurchases").value(LIMIT - 1));
+            String otherToken =
+                    "Bearer " + jwtProvider.createAccessToken(other, ClientType.GAME, Role.USER);
+            mvc.perform(
+                            get("/api/user/energy/purchase-state")
+                                    .param("userId", userId.toString())
+                                    .header("Authorization", otherToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.purchaseCount").value(0));
+            assertThat(purchaseStates.findByUserId(other)).isEmpty();
+            purchases.recover(userId, request("query-device-b"));
+            assertThat(purchases.recover(userId, request("query-device-a"))).isEqualTo(first);
+            mvc.perform(
+                            get("/api/user/energy/purchase-state")
+                                    .header("Authorization", authorization()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.purchaseCount").value(2))
+                    .andExpect(jsonPath("$.remainingPurchases").value(LIMIT - 2));
+            assertState(INITIAL_GEMS - 2 * PRICE, 2 + 2 * AMOUNT, 2);
+            assertThat(wallets.findByUserId(other).orElseThrow().getGem()).isZero();
+        } finally {
+            users.deleteAccount(other);
+        }
     }
 
     private List<Object> concurrently(String first, String second) throws Exception {
@@ -514,7 +642,8 @@ class UserEnergyRecoveryTransactionTest {
                 status -> {
                     UserEnergy energy = energies.findByUserId(userId).orElseThrow();
                     ReflectionTestUtils.setField(energy, "energyStored", amount);
-                    ReflectionTestUtils.setField(energy, "energyUpdatedAt", updatedAt);
+                    ReflectionTestUtils.setField(
+                            energy, "energyUpdatedAt", updatedAt.atZone(SEOUL).toInstant());
                 });
     }
 

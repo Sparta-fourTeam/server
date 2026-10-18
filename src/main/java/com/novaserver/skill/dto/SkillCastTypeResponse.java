@@ -1,7 +1,7 @@
 package com.novaserver.skill.dto;
 
 import com.novaserver.skill.entity.SkillCastType;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.Getter;
 
 /** 스킬 시전 방식 응답. */
@@ -10,7 +10,7 @@ public class SkillCastTypeResponse {
     private final Long id;
     private final String name;
     private final String label;
-    private final LocalDateTime updatedAt;
+    private final Instant updatedAt;
 
     /** 엔티티로부터 응답을 만든다. */
     public SkillCastTypeResponse(SkillCastType castType) {

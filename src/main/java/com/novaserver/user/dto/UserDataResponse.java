@@ -9,7 +9,7 @@ import com.novaserver.user.entity.UserTutorial;
 import com.novaserver.user.entity.UserUpgrade;
 import com.novaserver.user.entity.Wallet;
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -31,8 +31,8 @@ public class UserDataResponse {
     @Schema(description = "저장된 에너지. 신규 계정 30, 자연회복 상한 30, 600초당 1 회복. 보상 초과 허용")
     private final int energyStored;
 
-    @Schema(description = "에너지 갱신 시각")
-    private final LocalDateTime energyUpdatedAt;
+    @Schema(description = "에너지 갱신 UTC 시각(ISO8601 Z)")
+    private final Instant energyUpdatedAt;
 
     @Schema(description = "스테이지 진행도 목록")
     private final List<UserStageProgressResponse> stageProgress;

@@ -11,7 +11,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -45,11 +45,11 @@ public class User {
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @UpdateTimestamp
     @Column(nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     /**
      * 유저를 생성한다. 생성·수정 시각은 저장 시 자동으로 기록된다.

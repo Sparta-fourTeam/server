@@ -4,7 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,7 +23,7 @@ public class BattleSession {
     @Column(nullable = false, unique = true)
     private String createId;
 
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     /**
      * 배틀 세션을 생성한다. 생성 시각은 현재 시각으로 기록한다.
@@ -36,6 +36,6 @@ public class BattleSession {
         this.userId = userId;
         this.battleId = battleId;
         this.createId = createId;
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = Instant.now();
     }
 }

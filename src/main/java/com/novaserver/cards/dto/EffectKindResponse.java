@@ -1,7 +1,7 @@
 package com.novaserver.cards.dto;
 
 import com.novaserver.cards.entity.EffectKind;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.Getter;
 
 /** 효과 종류 응답. */
@@ -10,7 +10,7 @@ public class EffectKindResponse {
     private final Long id;
     private final String name;
     private final String label;
-    private final LocalDateTime updatedAt;
+    private final Instant updatedAt;
 
     /** 효과 종류 엔티티로 응답을 만든다. */
     public EffectKindResponse(EffectKind kind) {
