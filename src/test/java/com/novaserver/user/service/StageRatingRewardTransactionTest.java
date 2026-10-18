@@ -16,10 +16,13 @@ import com.novaserver.auth.jwt.JwtProvider;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
+import com.novaserver.item.service.ItemService;
+import com.novaserver.stage.dto.StageRatingRewardRequest;
 import com.novaserver.stage.entity.Stage;
 import com.novaserver.stage.entity.StageRatingReward;
 import com.novaserver.stage.repository.StageRatingRewardRepository;
 import com.novaserver.stage.repository.StageRepository;
+import com.novaserver.stage.service.StageRatingRewardService;
 import com.novaserver.user.Provider;
 import com.novaserver.user.Role;
 import com.novaserver.user.entity.User;
@@ -65,6 +68,7 @@ class StageRatingRewardTransactionTest {
     private static final int STAGE = 1901;
     private static final String A = "rating.fixture.a";
     private static final String B = "rating.fixture.b";
+    private static final String C = "rating.fixture.race";
     @Autowired private UserStageProgressService service;
     @Autowired private UserService users;
     @Autowired private UserRepository accounts;
@@ -74,6 +78,8 @@ class StageRatingRewardTransactionTest {
     @Autowired private WalletRepository wallets;
     @Autowired private UserItemRepository inventory;
     @Autowired private ItemRepository items;
+    @Autowired private ItemService itemService;
+    @Autowired private StageRatingRewardService ratingService;
     @Autowired private PlatformTransactionManager transactions;
     @Autowired private MockMvc mvc;
     @Autowired private JwtProvider tokens;
@@ -125,7 +131,7 @@ class StageRatingRewardTransactionTest {
         tx.executeWithoutResult(
                 status -> {
                     rewards.deleteAll(rewards.findByStageStageIdOrderByRating(STAGE));
-                    items.deleteAllById(List.of(A, B));
+                    items.deleteAllById(List.of(A, B, C));
                     stages.deleteById(STAGE);
                 });
     }
@@ -356,6 +362,79 @@ class StageRatingRewardTransactionTest {
         var unchanged = rewards.findByStageStageIdAndRating(STAGE, 1).orElseThrow();
         assertThat(unchanged.getGold()).isEqualTo(23);
         assertThat(unchanged.getItems()).containsExactlyInAnyOrderEntriesOf(Map.of(A, 4));
+    }
+
+    @Test
+    void unownedRatingRewardItemCannotBeDeletedUntilAllTierReferencesAreRemoved() {
+        assertThat(inventory.existsByItemId(A)).isFalse();
+        assertThatThrownBy(() -> itemService.deleteItem(A))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("별등급 보상에서 참조");
+        assertThat(items.existsById(A)).isTrue();
+        tx.executeWithoutResult(
+                status -> {
+                    rewards.findByStageStageIdAndRating(STAGE, 1)
+                            .orElseThrow()
+                            .update(13, Map.of());
+                    rewards.findByStageStageIdAndRating(STAGE, 2)
+                            .orElseThrow()
+                            .update(17, Map.of());
+                });
+        itemService.deleteItem(A);
+        assertThat(items.existsById(A)).isFalse();
+        service.claimRatingReward(userId, STAGE, "after-unlink", 3);
+        assertState(49, 0, 7, 3);
+    }
+
+    @Test
+    void concurrentRatingEditAndItemDeletionPreserveReferences() throws Exception {
+        items.saveAndFlush(new Item(C, null));
+        var request = new StageRatingRewardRequest();
+        ReflectionTestUtils.setField(request, "gold", 13);
+        ReflectionTestUtils.setField(request, "items", Map.of(C, 5));
+        var ready = new CountDownLatch(2);
+        var go = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var edit =
+                    pool.submit(
+                            () -> {
+                                ready.countDown();
+                                if (!go.await(5, TimeUnit.SECONDS)) {
+                                    throw new IllegalStateException("편집 시작 시간 초과");
+                                }
+                                try {
+                                    ratingService.updateStageRatingReward(STAGE, 1, request);
+                                    return true;
+                                } catch (ResponseStatusException error) {
+                                    assertThat(error.getStatusCode().value()).isEqualTo(404);
+                                    return false;
+                                }
+                            });
+            var deletion =
+                    pool.submit(
+                            () -> {
+                                ready.countDown();
+                                if (!go.await(5, TimeUnit.SECONDS)) {
+                                    throw new IllegalStateException("삭제 시작 시간 초과");
+                                }
+                                try {
+                                    itemService.deleteItem(C);
+                                    return true;
+                                } catch (ResponseStatusException error) {
+                                    assertThat(error.getStatusCode().value()).isEqualTo(409);
+                                    return false;
+                                }
+                            });
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            go.countDown();
+            boolean edited = edit.get(10, TimeUnit.SECONDS);
+            boolean deleted = deletion.get(10, TimeUnit.SECONDS);
+            assertThat(edited).isNotEqualTo(deleted);
+            assertThat(items.existsById(C)).isEqualTo(edited);
+            assertThat(rewards.findByStageStageIdAndRating(STAGE, 1).orElseThrow().getItems())
+                    .containsKey(edited ? C : A)
+                    .doesNotContainKey(edited ? A : C);
+        }
     }
 
     @Test

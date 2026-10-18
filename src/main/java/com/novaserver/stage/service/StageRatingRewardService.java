@@ -23,6 +23,7 @@ public class StageRatingRewardService {
     private final StageRatingRewardRepository stageRatingRewardRepository;
     private final StageService stageService;
     private final ItemRepository items;
+    private final RewardRulesService rewardRules;
 
     /** 스테이지의 별등급 보상 목록을 조회한다. */
     @Transactional(readOnly = true)
@@ -41,6 +42,7 @@ public class StageRatingRewardService {
     @Transactional
     public StageRatingRewardResponse createStageRatingReward(
             Integer stageId, int rating, StageRatingRewardRequest request) {
+        rewardRules.lockItemReferences();
         Stage stage = stageService.findStage(stageId);
         if (stageRatingRewardRepository.existsByStageStageIdAndRating(stageId, rating)) {
             throw ErrorCode.STAGE_RATING_REWARD_DUPLICATED.exception(stageId, rating);
@@ -61,6 +63,7 @@ public class StageRatingRewardService {
     @Transactional
     public StageRatingRewardResponse updateStageRatingReward(
             Integer stageId, int rating, StageRatingRewardRequest request) {
+        rewardRules.lockItemReferences();
         StageRatingReward reward = findStageRatingReward(stageId, rating);
         reward.update(request.getGold(), validateItems(request));
         return StageRatingRewardResponse.from(reward);

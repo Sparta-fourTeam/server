@@ -60,6 +60,12 @@ public class RewardRulesService {
         return getRules();
     }
 
+    /** 아이템 참조 편집과 삭제를 같은 잠금으로 직렬화한다. 보상 규칙 미등록도 허용한다. */
+    @Transactional
+    public void lockItemReferences() {
+        lockVersion();
+    }
+
     /** 실제 아이템을 참조하는 보상 규칙이 남아 있으면 삭제를 거절한다. */
     @Transactional
     public void checkItemRemovable(String itemId) {
