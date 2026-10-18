@@ -1,7 +1,7 @@
 package com.novaserver.battle.repository;
 
 import com.novaserver.battle.entity.BattleSession;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -27,5 +27,5 @@ public interface BattleRepository extends JpaRepository<BattleSession, Long> {
             @Param("userId") Long userId,
             @Param("battleId") String battleId,
             @Param("createId") String createId,
-            @Param("createdAt") LocalDateTime createdAt);
+            @Param("createdAt") Instant createdAt);
 }

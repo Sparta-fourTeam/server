@@ -18,4 +18,9 @@ public class EnergyPurchasePolicy {
     public LocalDate purchaseDay(Instant now) {
         return now.atZone(PURCHASE_ZONE).minusHours(RESET_HOUR).toLocalDate();
     }
+
+    /** 현재 영업일 다음 날 서울 04시를 UTC 절대 시각으로 반환한다. */
+    public Instant nextResetAt(LocalDate purchaseDay) {
+        return purchaseDay.plusDays(1).atTime(RESET_HOUR, 0).atZone(PURCHASE_ZONE).toInstant();
+    }
 }

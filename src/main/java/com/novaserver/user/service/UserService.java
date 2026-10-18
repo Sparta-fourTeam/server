@@ -20,7 +20,7 @@ import com.novaserver.user.repository.UserUpgradeRepository;
 import com.novaserver.user.repository.UserUpgradeRequestRepository;
 import com.novaserver.user.repository.WalletRepository;
 import java.time.Clock;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
@@ -51,8 +51,7 @@ public class UserService {
     public void createInitialState(User user) {
         userDataRepository.save(new UserData(user, 0));
         walletRepository.save(new Wallet(user, 0, 0));
-        userEnergyRepository.save(
-                new UserEnergy(user, UserEnergy.MAX_ENERGY, LocalDateTime.now(clock)));
+        userEnergyRepository.save(new UserEnergy(user, UserEnergy.MAX_ENERGY, clock.instant()));
     }
 
     /** 토큰의 유저 id로 유저 상태 정보를 조회한다. */
@@ -62,7 +61,7 @@ public class UserService {
         Wallet wallet = findWallet(userId);
         UserEnergy energy = findEnergy(userId);
 
-        energy.recover(LocalDateTime.now(clock));
+        energy.recover(clock.instant());
 
         return UserDataResponse.of(
                 userData,
@@ -97,7 +96,7 @@ public class UserService {
     @Transactional
     public void useEnergy(Long userId, int amount) {
         UserEnergy energy = findEnergyForUpdate(userId);
-        LocalDateTime now = LocalDateTime.now(clock);
+        Instant now = clock.instant();
 
         energy.recover(now);
         energy.consume(amount, now);
@@ -107,7 +106,7 @@ public class UserService {
     @Transactional
     public void grantEnergy(Long userId, int amount) {
         UserEnergy energy = findEnergyForUpdate(userId);
-        LocalDateTime now = LocalDateTime.now(clock);
+        Instant now = clock.instant();
 
         energy.recover(now);
         energy.addEnergy(amount, now);

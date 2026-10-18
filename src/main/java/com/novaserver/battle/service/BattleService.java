@@ -15,7 +15,7 @@ import com.novaserver.user.repository.UserRepository;
 import com.novaserver.user.repository.UserStageProgressRepository;
 import com.novaserver.user.service.UserRewardService;
 import com.novaserver.user.service.UserService;
-import java.time.LocalDateTime;
+import java.time.Clock;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,6 +35,7 @@ public class BattleService {
     private final StageService stageService;
 
     private final BattleRepository battleRepository;
+    private final Clock clock;
 
     /**
      * 유저에게 새 배틀 ID를 발급한다. 같은 멱등성 키로 이미 발급받은 배틀이 있으면 기존 ID를 그대로 돌려주고, 그렇지 않으면 에너지를 소모하고 새 ID로 덮어쓴다.
@@ -56,7 +57,7 @@ public class BattleService {
         userService.useEnergy(userId, BATTLE_ENERGY_COST);
 
         String battleId = UUID.randomUUID().toString();
-        battleRepository.upsert(userId, battleId, createId, LocalDateTime.now());
+        battleRepository.upsert(userId, battleId, createId, clock.instant());
 
         return new BattleResponse(battleId);
     }

@@ -13,7 +13,7 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -41,17 +41,17 @@ public class UserEnergy {
     private int energyStored;
 
     @Column(nullable = false)
-    private LocalDateTime energyUpdatedAt;
+    private Instant energyUpdatedAt;
 
     /** 유저와 초기 에너지로 에너지 정보를 만든다. */
-    public UserEnergy(User user, int energyStored, LocalDateTime now) {
+    public UserEnergy(User user, int energyStored, Instant now) {
         this.user = user;
         this.energyStored = energyStored;
         this.energyUpdatedAt = now;
     }
 
     /** 에너지 소모. */
-    public void consume(int amount, LocalDateTime now) {
+    public void consume(int amount, Instant now) {
         if (amount <= 0) {
             throw ErrorCode.INVALID_REQUEST.exception();
         }
@@ -68,7 +68,7 @@ public class UserEnergy {
     }
 
     /** 자동 회복. */
-    public void recover(LocalDateTime now) {
+    public void recover(Instant now) {
         if (energyStored >= MAX_ENERGY) {
             return;
         }
@@ -84,14 +84,15 @@ public class UserEnergy {
         energyStored = (int) Math.min(MAX_ENERGY, energyStored + recovered);
 
         if (energyStored < MAX_ENERGY) {
-            energyUpdatedAt = energyUpdatedAt.plusMinutes(recovered * RECOVERY_INTERVAL_MINUTES);
+            energyUpdatedAt =
+                    energyUpdatedAt.plusSeconds(recovered * RECOVERY_INTERVAL_MINUTES * 60);
         } else {
             energyUpdatedAt = now;
         }
     }
 
     /** 에너지 보상 획득. */
-    public void addEnergy(int amount, LocalDateTime now) {
+    public void addEnergy(int amount, Instant now) {
         if (amount <= 0) {
             throw ErrorCode.INVALID_REQUEST.exception();
         }
