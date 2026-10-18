@@ -125,6 +125,7 @@ public enum ErrorCode {
     ITEM_DUPLICATED(HttpStatus.CONFLICT, "이미 존재하는 아이템 id입니다: %s"),
     ITEM_IN_USE(HttpStatus.CONFLICT, "사용 중인 유저 아이템이 있어 삭제할 수 없습니다: %s"),
     ITEM_DATA_INVALID(HttpStatus.BAD_REQUEST, "아이템 데이터가 올바르지 않습니다: %s"),
+    REWARD_QUANTITY_OVERFLOW(HttpStatus.CONFLICT, "보상 아이템 수량이 저장 범위를 초과합니다"),
     ITEM_QUANTITY_NOT_ENOUGH(HttpStatus.CONFLICT, "재료가 부족합니다: %s"),
     ITEM_LINKED_TO_UPGRADE(HttpStatus.CONFLICT, "강화에서 재료로 사용 중이어서 삭제할 수 없습니다: %s"),
 

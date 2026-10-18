@@ -33,6 +33,8 @@ import com.novaserver.item.dto.ItemRequest;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
 import com.novaserver.item.service.ItemService;
+import com.novaserver.playerlevel.entity.PlayerLevelConfig;
+import com.novaserver.playerlevel.repository.PlayerLevelConfigRepository;
 import com.novaserver.stage.dto.ClearRewardResult;
 import com.novaserver.stage.dto.RewardItemRule;
 import com.novaserver.stage.dto.RewardRulesData;
@@ -46,9 +48,12 @@ import com.novaserver.stage.service.RewardRulesService;
 import com.novaserver.stage.service.StageRewardSchedule;
 import com.novaserver.stage.service.StageRewardService;
 import com.novaserver.support.RewardRulesFixture;
+import com.novaserver.upgrade.entity.Upgrade;
+import com.novaserver.upgrade.repository.UpgradeRepository;
 import com.novaserver.user.Provider;
 import com.novaserver.user.Role;
 import com.novaserver.user.entity.User;
+import com.novaserver.user.entity.UserItem;
 import com.novaserver.user.repository.UserDataRepository;
 import com.novaserver.user.repository.UserItemRepository;
 import com.novaserver.user.repository.UserRepository;
@@ -69,6 +74,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -101,6 +107,8 @@ class BattleResultTransactionTest {
     @Autowired private RewardRulesConfigRepository ruleConfigs;
     @Autowired private ItemRepository items;
     @Autowired private ItemService itemService;
+    @Autowired private PlayerLevelConfigRepository playerLevels;
+    @Autowired private UpgradeRepository upgrades;
     @Autowired private PlatformTransactionManager transactions;
     @Autowired private JwtProvider jwtProvider;
     @Autowired private MockMvc mvc;
@@ -127,7 +135,7 @@ class BattleResultTransactionTest {
                 });
         doReturn(new ClearRewardResult(13, 17, Map.of(ITEM, 9), 0))
                 .when(rewards)
-                .calculateClearReward(eq(901), anyInt(), anyInt());
+                .calculateClearReward(eq(userId), eq(901), anyInt(), anyInt());
     }
 
     @AfterEach
@@ -138,9 +146,12 @@ class BattleResultTransactionTest {
         transaction.executeWithoutResult(
                 status -> {
                     ruleConfigs.deleteAll();
+                    upgrades.deleteById("fixture.equipment.target");
+                    playerLevels.deleteAll();
                     stageRewards.deleteById(901);
                     items.deleteById(ITEM);
-                    items.deleteAllById(List.of(SKILL, EQUIPMENT, CHEST, RANDOM_SKILL));
+                    items.deleteAllById(
+                            List.of(SKILL, EQUIPMENT, CHEST, RANDOM_SKILL, RANDOM_EQUIPMENT));
                     stages.deleteById(901);
                 });
     }
@@ -157,7 +168,7 @@ class BattleResultTransactionTest {
         // 새 트랜잭션에서 DB를 읽는다. 이후 계산 기준 변경도 과거 결과를 바꾸지 않는다.
         doReturn(new ClearRewardResult(999, 999, Map.of(), 0))
                 .when(rewards)
-                .calculateClearReward(eq(901), anyInt(), anyInt());
+                .calculateClearReward(eq(userId), eq(901), anyInt(), anyInt());
         assertThat(battles.endBattle(userId, request)).isEqualTo(first);
         assertThat(sessions.findById(userId).orElseThrow().getBattleId()).isEqualTo(next);
         assertBalances(13, 48, 9);
@@ -271,7 +282,7 @@ class BattleResultTransactionTest {
         String id = battles.createBattle(userId, "invalid-reward").getBattleId();
         doReturn(new ClearRewardResult(13, gold, Map.of(ITEM, 9), bonusExp))
                 .when(rewards)
-                .calculateClearReward(eq(901), anyInt(), anyInt());
+                .calculateClearReward(eq(userId), eq(901), anyInt(), anyInt());
         assertThatThrownBy(() -> battles.endBattle(userId, request(id, 12, 2)))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("전투 보상 기준 데이터");
@@ -308,7 +319,9 @@ class BattleResultTransactionTest {
                 });
         var ruleData = RewardRulesFixture.rules();
         rulesService.saveConfig(ruleData);
-        doCallRealMethod().when(rewards).calculateClearReward(eq(901), anyInt(), anyInt());
+        doCallRealMethod()
+                .when(rewards)
+                .calculateClearReward(eq(userId), eq(901), anyInt(), anyInt());
         String id = battles.createBattle(userId, "real-calculation").getBattleId();
         String authorization =
                 "Bearer " + jwtProvider.createAccessToken(userId, ClientType.GAME, Role.USER);
@@ -465,6 +478,164 @@ class BattleResultTransactionTest {
         users.deleteAccount(userId);
         assertThat(results.findByUserIdAndBattleId(userId, id)).isEmpty();
         userId = null;
+    }
+
+    @Test
+    void randomReceiptRestoresOnAnotherTokenAfterRulesAndLevelChange() throws Exception {
+        prepareRandomReward(1);
+        // 추첨 정의 ID와 같은 실제 Item이 존재해도 추첨 정의 자체를 지급하지 않는다.
+        transaction.executeWithoutResult(
+                status -> items.saveAndFlush(new Item(RANDOM_EQUIPMENT, null)));
+        String id = battles.createBattle(userId, "random-http").getBattleId();
+        var first = battles.endBattle(userId, request(id, 20, 3));
+        assertThat(first.items()).containsExactlyInAnyOrderEntriesOf(Map.of(EQUIPMENT, 53));
+        assertThat(first.exp()).isEqualTo(30);
+        assertThat(first.threeStarBonusExp()).isEqualTo(17);
+        transaction.executeWithoutResult(
+                status -> {
+                    ruleConfigs.deleteAll();
+                    playerLevels.deleteAll();
+                    data.findByUserId(userId).orElseThrow().addExp(900);
+                });
+        assertThat(battles.endBattle(userId, request(id, 20, 3))).isEqualTo(first);
+        String otherDevice =
+                "Bearer " + jwtProvider.createAccessToken(userId, ClientType.GAME, Role.USER);
+        mvc.perform(
+                        post("/api/battle/end")
+                                .header("Authorization", otherDevice)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(new ObjectMapper().writeValueAsString(request(id, 20, 3))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items['" + EQUIPMENT + "']").value(53))
+                .andExpect(jsonPath("$.exp").value(30))
+                .andExpect(jsonPath("$.threeStarBonusExp").value(17))
+                .andExpect(jsonPath("$.completedAt").value(first.completedAt().toString()));
+        mvc.perform(get("/api/user/me").header("Authorization", otherDevice))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.exp").value(930))
+                .andExpect(jsonPath("$.items[0].itemId").value(EQUIPMENT))
+                .andExpect(jsonPath("$.items[0].quantity").value(53));
+        assertThat(results.findAllByUserId(userId)).hasSize(1);
+        assertThatThrownBy(() -> battles.endBattle(userId, request(id, 20, 2)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("이미 확정한 전투 결과");
+    }
+
+    @Test
+    void concurrentRandomRequestsPersistOneActualRewardAndIdenticalReceipts() throws Exception {
+        prepareRandomReward(1);
+        String id = battles.createBattle(userId, "random-race").getBattleId();
+        var ready = new CountDownLatch(2);
+        var go = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var first =
+                    pool.submit(
+                            () -> {
+                                ready.countDown();
+                                if (!go.await(5, TimeUnit.SECONDS)) {
+                                    throw new IllegalStateException("동시 요청 시작 시간 초과");
+                                }
+                                return battles.endBattle(userId, request(id, 20, 3));
+                            });
+            var second =
+                    pool.submit(
+                            () -> {
+                                ready.countDown();
+                                if (!go.await(5, TimeUnit.SECONDS)) {
+                                    throw new IllegalStateException("동시 요청 시작 시간 초과");
+                                }
+                                return battles.endBattle(userId, request(id, 20, 3));
+                            });
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            go.countDown();
+            assertThat(first.get(10, TimeUnit.SECONDS)).isEqualTo(second.get(10, TimeUnit.SECONDS));
+        }
+        assertThat(inventory.findByUserIdAndItemId(userId, EQUIPMENT).orElseThrow().getQuantity())
+                .isEqualTo(53);
+        assertThat(results.findAllByUserId(userId)).hasSize(1);
+        assertBalances(30, 67, 0);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"locked", "overflow", "receipt-failure"})
+    void randomFailureRollsBackAllStateAndLeavesTheBattleRetryable(String failure) {
+        prepareRandomReward(failure.equals("locked") ? 2 : 1);
+        if (failure.equals("overflow")) {
+            transaction.executeWithoutResult(
+                    status ->
+                            inventory.saveAndFlush(
+                                    new UserItem(
+                                            userRepository.getReferenceById(userId),
+                                            items.findById(EQUIPMENT).orElseThrow(),
+                                            Integer.MAX_VALUE)));
+        }
+        if (failure.equals("receipt-failure")) {
+            doThrow(new DataIntegrityViolationException("random receipt failure"))
+                    .when(results)
+                    .saveAndFlush(any());
+        }
+        String id = battles.createBattle(userId, "random-failure").getBattleId();
+        var failureAssertion =
+                assertThatThrownBy(() -> battles.endBattle(userId, request(id, 20, 3)));
+        if (failure.equals("receipt-failure")) {
+            failureAssertion.isInstanceOf(DataIntegrityViolationException.class);
+        } else {
+            failureAssertion
+                    .isInstanceOf(ResponseStatusException.class)
+                    .hasMessageContaining(
+                            failure.equals("overflow") ? "보상 아이템 수량이 저장 범위를 초과" : "전투 보상 기준 데이터");
+        }
+        assertBalances(0, 0, 0);
+        assertThat(sessions.findById(userId).orElseThrow().getBattleId()).isEqualTo(id);
+        assertThat(progress.findByUserIdAndStageId(userId, 901)).isEmpty();
+        assertThat(results.findAllByUserId(userId)).isEmpty();
+        assertThat(
+                        inventory
+                                .findByUserIdAndItemId(userId, EQUIPMENT)
+                                .map(UserItem::getQuantity)
+                                .orElse(0))
+                .isEqualTo(failure.equals("overflow") ? Integer.MAX_VALUE : 0);
+    }
+
+    private void prepareRandomReward(int unlockLevel) {
+        transaction.executeWithoutResult(
+                status -> {
+                    items.saveAll(RewardRulesFixture.catalog());
+                    upgrades.saveAndFlush(
+                            new Upgrade(
+                                    "fixture.equipment.target",
+                                    4,
+                                    unlockLevel,
+                                    null,
+                                    1,
+                                    0,
+                                    1,
+                                    0,
+                                    List.of(),
+                                    null,
+                                    null));
+                    playerLevels.saveAndFlush(new PlayerLevelConfig(7, 3, 8));
+                });
+        var target = new ItemRequest();
+        ReflectionTestUtils.setField(target, "targetId", "fixture.equipment.target");
+        itemService.updateItem(EQUIPMENT, target);
+        rulesService.saveConfig(RewardRulesFixture.rules());
+        transaction.executeWithoutResult(
+                status ->
+                        stageRewards.saveAndFlush(
+                                new StageReward(
+                                        stages.findById(901).orElseThrow(),
+                                        13,
+                                        17,
+                                        67,
+                                        List.of(
+                                                new StageRewardItem(EQUIPMENT, 26),
+                                                new StageRewardItem(RANDOM_EQUIPMENT, 27)))));
+        // 추첨 ID를 Item에 등록하지 않고도 계산·지급할 수 있어야 한다.
+        assertThat(items.existsById(RANDOM_EQUIPMENT)).isFalse();
+        doCallRealMethod()
+                .when(rewards)
+                .calculateClearReward(eq(userId), eq(901), anyInt(), anyInt());
     }
 
     private BattleEndRequest request(String battleId, int wave, int rating) {

@@ -94,13 +94,13 @@ class ItemServiceTest {
     }
 
     @Test
-    @DisplayName("targetId가 숫자가 아니면 400 ITEM_DATA_INVALID를 던진다")
+    @DisplayName("대상 스킬·장비 강화가 없으면 400 ITEM_DATA_INVALID를 던진다")
     void shouldThrowBadRequest_whenTargetIdNotNumeric() {
         when(itemRepository.existsById("book.skill")).thenReturn(false);
 
         assertThatThrownBy(() -> itemService.createItem(createRequest("book.skill", "abc")))
                 .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("targetId는 숫자 형태의 스킬 id여야 합니다");
+                .hasMessageContaining("targetId에 해당하는 스킬 또는 장비 강화가 없습니다");
     }
 
     @Test
@@ -125,6 +125,17 @@ class ItemServiceTest {
 
         assertThat(response.itemId()).isEqualTo("book.skill");
         assertThat(response.targetId()).isEqualTo("1");
+    }
+
+    @Test
+    void equipmentTargetCanBeRegistered() {
+        when(upgradeRepository.existsById("fixture.equipment.target")).thenReturn(true);
+        when(itemRepository.saveAndFlush(any()))
+                .thenReturn(new Item("fixture.equipment", "fixture.equipment.target"));
+        var result =
+                itemService.createItem(
+                        createRequest("fixture.equipment", "fixture.equipment.target"));
+        assertThat(result.targetId()).isEqualTo("fixture.equipment.target");
     }
 
     @Test

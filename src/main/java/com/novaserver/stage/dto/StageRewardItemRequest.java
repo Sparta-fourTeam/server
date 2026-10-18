@@ -10,7 +10,7 @@ import lombok.Getter;
 @Getter
 public class StageRewardItemRequest {
     @NotBlank(message = "itemId는 필수값입니다.")
-    @Schema(description = "클라와 공통 지급 규칙이 있는 고정 스킬/장비 재료 또는 chest.gem. 랜덤 재료 확정 지급은 별도 준비 중")
+    @Schema(description = "RewardRules의 실제 아이템 ID 또는 별도 랜덤 추첨 ID. 추첨 ID는 종료 시 실제 재료로 확정")
     private String itemId;
 
     @NotNull(message = "finalAmount는 필수값입니다.")

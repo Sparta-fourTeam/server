@@ -31,4 +31,12 @@ class PlayerLevelPolicyTest {
         // When / Then
         assertThat(policy.hasReached(exp, requiredLevel)).isEqualTo(expected);
     }
+
+    @ParameterizedTest
+    @CsvSource({"-1,1", "0,1", "9,1", "10,2", "24,2", "25,3", "44,3", "45,4", "2147483647,4"})
+    void levelAtUsesTheSameUnlockBoundaries(int exp, int expected) {
+        var service = mock(PlayerLevelService.class);
+        when(service.getConfig()).thenReturn(new PlayerLevelConfigResponse(10, 5, 4, 1));
+        assertThat(new PlayerLevelPolicy(service).levelAt(exp)).isEqualTo(expected);
+    }
 }

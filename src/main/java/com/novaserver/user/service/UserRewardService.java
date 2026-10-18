@@ -58,6 +58,13 @@ public class UserRewardService {
         }
     }
 
+    private void addItemQuantity(UserItem item, int amount) {
+        if ((long) item.getQuantity() + amount > Integer.MAX_VALUE) {
+            throw ErrorCode.REWARD_QUANTITY_OVERFLOW.exception();
+        }
+        item.addQuantity(amount);
+    }
+
     private void grantItem(Long userId, String itemId, int amount) {
         if (amount <= 0) {
             return;
@@ -66,7 +73,7 @@ public class UserRewardService {
         UserItem userItem =
                 userItemRepository.findByUserIdAndItemIdForUpdate(userId, itemId).orElse(null);
         if (userItem != null) {
-            userItem.addQuantity(amount);
+            addItemQuantity(userItem, amount);
             return;
         }
 
@@ -78,10 +85,11 @@ public class UserRewardService {
         try {
             userItemRepository.save(new UserItem(user, item, amount));
         } catch (DataIntegrityViolationException e) {
-            userItemRepository
-                    .findByUserIdAndItemIdForUpdate(userId, itemId)
-                    .orElseThrow(() -> e)
-                    .addQuantity(amount);
+            addItemQuantity(
+                    userItemRepository
+                            .findByUserIdAndItemIdForUpdate(userId, itemId)
+                            .orElseThrow(() -> e),
+                    amount);
         }
     }
 }

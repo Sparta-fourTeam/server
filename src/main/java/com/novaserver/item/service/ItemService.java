@@ -89,15 +89,18 @@ public class ItemService {
                 .orElseThrow(() -> ErrorCode.ITEM_NOT_FOUND.exception(id));
     }
 
-    /** 스킬 재료(targetId 있음)면 해당 스킬이 있는지 확인한다. */
+    /** 재료의 대상 스킬 또는 장비 강화가 있는지 확인한다. */
     private void validate(String targetId) {
         if (targetId != null) {
             Long skillId;
             try {
                 skillId = Long.valueOf(targetId);
             } catch (NumberFormatException e) {
-                throw ErrorCode.ITEM_DATA_INVALID.exception(
-                        "targetId는 숫자 형태의 스킬 id여야 합니다: " + targetId);
+                if (!upgradeRepository.existsById(targetId)) {
+                    throw ErrorCode.ITEM_DATA_INVALID.exception(
+                            "targetId에 해당하는 스킬 또는 장비 강화가 없습니다: " + targetId);
+                }
+                return;
             }
             if (!skillRepository.existsById(skillId)) {
                 throw ErrorCode.ITEM_DATA_INVALID.exception("targetId에 해당하는 스킬이 없습니다: " + targetId);
