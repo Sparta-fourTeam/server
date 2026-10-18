@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -14,32 +16,33 @@ class UserEnergyTest {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 14, 12, 0);
 
+    @ParameterizedTest
+    @CsvSource({"599, 10, 0", "600, 11, 600", "1200, 12, 1200"})
+    @DisplayName("확정된 600초 회복 경계와 저장 기준 시각을 지킨다")
+    void shouldRecoverAtConfirmedBoundary(int seconds, int expected, int settledSeconds) {
+        // given
+        UserEnergy energy = energyOf(10, NOW);
+
+        // when
+        energy.recover(NOW.plusSeconds(seconds));
+
+        // then
+        assertThat(energy.getEnergyStored()).isEqualTo(expected);
+        assertThat(energy.getEnergyUpdatedAt()).isEqualTo(NOW.plusSeconds(settledSeconds));
+    }
+
     @Test
-    @DisplayName("시간이 지나면 분 단위로 회복하고 남은 시간은 보존한다")
+    @DisplayName("시간이 지나면 10분 단위로 회복하고 남은 시간은 보존한다")
     void shouldRecoverByMinutes_andKeepRemainder() {
         // given
         UserEnergy energy = energyOf(10, NOW);
 
         // when
-        energy.recover(NOW.plusMinutes(3).plusSeconds(30));
+        energy.recover(NOW.plusMinutes(30).plusSeconds(30));
 
         // then
         assertThat(energy.getEnergyStored()).isEqualTo(13);
-        assertThat(energy.getEnergyUpdatedAt()).isEqualTo(NOW.plusMinutes(3));
-    }
-
-    @Test
-    @DisplayName("1분이 지나지 않으면 회복하지 않고 기준 시각도 바꾸지 않는다")
-    void shouldNotRecover_whenLessThanInterval() {
-        // given
-        UserEnergy energy = energyOf(10, NOW);
-
-        // when
-        energy.recover(NOW.plusSeconds(59));
-
-        // then
-        assertThat(energy.getEnergyStored()).isEqualTo(10);
-        assertThat(energy.getEnergyUpdatedAt()).isEqualTo(NOW);
+        assertThat(energy.getEnergyUpdatedAt()).isEqualTo(NOW.plusMinutes(30));
     }
 
     @Test

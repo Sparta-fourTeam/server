@@ -28,7 +28,7 @@ public class UserDataResponse {
     @Schema(description = "경험치")
     private final Integer exp;
 
-    @Schema(description = "저장된 에너지")
+    @Schema(description = "저장된 에너지. 신규 계정 30, 자연회복 상한 30, 600초당 1 회복. 보상 초과 허용")
     private final int energyStored;
 
     @Schema(description = "에너지 갱신 시각")

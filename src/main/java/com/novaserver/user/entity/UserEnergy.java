@@ -27,7 +27,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class UserEnergy {
     public static final int MAX_ENERGY = 30;
-    public static final long RECOVERY_INTERVAL_MINUTES = 1;
+    public static final long RECOVERY_INTERVAL_MINUTES = 10;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
