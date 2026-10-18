@@ -1,28 +1,49 @@
 package com.novaserver.battle.service;
 
+import static com.novaserver.support.RewardRulesFixture.CHEST;
+import static com.novaserver.support.RewardRulesFixture.EQUIPMENT;
+import static com.novaserver.support.RewardRulesFixture.RANDOM_EQUIPMENT;
+import static com.novaserver.support.RewardRulesFixture.RANDOM_SKILL;
+import static com.novaserver.support.RewardRulesFixture.SKILL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.novaserver.auth.jwt.ClientType;
 import com.novaserver.auth.jwt.JwtProvider;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.battle.dto.BattleEndRequest;
 import com.novaserver.battle.repository.BattleRepository;
 import com.novaserver.battle.repository.BattleResultRepository;
+import com.novaserver.item.dto.ItemRequest;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
+import com.novaserver.item.service.ItemService;
 import com.novaserver.stage.dto.ClearRewardResult;
+import com.novaserver.stage.dto.RewardRulesData;
 import com.novaserver.stage.entity.Stage;
+import com.novaserver.stage.entity.StageReward;
+import com.novaserver.stage.entity.StageRewardItem;
+import com.novaserver.stage.repository.RewardRulesConfigRepository;
 import com.novaserver.stage.repository.StageRepository;
+import com.novaserver.stage.repository.StageRewardRepository;
+import com.novaserver.stage.service.RewardRulesService;
+import com.novaserver.stage.service.StageRewardSchedule;
 import com.novaserver.stage.service.StageRewardService;
+import com.novaserver.support.RewardRulesFixture;
 import com.novaserver.user.Provider;
 import com.novaserver.user.Role;
 import com.novaserver.user.entity.User;
@@ -34,6 +55,8 @@ import com.novaserver.user.repository.WalletRepository;
 import com.novaserver.user.service.UserService;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -42,6 +65,8 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -69,12 +94,16 @@ class BattleResultTransactionTest {
     @Autowired private UserStageProgressRepository progress;
     @Autowired private BattleRepository sessions;
     @Autowired private StageRepository stages;
+    @Autowired private StageRewardRepository stageRewards;
+    @Autowired private RewardRulesService rulesService;
+    @Autowired private RewardRulesConfigRepository ruleConfigs;
     @Autowired private ItemRepository items;
+    @Autowired private ItemService itemService;
     @Autowired private PlatformTransactionManager transactions;
     @Autowired private JwtProvider jwtProvider;
     @Autowired private MockMvc mvc;
     @MockitoSpyBean private BattleResultRepository results;
-    @MockitoBean private StageRewardService rewards;
+    @MockitoSpyBean private StageRewardService rewards;
     @MockitoBean private Clock clock;
     @MockitoBean private TokenBlocklistRepository blocklist;
     private Long userId;
@@ -94,8 +123,9 @@ class BattleResultTransactionTest {
                     userId = user.getId();
                     users.createInitialState(user);
                 });
-        when(rewards.calculateClearReward(eq(901), anyInt(), anyInt()))
-                .thenReturn(new ClearRewardResult(13, 17, Map.of(ITEM, 9)));
+        doReturn(new ClearRewardResult(13, 17, Map.of(ITEM, 9)))
+                .when(rewards)
+                .calculateClearReward(eq(901), anyInt(), anyInt());
     }
 
     @AfterEach
@@ -105,7 +135,10 @@ class BattleResultTransactionTest {
         }
         transaction.executeWithoutResult(
                 status -> {
+                    ruleConfigs.deleteAll();
+                    stageRewards.deleteById(901);
                     items.deleteById(ITEM);
+                    items.deleteAllById(List.of(SKILL, EQUIPMENT, CHEST));
                     stages.deleteById(901);
                 });
     }
@@ -120,8 +153,9 @@ class BattleResultTransactionTest {
         transaction.executeWithoutResult(
                 status -> wallets.findByUserIdForUpdate(userId).orElseThrow().addGold(31));
         // 새 트랜잭션에서 DB를 읽는다. 이후 계산 기준 변경도 과거 결과를 바꾸지 않는다.
-        when(rewards.calculateClearReward(eq(901), anyInt(), anyInt()))
-                .thenReturn(new ClearRewardResult(999, 999, Map.of()));
+        doReturn(new ClearRewardResult(999, 999, Map.of()))
+                .when(rewards)
+                .calculateClearReward(eq(901), anyInt(), anyInt());
         assertThat(battles.endBattle(userId, request)).isEqualTo(first);
         assertThat(sessions.findById(userId).orElseThrow().getBattleId()).isEqualTo(next);
         assertBalances(13, 48, 9);
@@ -223,9 +257,7 @@ class BattleResultTransactionTest {
                         post("/api/battle/end")
                                 .header("Authorization", authorization)
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        payload.replace(
-                                                "\"clearedWave\":12", "\"clearedWave\":11")))
+                                .content(new ObjectMapper().writeValueAsString(request(id, 11, 2))))
                 .andExpect(status().isConflict());
         assertBalances(13, 17, 9);
     }
@@ -233,14 +265,161 @@ class BattleResultTransactionTest {
     @Test
     void invalidCalculatedRewardCannotLeaveReceiptForAnAmountThatWasNotGranted() {
         String id = battles.createBattle(userId, "invalid-reward").getBattleId();
-        when(rewards.calculateClearReward(eq(901), anyInt(), anyInt()))
-                .thenReturn(new ClearRewardResult(13, -1, Map.of(ITEM, 9)));
+        doReturn(new ClearRewardResult(13, -1, Map.of(ITEM, 9)))
+                .when(rewards)
+                .calculateClearReward(eq(901), anyInt(), anyInt());
         assertThatThrownBy(() -> battles.endBattle(userId, request(id, 12, 2)))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("전투 보상 기준 데이터");
         assertBalances(0, 0, 0);
         assertThat(results.findAllByUserId(userId)).isEmpty();
         assertThat(sessions.findById(userId)).isPresent();
+    }
+
+    @ParameterizedTest
+    @CsvSource({"0,0,0,3,2,1,2", "20,3,30,67,83,26,49"})
+    void realCalculationIsGrantedAndReceiptedOnce(
+            int wave, int rating, int exp, int gold, int skill, int equipment, int chest)
+            throws Exception {
+        transaction.executeWithoutResult(
+                status -> {
+                    items.saveAll(RewardRulesFixture.catalog());
+                    stageRewards.save(
+                            new StageReward(
+                                    stages.findById(901).orElseThrow(),
+                                    13,
+                                    17,
+                                    67,
+                                    List.of(
+                                            new StageRewardItem(SKILL, 83),
+                                            new StageRewardItem(EQUIPMENT, 26),
+                                            new StageRewardItem(CHEST, 49))));
+                });
+        var ruleData = RewardRulesFixture.rules();
+        rulesService.saveConfig(ruleData);
+        doCallRealMethod().when(rewards).calculateClearReward(eq(901), anyInt(), anyInt());
+        String id = battles.createBattle(userId, "real-calculation").getBattleId();
+        String authorization =
+                "Bearer " + jwtProvider.createAccessToken(userId, ClientType.GAME, Role.USER);
+        String prefix = "{\"battleId\":\"" + id + "\",\"stageId\":901,";
+        mvc.perform(
+                        post("/api/battle/end")
+                                .header("Authorization", authorization)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(prefix + "\"clearedWave\":19,\"rating\":3}"))
+                .andExpect(status().isBadRequest());
+        assertThat(sessions.findById(userId)).isPresent();
+        assertBalances(0, 0, 0);
+        String payload = prefix + "\"clearedWave\":" + wave + ",\"rating\":" + rating + "}";
+        String first =
+                mvc.perform(
+                                post("/api/battle/end")
+                                        .header("Authorization", authorization)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(payload))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.exp").value(exp))
+                        .andExpect(jsonPath("$.gold").value(gold))
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
+        mvc.perform(
+                        post("/api/battle/end")
+                                .header("Authorization", authorization)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(content().json(first));
+        assertBalances(exp, gold, 0);
+        assertThat(inventory.findByUserIdAndItemId(userId, SKILL).orElseThrow().getQuantity())
+                .isEqualTo(skill);
+        assertThat(
+                        inventory
+                                .findByUserIdAndItemId(userId, EQUIPMENT)
+                                .map(item -> item.getQuantity())
+                                .orElse(0))
+                .isEqualTo(equipment);
+        assertThat(
+                        inventory
+                                .findByUserIdAndItemId(userId, CHEST)
+                                .map(item -> item.getQuantity())
+                                .orElse(0))
+                .isEqualTo(chest);
+        assertThat(results.findAllByUserId(userId)).hasSize(1);
+        var nextSchedules = new HashMap<>(ruleData.schedules());
+        nextSchedules.put("Coin", new StageRewardSchedule(9, 2, 3));
+        nextSchedules.put("SkillMaterial", new StageRewardSchedule(2, 1, 2));
+        var updated = rulesService.saveConfig(new RewardRulesData(nextSchedules, ruleData.items()));
+        mvc.perform(get("/api/reward-rules").header("Authorization", authorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.schedules.Coin.start").value(9))
+                .andExpect(jsonPath("$.items['" + EQUIPMENT + "'].kind").value("EquipmentMaterial"))
+                .andExpect(jsonPath("$.version").value(updated.version()));
+        mvc.perform(
+                        post("/api/battle/end")
+                                .header("Authorization", authorization)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(content().json(first));
+        String nextId = battles.createBattle(userId, "updated-rules").getBattleId();
+        var nextResult = battles.endBattle(userId, request(nextId, 0, 0));
+        assertThat(nextResult.gold()).isEqualTo(9);
+        assertThat(nextResult.items()).containsEntry(SKILL, 2);
+        assertBalances(exp, gold + 9, 0);
+        assertThat(inventory.findByUserIdAndItemId(userId, SKILL).orElseThrow().getQuantity())
+                .isEqualTo(skill + 2);
+    }
+
+    @Test
+    void missingOrInvalidRulesCannotFallbackOrChangeVersion() throws Exception {
+        String authorization =
+                "Bearer " + jwtProvider.createAccessToken(userId, ClientType.GAME, Role.USER);
+        mvc.perform(get("/api/reward-rules").header("Authorization", authorization))
+                .andExpect(status().isServiceUnavailable());
+        transaction.executeWithoutResult(status -> items.saveAll(RewardRulesFixture.catalog()));
+        var ruleData = RewardRulesFixture.rules();
+        var mapper = new ObjectMapper();
+        String body = mapper.writeValueAsString(ruleData);
+        mvc.perform(
+                        put("/api/admin/reward-rules")
+                                .header("Authorization", authorization)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
+                .andExpect(status().isForbidden());
+        String admin =
+                "Bearer " + jwtProvider.createAccessToken(userId, ClientType.WEB, Role.ADMIN);
+        mvc.perform(
+                        put("/api/admin/reward-rules")
+                                .header("Authorization", admin)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
+                .andExpect(status().isOk());
+        var before = rulesService.getConfig();
+        var invalidSchedules = new HashMap<>(ruleData.schedules());
+        invalidSchedules.put("Coin", new StageRewardSchedule(3, -1, 7));
+        var invalidRules = new RewardRulesData(invalidSchedules, ruleData.items());
+        mvc.perform(
+                        put("/api/admin/reward-rules")
+                                .header("Authorization", admin)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(mapper.writeValueAsString(invalidRules)))
+                .andExpect(status().isBadRequest());
+        assertThat(rulesService.getConfig()).isEqualTo(before);
+        // 랜덤 선택자는 카탈로그에 만들지 않는다. 실제 아이템 수정도 지급 규칙을 바꾸지 않는다.
+        assertThat(items.existsById(RANDOM_SKILL)).isFalse();
+        assertThat(items.existsById(RANDOM_EQUIPMENT)).isFalse();
+        itemService.updateItem(SKILL, new ItemRequest());
+        assertThat(rulesService.getConfig()).isEqualTo(before);
+        assertThatThrownBy(() -> itemService.deleteItem(SKILL))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("보상 기준에 연결된 아이템");
+        var unlinked = new HashMap<>(ruleData.items());
+        unlinked.remove(SKILL);
+        rulesService.saveConfig(new RewardRulesData(ruleData.schedules(), unlinked));
+        itemService.deleteItem(SKILL);
+        assertThat(items.existsById(SKILL)).isFalse();
+        assertThat(rulesService.getConfig().items()).doesNotContainKey(SKILL);
     }
 
     @Test

@@ -34,6 +34,12 @@ public enum ErrorCode {
     BATTLE_NOT_FOUND(HttpStatus.NOT_FOUND, "진행 중인 배틀이 없습니다"),
     BATTLE_REWARD_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "전투 보상 기준 데이터가 올바르지 않습니다"),
     BATTLE_RESULT_CONFLICT(HttpStatus.CONFLICT, "이미 확정한 전투 결과와 요청 내용이 다릅니다"),
+    ITEM_LINKED_TO_REWARD_RULES(HttpStatus.CONFLICT, "보상 기준에 연결된 아이템입니다: %s"),
+    REWARD_RULES_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "보상 기준 데이터가 설정되지 않았거나 잘못되었습니다"),
+    REWARD_RULES_INVALID(HttpStatus.BAD_REQUEST, "보상 기준 데이터가 올바르지 않습니다"),
+    BATTLE_RESULT_INVALID(HttpStatus.BAD_REQUEST, "완료 웨이브와 별 등급이 일치하지 않습니다"),
+    STAGE_REWARD_ITEM_UNSUPPORTED(HttpStatus.BAD_REQUEST, "지급 규칙이 준비되지 않은 보상 아이템입니다: %s"),
+    STAGE_REWARD_BALANCE_INVALID(HttpStatus.BAD_REQUEST, "스테이지 보상 총량이 올바르지 않습니다"),
     BATTLE_ID_MISMATCH(HttpStatus.BAD_REQUEST, "배틀 ID가 일치하지 않습니다"),
 
     // 스킬 시전 방식
@@ -132,7 +138,7 @@ public enum ErrorCode {
     STAGE_REWARD_DUPLICATED(HttpStatus.CONFLICT, "이미 등록된 스테이지 보상입니다: %s"),
     STAGE_REWARD_ITEM_DUPLICATED(HttpStatus.BAD_REQUEST, "같은 아이템을 중복해서 넣을 수 없습니다: %s"),
     STAGE_REWARD_ITEM_AMOUNT_INVALID(
-            HttpStatus.BAD_REQUEST, "스킬 재료는 finalAmount가 21 이상이어야 합니다: %s"),
+            HttpStatus.BAD_REQUEST, "아이템 보상 총수량이 지급 규칙의 최소 누적량보다 작습니다: %s"),
 
     // 스테이지 별등급 보상
     STAGE_RATING_REWARD_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 별등급 보상입니다: stageId=%s, rating=%s"),

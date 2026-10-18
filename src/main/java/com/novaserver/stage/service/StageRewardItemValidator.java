@@ -1,7 +1,6 @@
 package com.novaserver.stage.service;
 
 import com.novaserver.global.error.ErrorCode;
-import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
 import com.novaserver.stage.dto.StageRewardItemRequest;
 import com.novaserver.stage.entity.StageRewardItem;
@@ -16,15 +15,10 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 class StageRewardItemValidator {
-    private static final int SKILL_MATERIAL_MIN_AMOUNT = 21;
-
     private final ItemRepository itemRepository;
+    private final RewardRulesService rulesService;
 
-    /**
-     * 아이템이 존재하는지, 중복되지 않았는지 확인하고, 스킬 재료(Item.targetId 있음)는 finalAmount가 21 이상인지 확인한다. 스킬 재료·장비 재료
-     * 판별 기준은 배틀 종료 시 보상 계산({@link StageRewardService#calculateClearReward})과 동일하게 Item.targetId 존재
-     * 여부로 통일한다.
-     */
+    /** 카탈로그 존재·중복·지원하는 지급 종류와 도달 가능한 최종 수량을 확인한다. */
     List<StageRewardItem> validate(List<StageRewardItemRequest> requests) {
         if (requests == null) {
             return new ArrayList<>();
@@ -37,12 +31,18 @@ class StageRewardItemValidator {
                 throw ErrorCode.STAGE_REWARD_ITEM_DUPLICATED.exception(itemId);
             }
 
-            Item item =
-                    itemRepository
-                            .findById(itemId)
-                            .orElseThrow(() -> ErrorCode.ITEM_NOT_FOUND.exception(itemId));
-            if (item.getTargetId() != null
-                    && request.getFinalAmount() < SKILL_MATERIAL_MIN_AMOUNT) {
+            itemRepository
+                    .findById(itemId)
+                    .orElseThrow(() -> ErrorCode.ITEM_NOT_FOUND.exception(itemId));
+            StageRewardSchedule schedule =
+                    rulesService
+                            .getRules()
+                            .fixedItemSchedule(itemId)
+                            .orElseThrow(
+                                    () ->
+                                            ErrorCode.STAGE_REWARD_ITEM_UNSUPPORTED.exception(
+                                                    itemId));
+            if (request.getFinalAmount() < schedule.minimumFinal()) {
                 throw ErrorCode.STAGE_REWARD_ITEM_AMOUNT_INVALID.exception(
                         request.getFinalAmount());
             }
