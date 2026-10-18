@@ -17,6 +17,10 @@ import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
 import com.novaserver.item.service.ItemService;
+import com.novaserver.reward.dto.RewardDefinitionRequest;
+import com.novaserver.reward.entity.RewardDefinition;
+import com.novaserver.reward.repository.RewardDefinitionRepository;
+import com.novaserver.reward.service.RewardDefinitionService;
 import com.novaserver.stage.dto.StageRatingRewardRequest;
 import com.novaserver.stage.entity.Stage;
 import com.novaserver.stage.entity.StageRatingReward;
@@ -79,6 +83,8 @@ class StageRatingRewardTransactionTest {
     @Autowired private UserItemRepository inventory;
     @Autowired private ItemRepository items;
     @Autowired private ItemService itemService;
+    @Autowired private RewardDefinitionRepository definitions;
+    @Autowired private RewardDefinitionService definitionService;
     @Autowired private StageRatingRewardService ratingService;
     @Autowired private PlatformTransactionManager transactions;
     @Autowired private MockMvc mvc;
@@ -101,9 +107,12 @@ class StageRatingRewardTransactionTest {
                     items.saveAll(List.of(new Item(A, null), new Item(B, null)));
                     rewards.saveAll(
                             List.of(
-                                    new StageRatingReward(stage, 1, 13, Map.of(A, 2)),
-                                    new StageRatingReward(stage, 2, 17, Map.of(A, 3)),
-                                    new StageRatingReward(stage, 3, 19, Map.of(B, 7))));
+                                    new StageRatingReward(
+                                            stage, 1, fixedDefinition(13, Map.of(A, 2))),
+                                    new StageRatingReward(
+                                            stage, 2, fixedDefinition(17, Map.of(A, 3))),
+                                    new StageRatingReward(
+                                            stage, 3, fixedDefinition(19, Map.of(B, 7)))));
                 });
         userId = newAccount();
     }
@@ -131,6 +140,8 @@ class StageRatingRewardTransactionTest {
         tx.executeWithoutResult(
                 status -> {
                     rewards.deleteAll(rewards.findByStageStageIdOrderByRating(STAGE));
+                    definitions.deleteAll(definitions.findAll());
+                    definitions.flush();
                     items.deleteAllById(List.of(A, B, C));
                     stages.deleteById(STAGE);
                 });
@@ -261,9 +272,7 @@ class StageRatingRewardTransactionTest {
                         rewards.delete(rewards.findByStageStageIdAndRating(STAGE, 2).orElseThrow());
                     }
                     if (reason.equals("sum-overflow")) {
-                        rewards.findByStageStageIdAndRating(STAGE, 1)
-                                .orElseThrow()
-                                .update(13, Map.of(A, Integer.MAX_VALUE));
+                        replaceRating(1, 13, Map.of(A, Integer.MAX_VALUE));
                     }
                     if (reason.equals("inventory-overflow")) {
                         inventory.saveAndFlush(
@@ -334,9 +343,14 @@ class StageRatingRewardTransactionTest {
     }
 
     @Test
-    void adminItemConfigurationRejectsBadDataWithoutReplacingTheExistingReward() throws Exception {
-        String url = "/api/admin/stage-rating-reward/1901/1";
-        String body = "{\"gold\":23,\"items\":{\"" + A + "\":4}}";
+    void adminDefinitionRejectsBadItemsWithoutReplacingTheReferencedReward() throws Exception {
+        Long id = ratingService.getStageRatingReward(STAGE, 1).rewardDefinitionId();
+        String url = "/api/admin/reward-definitions/" + id;
+        String body =
+                "{\"name\":\"edited\",\"gold\":23,\"expectedVersion\":1,"
+                        + "\"items\":{\""
+                        + A
+                        + "\":4}}";
         mvc.perform(
                         put(url).header("Authorization", auth(userId, Role.USER))
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -351,8 +365,11 @@ class StageRatingRewardTransactionTest {
                 .andExpect(jsonPath("$.items['" + A + "']").value(4));
         for (String invalid :
                 List.of(
-                        "{\"gold\":23,\"items\":{\"unknown\":4}}",
-                        "{\"gold\":23,\"items\":{\"" + A + "\":0}}")) {
+                        "{\"name\":\"invalid\",\"gold\":23,\"expectedVersion\":2,"
+                                + "\"items\":{\"unknown\":4}}",
+                        "{\"name\":\"invalid\",\"gold\":23,\"expectedVersion\":2,\"items\":{\""
+                                + A
+                                + "\":0}}")) {
             mvc.perform(
                             put(url).header("Authorization", admin)
                                     .contentType(MediaType.APPLICATION_JSON)
@@ -364,22 +381,89 @@ class StageRatingRewardTransactionTest {
         assertThat(unchanged.getItems()).containsExactlyInAnyOrderEntriesOf(Map.of(A, 4));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"POST", "PUT"})
+    void ratingAdminRequiresDefinitionIdAndNeverCreatesAnInlineDefinition(String method)
+            throws Exception {
+        String url = "/api/admin/stage-rating-reward/1901/1";
+        String admin = auth(userId, Role.ADMIN);
+        long id =
+                definitionService
+                        .create(new RewardDefinitionRequest("linked", 23, Map.of(A, 4), null))
+                        .id();
+        final long definitionCount = definitions.count();
+        if (method.equals("POST")) {
+            ratingService.deleteStageRatingReward(STAGE, 1);
+        }
+        mvc.perform(
+                        (method.equals("POST") ? post(url) : put(url))
+                                .header("Authorization", auth(userId, Role.USER))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"rewardDefinitionId\":" + id + "}"))
+                .andExpect(status().isForbidden());
+        for (String invalid :
+                List.of(
+                        "{}",
+                        "{\"rewardDefinitionId\":null}",
+                        "{\"rewardDefinitionId\":0}",
+                        "{\"rewardDefinitionId\":-1}",
+                        "{\"gold\":23,\"items\":{}}",
+                        "{\"rewardDefinitionId\":" + id + ",\"gold\":0}",
+                        "{\"rewardDefinitionId\":" + id + ",\"items\":{}}")) {
+            mvc.perform(
+                            (method.equals("POST") ? post(url) : put(url))
+                                    .header("Authorization", admin)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(invalid))
+                    .andExpect(status().isBadRequest());
+        }
+        mvc.perform(
+                        (method.equals("POST") ? post(url) : put(url))
+                                .header("Authorization", admin)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"rewardDefinitionId\":9223372036854775807}"))
+                .andExpect(status().isNotFound());
+        assertThat(rewards.existsByStageStageIdAndRating(STAGE, 1)).isEqualTo(method.equals("PUT"));
+        mvc.perform(
+                        (method.equals("POST") ? post(url) : put(url))
+                                .header("Authorization", admin)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"rewardDefinitionId\":" + id + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rewardDefinitionId").value(id))
+                .andExpect(jsonPath("$.gold").value(23))
+                .andExpect(jsonPath("$.items['" + A + "']").value(4));
+        mvc.perform(
+                        put(url).header("Authorization", admin)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"rewardDefinitionId\":9223372036854775807}"))
+                .andExpect(status().isNotFound());
+        assertThat(ratingService.getStageRatingReward(STAGE, 1).rewardDefinitionId()).isEqualTo(id);
+        assertThat(definitions.count()).isEqualTo(definitionCount);
+        assertState(0, 0, 0, 0);
+    }
+
     @Test
     void unownedRatingRewardItemCannotBeDeletedUntilAllTierReferencesAreRemoved() {
         assertThat(inventory.existsByItemId(A)).isFalse();
         assertThatThrownBy(() -> itemService.deleteItem(A))
                 .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("별등급 보상에서 참조");
+                .hasMessageContaining("보상 묶음에서 참조");
         assertThat(items.existsById(A)).isTrue();
-        tx.executeWithoutResult(
-                status -> {
-                    rewards.findByStageStageIdAndRating(STAGE, 1)
-                            .orElseThrow()
-                            .update(13, Map.of());
-                    rewards.findByStageStageIdAndRating(STAGE, 2)
-                            .orElseThrow()
-                            .update(17, Map.of());
-                });
+        Long firstId =
+                rewards.findByStageStageIdAndRating(STAGE, 1)
+                        .orElseThrow()
+                        .getRewardDefinition()
+                        .getId();
+        final Long secondId =
+                rewards.findByStageStageIdAndRating(STAGE, 2)
+                        .orElseThrow()
+                        .getRewardDefinition()
+                        .getId();
+        replaceRating(1, 13, Map.of());
+        replaceRating(2, 17, Map.of());
+        definitionService.delete(firstId);
+        definitionService.delete(secondId);
         itemService.deleteItem(A);
         assertThat(items.existsById(A)).isFalse();
         service.claimRatingReward(userId, STAGE, "after-unlink", 3);
@@ -387,11 +471,10 @@ class StageRatingRewardTransactionTest {
     }
 
     @Test
-    void concurrentRatingEditAndItemDeletionPreserveReferences() throws Exception {
+    void concurrentDefinitionEditAndItemDeletionPreserveReferences() throws Exception {
         items.saveAndFlush(new Item(C, null));
-        var request = new StageRatingRewardRequest();
-        ReflectionTestUtils.setField(request, "gold", 13);
-        ReflectionTestUtils.setField(request, "items", Map.of(C, 5));
+        Long id = ratingService.getStageRatingReward(STAGE, 1).rewardDefinitionId();
+        var request = new RewardDefinitionRequest("item race", 13, Map.of(C, 5), 1);
         var ready = new CountDownLatch(2);
         var go = new CountDownLatch(1);
         try (var pool = Executors.newFixedThreadPool(2)) {
@@ -403,7 +486,7 @@ class StageRatingRewardTransactionTest {
                                     throw new IllegalStateException("편집 시작 시간 초과");
                                 }
                                 try {
-                                    ratingService.updateStageRatingReward(STAGE, 1, request);
+                                    definitionService.update(id, request);
                                     return true;
                                 } catch (ResponseStatusException error) {
                                     assertThat(error.getStatusCode().value()).isEqualTo(404);
@@ -438,10 +521,14 @@ class StageRatingRewardTransactionTest {
     }
 
     @Test
-    void goldOnlyRowsFromBeforeTheItemsColumnStillPayTheirGold() {
-        jdbc.update("update stage_rating_reward set items = null where stage_id = ?", STAGE);
-        var receipt = service.claimRatingReward(userId, STAGE, "legacy", 3);
+    void goldOnlyDefinitionsPayGoldAndReplayTheExactReceipt() {
+        replaceRating(1, 13, Map.of());
+        replaceRating(2, 17, Map.of());
+        replaceRating(3, 19, Map.of());
+        var receipt = service.claimRatingReward(userId, STAGE, "gold-only", 3);
+        assertThat(receipt.gold()).isEqualTo(49);
         assertThat(receipt.items()).isEmpty();
+        assertThat(service.claimRatingReward(userId, STAGE, "gold-only", 3)).isEqualTo(receipt);
         assertState(49, 0, 0, 3);
     }
 
@@ -466,6 +553,330 @@ class StageRatingRewardTransactionTest {
         users.deleteAccount(userId);
         userIds.remove(userId);
         assertThat(receipts.findByUserIdAndCreateId(userId, "delete")).isEmpty();
+    }
+
+    @Test
+    void sharedDefinitionEditsChangeFutureRewardsWhileOriginalReceiptsStayFixed() {
+        final Long id =
+                definitionService
+                        .create(new RewardDefinitionRequest("shared", 11, Map.of(A, 4), null))
+                        .id();
+        linkRating(1, id);
+        linkRating(2, id);
+        assertThat(definitionService.get(id).ratingReferences()).isEqualTo(2);
+        var first = service.claimRatingReward(userId, STAGE, "shared-old", 1);
+        var changed =
+                definitionService.update(
+                        id,
+                        new RewardDefinitionRequest("shared edited", 23, Map.of(A, 6, B, 1), 1));
+        assertThat(changed.version()).isEqualTo(2);
+        assertThat(ratingService.getStageRatingReward(STAGE, 2).gold()).isEqualTo(23);
+        assertThat(service.claimRatingReward(userId, STAGE, "shared-old", 1)).isEqualTo(first);
+        assertState(11, 4, 0, 1);
+        var next = service.claimRatingReward(userId, STAGE, "shared-new", 3);
+        assertThat(next.gold()).isEqualTo(42);
+        assertThat(next.items()).containsExactlyInAnyOrderEntriesOf(Map.of(A, 6, B, 8));
+        assertState(53, 10, 8, 3);
+        Long other = newAccount();
+        var later = service.claimRatingReward(other, STAGE, "other-shared", 2);
+        assertThat(later.gold()).isEqualTo(46);
+        assertThat(later.items()).containsExactlyInAnyOrderEntriesOf(Map.of(A, 12, B, 2));
+        replaceRating(1, 0, Map.of());
+        replaceRating(2, 0, Map.of());
+        definitionService.delete(id);
+        assertThat(service.claimRatingReward(userId, STAGE, "shared-old", 1)).isEqualTo(first);
+        assertState(53, 10, 8, 3);
+    }
+
+    @Test
+    void relinkingRatingSeparatesTheDefinitionWithoutEditingSharedReferences() {
+        final Long id =
+                definitionService
+                        .create(new RewardDefinitionRequest("shared", 11, Map.of(A, 4), null))
+                        .id();
+        linkRating(1, id);
+        linkRating(2, id);
+        replaceRating(1, 17, Map.of(B, 5));
+        var first = ratingService.getStageRatingReward(STAGE, 1);
+        var second = ratingService.getStageRatingReward(STAGE, 2);
+        assertThat(first.rewardDefinitionId()).isNotEqualTo(id);
+        assertThat(first.gold()).isEqualTo(17);
+        assertThat(first.items()).containsExactlyInAnyOrderEntriesOf(Map.of(B, 5));
+        assertThat(second.rewardDefinitionId()).isEqualTo(id);
+        assertThat(second.gold()).isEqualTo(11);
+        assertThat(second.items()).containsExactlyInAnyOrderEntriesOf(Map.of(A, 4));
+        assertThat(definitionService.get(id).version()).isEqualTo(1);
+        assertThat(definitionService.get(id).ratingReferences()).isEqualTo(1);
+    }
+
+    @Test
+    void invalidOrStaleDefinitionUpdatesPreserveTheCurrentVersionAndEntries() {
+        final Long id =
+                definitionService
+                        .create(new RewardDefinitionRequest("versioned", 11, Map.of(A, 4), null))
+                        .id();
+        var before = definitionService.get(id);
+        assertThatThrownBy(
+                        () ->
+                                definitionService.update(
+                                        id,
+                                        new RewardDefinitionRequest(
+                                                "invalid", 17, Map.of("unknown.item", 3), 1)))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThat(definitionService.get(id)).isEqualTo(before);
+        var changed =
+                definitionService.update(
+                        id, new RewardDefinitionRequest("changed", 17, Map.of(A, 5, B, 2), 1));
+        assertThatThrownBy(
+                        () ->
+                                definitionService.update(
+                                        id, new RewardDefinitionRequest("stale", 999, Map.of(), 1)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("버전이 변경");
+        assertThat(definitionService.get(id)).isEqualTo(changed);
+        var reduced =
+                definitionService.update(
+                        id, new RewardDefinitionRequest("reduced", 19, Map.of(B, 7), 2));
+        assertThat(reduced.version()).isEqualTo(3);
+        assertThat(reduced.items()).containsExactlyInAnyOrderEntriesOf(Map.of(B, 7));
+    }
+
+    @Test
+    void databaseForeignKeysProtectItemsAndReferencedDefinitions() {
+        final Long id =
+                rewards.findByStageStageIdAndRating(STAGE, 1)
+                        .orElseThrow()
+                        .getRewardDefinition()
+                        .getId();
+        assertThatThrownBy(
+                        () ->
+                                tx.executeWithoutResult(
+                                        status -> {
+                                            items.deleteById(A);
+                                            items.flush();
+                                        }))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(
+                        () ->
+                                tx.executeWithoutResult(
+                                        status -> {
+                                            definitions.deleteById(id);
+                                            definitions.flush();
+                                        }))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(
+                        () ->
+                                jdbc.update(
+                                        "update reward_entry set quantity = 0 "
+                                                + "where definition_id = ?",
+                                        id))
+                .rootCause()
+                .isInstanceOf(java.sql.SQLException.class)
+                .hasMessageMatching("(?is).*ck_reward_entry_quantity.*");
+        assertThatThrownBy(() -> definitionService.delete(id))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("참조 중인 보상 묶음");
+        service.claimRatingReward(userId, STAGE, "after-fk-failure", 3);
+        assertState(49, 5, 7, 3);
+    }
+
+    @Test
+    void unreferencedDefinitionOwnsItsItemUntilTheDefinitionIsDeleted() {
+        items.saveAndFlush(new Item(C, null));
+        final Long id =
+                definitionService
+                        .create(new RewardDefinitionRequest("standalone", 0, Map.of(C, 3), null))
+                        .id();
+        assertThatThrownBy(() -> itemService.deleteItem(C))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("보상 묶음에서 참조");
+        definitionService.delete(id);
+        itemService.deleteItem(C);
+        assertThat(items.existsById(C)).isFalse();
+    }
+
+    @Test
+    void definitionAdminApiRequiresAdminAndEnforcesExclusiveRatingInput() throws Exception {
+        String normal = auth(userId, Role.USER);
+        String admin = auth(userId, Role.ADMIN);
+        String url = "/api/admin/reward-definitions";
+        mvc.perform(get(url).header("Authorization", normal)).andExpect(status().isForbidden());
+        mvc.perform(
+                        post(url)
+                                .header("Authorization", normal)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"name\":\"http\",\"gold\":11,\"items\":{}}"))
+                .andExpect(status().isForbidden());
+        String json =
+                mvc.perform(
+                                post(url)
+                                        .header("Authorization", admin)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                "{\"name\":\"http\",\"gold\":11,\"items\":{\""
+                                                        + A
+                                                        + "\":4}}"))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.version").value(1))
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
+        long id =
+                new com.fasterxml.jackson.databind.ObjectMapper().readTree(json).get("id").asLong();
+        mvc.perform(
+                        put("/api/admin/stage-rating-reward/1901/1")
+                                .header("Authorization", admin)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"rewardDefinitionId\":" + id + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rewardDefinitionId").value(id))
+                .andExpect(jsonPath("$.items['" + A + "']").value(4));
+        mvc.perform(get(url + "/" + id).header("Authorization", admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ratingReferences").value(1));
+        mvc.perform(
+                        put("/api/admin/stage-rating-reward/1901/1")
+                                .header("Authorization", admin)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"rewardDefinitionId\":" + id + ",\"gold\":0}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(
+                        put(url + "/" + id)
+                                .header("Authorization", admin)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"name\":\"edited\",\"gold\":19,"
+                                                + "\"items\":{},\"expectedVersion\":1}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value(2));
+        mvc.perform(get(url).header("Authorization", admin)).andExpect(status().isOk());
+    }
+
+    @Test
+    void concurrentSharedDefinitionEditAndClaimUsesOneDefinitionSnapshot() throws Exception {
+        final Long id =
+                definitionService
+                        .create(new RewardDefinitionRequest("shared", 11, Map.of(A, 4), null))
+                        .id();
+        linkRating(1, id);
+        linkRating(2, id);
+        var ready = new CountDownLatch(2);
+        var go = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var edit =
+                    pool.submit(
+                            () -> {
+                                ready.countDown();
+                                if (!go.await(5, TimeUnit.SECONDS)) {
+                                    throw new IllegalStateException("편집 시간 초과");
+                                }
+                                return definitionService.update(
+                                        id,
+                                        new RewardDefinitionRequest("new", 23, Map.of(B, 6), 1));
+                            });
+            var claim =
+                    pool.submit(
+                            () -> {
+                                ready.countDown();
+                                if (!go.await(5, TimeUnit.SECONDS)) {
+                                    throw new IllegalStateException("수령 시간 초과");
+                                }
+                                return service.claimRatingReward(userId, STAGE, "shared-race", 2);
+                            });
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            go.countDown();
+            var receipt = claim.get(10, TimeUnit.SECONDS);
+            edit.get(10, TimeUnit.SECONDS);
+            assertThat(receipt.gold()).isIn(22, 46);
+            assertThat(receipt.items())
+                    .containsExactlyInAnyOrderEntriesOf(
+                            receipt.gold() == 22 ? Map.of(A, 8) : Map.of(B, 12));
+            assertThat(service.claimRatingReward(userId, STAGE, "shared-race", 2))
+                    .isEqualTo(receipt);
+        }
+    }
+
+    @Test
+    void concurrentDefinitionDeletionAndRatingLinkPreserveReferences() throws Exception {
+        final Long id =
+                definitionService
+                        .create(new RewardDefinitionRequest("link race", 11, Map.of(A, 4), null))
+                        .id();
+        var ready = new CountDownLatch(2);
+        var go = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var link =
+                    pool.submit(
+                            () -> {
+                                ready.countDown();
+                                if (!go.await(5, TimeUnit.SECONDS)) {
+                                    throw new IllegalStateException("연결 시간 초과");
+                                }
+                                try {
+                                    linkRating(1, id);
+                                    return true;
+                                } catch (ResponseStatusException error) {
+                                    assertThat(error.getStatusCode().value()).isEqualTo(404);
+                                    return false;
+                                }
+                            });
+            var delete =
+                    pool.submit(
+                            () -> {
+                                ready.countDown();
+                                if (!go.await(5, TimeUnit.SECONDS)) {
+                                    throw new IllegalStateException("삭제 시간 초과");
+                                }
+                                try {
+                                    definitionService.delete(id);
+                                    return true;
+                                } catch (ResponseStatusException error) {
+                                    assertThat(error.getStatusCode().value()).isEqualTo(409);
+                                    return false;
+                                }
+                            });
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            go.countDown();
+            boolean linked = link.get(10, TimeUnit.SECONDS);
+            assertThat(delete.get(10, TimeUnit.SECONDS)).isNotEqualTo(linked);
+            assertThat(definitions.existsById(id)).isEqualTo(linked);
+        }
+    }
+
+    @Test
+    void databaseRequiresDefinitionForEveryRating() {
+        String sql =
+                "update stage_rating_reward set reward_definition_id = null where stage_id = ?";
+        assertThatThrownBy(() -> jdbc.update(sql, STAGE))
+                .rootCause()
+                .isInstanceOf(java.sql.SQLException.class);
+        assertThat(rewards.findByStageStageIdOrderByRating(STAGE))
+                .allSatisfy(reward -> assertThat(reward.getRewardDefinition()).isNotNull());
+        var receipt = service.claimRatingReward(userId, STAGE, "required-definition", 3);
+        assertThat(receipt.gold()).isEqualTo(49);
+        assertThat(receipt.items()).containsExactlyInAnyOrderEntriesOf(Map.of(A, 5, B, 7));
+        assertState(49, 5, 7, 3);
+    }
+
+    private RewardDefinition fixedDefinition(int gold, Map<String, Integer> amounts) {
+        var response =
+                definitionService.create(
+                        new RewardDefinitionRequest("fixture", gold, amounts, null));
+        return definitionService.findDefinition(response.id());
+    }
+
+    private void replaceRating(int rating, int gold, Map<String, Integer> amounts) {
+        Long definitionId =
+                definitionService
+                        .create(new RewardDefinitionRequest("replacement", gold, amounts, null))
+                        .id();
+        linkRating(rating, definitionId);
+    }
+
+    private void linkRating(int rating, Long definitionId) {
+        var request = new StageRatingRewardRequest();
+        ReflectionTestUtils.setField(request, "rewardDefinitionId", definitionId);
+        ratingService.updateStageRatingReward(STAGE, rating, request);
     }
 
     private String auth(Long id, Role role) {
