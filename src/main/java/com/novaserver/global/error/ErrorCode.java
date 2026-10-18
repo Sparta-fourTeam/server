@@ -192,6 +192,11 @@ public enum ErrorCode {
     GOLD_PACK_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "골드팩 교환 기준이 준비되지 않았습니다"),
     GOLD_PACK_CATALOG_CHANGED(HttpStatus.CONFLICT, "골드팩 카탈로그가 바뀌었습니다. 다시 조회하세요"),
 
+    // 전투 중간 진행
+    BATTLE_PROGRESS_INVALID(HttpStatus.BAD_REQUEST, "전투 누적 진행이나 스폰 정책이 올바르지 않습니다"),
+    BATTLE_PROGRESS_CONFLICT(HttpStatus.CONFLICT, "전투 진행 revision이나 보고 내용이 충돌합니다"),
+    BATTLE_PROGRESS_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "동일 버전 서버 스폰·출시 배속 정책이 준비되지 않았습니다"),
+
     // 일일 상점
     SHOP_INVALID(HttpStatus.BAD_REQUEST, "상점 입력이나 서버 설정이 올바르지 않습니다"),
     SHOP_CONFIG_CONFLICT(HttpStatus.CONFLICT, "상점 설정 버전이 변경됐습니다"),

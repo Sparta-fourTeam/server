@@ -46,6 +46,9 @@ public class UserQuestPeriod {
     @Column(nullable = false)
     private int spentEnergy;
 
+    @Column(nullable = false)
+    private int killedMonsters;
+
     private LocalDate lastLoginDay;
 
     @Column(nullable = false)
@@ -63,6 +66,12 @@ public class UserQuestPeriod {
     public void login(LocalDate day, Instant now) {
         loginCount = Math.min(7, loginCount + 1);
         lastLoginDay = day;
+        updatedAt = now;
+    }
+
+    /** 이미 인정한 전투 누적 값의 양수 차이만 집계한다. */
+    public void kill(int amount, Instant now) {
+        killedMonsters = (int) Math.min(Integer.MAX_VALUE, (long) killedMonsters + amount);
         updatedAt = now;
     }
 

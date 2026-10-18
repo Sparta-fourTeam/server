@@ -80,6 +80,19 @@ public class UserQuestService {
         }
     }
 
+    /** 스폰 범위 검사와 전투 원장 갱신을 마친 같은 트랜잭션에서 차이만 받는다. */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public void recordAcceptedKills(Long userId, int amount, Instant eventAt) {
+        if (amount <= 0 || eventAt == null) {
+            throw ErrorCode.QUEST_INVALID.exception();
+        }
+        final var user = lock(userId);
+        var now = eventAt.truncatedTo(ChronoUnit.MICROS);
+        for (var period : QuestPeriod.values()) {
+            state(user, period, periodDay(period, now), now).kill(amount, now);
+        }
+    }
+
     /** 현재 서버 기간의 저장된 진행과 수령 여부를 복원한다. 조회는 로그인을 추가 집계하지 않는다. */
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public List<QuestBoardResponse> snapshot(Long userId) {
@@ -245,9 +258,14 @@ public class UserQuestService {
     }
 
     private int count(UserQuestPeriod state, QuestKind kind) {
-        return state == null
-                ? 0
-                : (kind == QuestKind.LOGIN ? state.getLoginCount() : state.getSpentEnergy());
+        if (state == null) {
+            return 0;
+        }
+        return switch (kind) {
+            case LOGIN -> state.getLoginCount();
+            case SPEND_ENERGY -> state.getSpentEnergy();
+            case KILL_MONSTERS -> state.getKilledMonsters();
+        };
     }
 
     private UserQuestPeriod state(User user, QuestPeriod period, LocalDate day, Instant now) {
