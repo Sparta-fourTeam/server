@@ -28,7 +28,6 @@ public class ChatPresenceService {
     private final Map<String, String> subscriptionIdBySession = new ConcurrentHashMap<>();
 
     /** Presence 채널 구독을 집계하고 인원수를 다시 방송한다. */
-    @EventListener
     public void onSubscribe(SessionSubscribeEvent event) {
         SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.wrap(event.getMessage());
         if (!DESTINATION.equals(accessor.getDestination())) {
@@ -39,7 +38,6 @@ public class ChatPresenceService {
     }
 
     /** 본인의 presence 구독이 끊기면 집계에서 빼고 인원수를 다시 방송한다. */
-    @EventListener
     public void onUnsubscribe(SessionUnsubscribeEvent event) {
         SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.wrap(event.getMessage());
         if (subscriptionIdBySession.remove(accessor.getSessionId(), accessor.getSubscriptionId())) {

@@ -1,10 +1,24 @@
 package com.novaserver.global.config;
 
+import com.novaserver.chat.service.ChatPresenceService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessageHandler;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.simp.SimpMessageType;
+import org.springframework.messaging.simp.broker.SimpleBrokerMessageHandler;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+import org.springframework.messaging.support.ExecutorChannelInterceptor;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.messaging.SessionSubscribeEvent;
+import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 
 /**
  * STOMP 기반 WebSocket 메시징 설정. 전체 채팅(/topic/chat)과 접속자 수(/topic/chat/presence) 채널을 쓴다.
@@ -15,11 +29,48 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
  */
 @Configuration
 @EnableWebSocketMessageBroker
+@RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    private final ObjectProvider<ChatPresenceService> presence;
 
     private static final String ENDPOINT = "/api/ws-chat";
     private static final String APPLICATION_PREFIX = "/app";
     private static final String BROKER_PREFIX = "/topic";
+
+    @Override
+    public void configureClientInboundChannel(ChannelRegistration registration) {
+        registration.interceptors(
+                new ExecutorChannelInterceptor() {
+                    @Override
+                    public void afterMessageHandled(
+                            Message<?> message,
+                            MessageChannel channel,
+                            MessageHandler handler,
+                            Exception error) {
+                        if (error != null || !(handler instanceof SimpleBrokerMessageHandler)) {
+                            return;
+                        }
+                        // 구독을 실제로 등록한 뒤 방송해야 새 구독자도 첫 인원수를 받는다.
+                        var type = SimpMessageHeaderAccessor.getMessageType(message.getHeaders());
+                        if (type == SimpMessageType.SUBSCRIBE) {
+                            presence.getObject()
+                                    .onSubscribe(
+                                            new SessionSubscribeEvent(
+                                                    this,
+                                                    MessageBuilder.createMessage(
+                                                            new byte[0], message.getHeaders())));
+                        } else if (type == SimpMessageType.UNSUBSCRIBE) {
+                            presence.getObject()
+                                    .onUnsubscribe(
+                                            new SessionUnsubscribeEvent(
+                                                    this,
+                                                    MessageBuilder.createMessage(
+                                                            new byte[0], message.getHeaders())));
+                        }
+                    }
+                });
+    }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {

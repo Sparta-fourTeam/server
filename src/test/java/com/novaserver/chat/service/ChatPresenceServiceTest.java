@@ -1,10 +1,16 @@
 package com.novaserver.chat.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.novaserver.chat.dto.ChatPresenceResponse;
+import com.novaserver.global.config.WebSocketConfig;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,7 +21,10 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.support.ExecutorSubscribableChannel;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.mock.web.MockServletContext;
+import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import org.springframework.web.socket.messaging.SessionSubscribeEvent;
@@ -99,6 +108,38 @@ class ChatPresenceServiceTest {
         service.onDisconnect(disconnectEvent("session-never-subscribed"));
 
         verify(messagingTemplate, never()).convertAndSend(DESTINATION, new ChatPresenceResponse(0));
+    }
+
+    @Test
+    @DisplayName("첫 구독자 혼자 있어도 구독 직후 현재 인원수를 받는다")
+    void firstSubscriberReceivesInitialCountThroughActualBroker() throws InterruptedException {
+        try (var context = new AnnotationConfigWebApplicationContext()) {
+            context.setServletContext(new MockServletContext());
+            context.register(WebSocketConfig.class, ChatPresenceService.class);
+            context.refresh();
+            var outbound =
+                    context.getBean("clientOutboundChannel", ExecutorSubscribableChannel.class);
+            final var inbound =
+                    context.getBean("clientInboundChannel", ExecutorSubscribableChannel.class);
+            var received = new LinkedBlockingQueue<Message<?>>();
+            outbound.subscribe(received::add);
+            var connect = SimpMessageHeaderAccessor.create(SimpMessageType.CONNECT);
+            connect.setSessionId("only-session");
+            connect.setSessionAttributes(new HashMap<>());
+            inbound.send(MessageBuilder.createMessage(new byte[0], connect.getMessageHeaders()));
+            assertThat(received.poll(3, TimeUnit.SECONDS)).isNotNull();
+
+            inbound.send(subscribeEvent("only-session", "presence", DESTINATION).getMessage());
+
+            var initial = received.poll(3, TimeUnit.SECONDS);
+            assertThat(initial).isNotNull();
+            assertThat(SimpMessageHeaderAccessor.getDestination(initial.getHeaders()))
+                    .isEqualTo(DESTINATION);
+            assertThat(SimpMessageHeaderAccessor.getSubscriptionId(initial.getHeaders()))
+                    .isEqualTo("presence");
+            String json = new String((byte[]) initial.getPayload(), StandardCharsets.UTF_8);
+            assertThat(json).contains("\"onlineCount\":1");
+        }
     }
 
     private static SessionSubscribeEvent subscribeEvent(
