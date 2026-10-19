@@ -58,6 +58,7 @@ class BattleServiceTest {
     @Mock private UserStageProgressRepository userStageProgressRepository;
     @Mock private StageRewardService stageRewardService;
     @Mock private StageService stageService;
+    @Mock private com.novaserver.stage.repository.StageRepository stageRepository;
     @Spy private Clock clock = Clock.fixed(Instant.parse("2026-10-18T19:00:00Z"), ZoneOffset.UTC);
 
     @InjectMocks private BattleService battleService;
@@ -175,7 +176,7 @@ class BattleServiceTest {
         Stage stage = mock(Stage.class);
         Stage nextStage = mock(Stage.class);
         when(stageService.findStage(1)).thenReturn(stage);
-        when(stageService.findStage(2)).thenReturn(nextStage);
+        when(stageRepository.findById(2)).thenReturn(Optional.of(nextStage));
         when(progressReports.nextStageId(1)).thenReturn(Optional.of(2));
         when(userStageProgressRepository.findByUserIdAndStageId(1L, 1))
                 .thenReturn(Optional.empty());
@@ -190,6 +191,28 @@ class BattleServiceTest {
         verify(userStageProgressRepository, org.mockito.Mockito.times(2)).save(saved.capture());
         assertThat(saved.getAllValues().get(1).getStage()).isSameAs(nextStage);
         assertThat(saved.getAllValues().get(1).getClearRating()).isZero();
+    }
+
+    @Test
+    void clearSucceedsWhenNextStageRowIsMissingFromStageTable() {
+        BattleSession existing = new BattleSession(1L, "battle-1", "key-1");
+        when(battleRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(battleRepository.deleteByUserIdAndBattleId(1L, "battle-1")).thenReturn(1);
+        when(stageRewardService.calculateClearReward(1L, 1, 10, 3))
+                .thenReturn(new ClearRewardResult(100, 50, Map.of("mat.wood", 5), 0));
+        Stage stage = mock(Stage.class);
+        when(stageService.findStage(1)).thenReturn(stage);
+        when(progressReports.nextStageId(1)).thenReturn(Optional.of(2));
+        when(userStageProgressRepository.findByUserIdAndStageId(any(), any()))
+                .thenReturn(Optional.empty());
+        when(stageRepository.findById(2)).thenReturn(Optional.empty());
+        when(userStageProgressRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = battleService.endBattle(1L, endRequest("battle-1", 10, 3));
+
+        assertThat(result.exp()).isEqualTo(100);
+        verify(userStageProgressRepository, org.mockito.Mockito.times(1)).save(any());
     }
 
     @Test

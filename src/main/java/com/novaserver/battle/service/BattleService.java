@@ -12,6 +12,7 @@ import com.novaserver.global.error.ErrorCode;
 import com.novaserver.quest.service.UserQuestService;
 import com.novaserver.stage.dto.ClearRewardResult;
 import com.novaserver.stage.entity.Stage;
+import com.novaserver.stage.repository.StageRepository;
 import com.novaserver.stage.service.StageRewardService;
 import com.novaserver.stage.service.StageService;
 import com.novaserver.user.entity.User;
@@ -40,6 +41,7 @@ public class BattleService {
     private final UserStageProgressRepository userStageProgressRepository;
     private final StageRewardService stageRewardService;
     private final StageService stageService;
+    private final StageRepository stageRepository;
 
     private final BattleRepository battleRepository;
     private final BattleResultRepository results;
@@ -166,7 +168,10 @@ public class BattleService {
         return BattleResultResponse.from(result);
     }
 
-    /** 클리어한 스테이지의 다음 스테이지 진행 행(등급 0)을 만들어 클라이언트가 해금으로 보게 한다. */
+    /**
+     * 클리어한 스테이지의 다음 스테이지 진행 행(등급 0)을 만들어 클라이언트가 해금으로 보게 한다. 다음 스테이지가 Stage 테이블에 아직 없으면 해금만 건너뛰고 전투
+     * 결과 저장은 막지 않는다.
+     */
     private void unlockNextStage(Long userId, Integer stageId) {
         progressReports
                 .nextStageId(stageId)
@@ -175,12 +180,12 @@ public class BattleService {
                                 userStageProgressRepository
                                         .findByUserIdAndStageId(userId, next)
                                         .isEmpty())
+                .flatMap(stageRepository::findById)
                 .ifPresent(
                         next ->
                                 userStageProgressRepository.save(
                                         new UserStageProgress(
-                                                userRepository.getReferenceById(userId),
-                                                stageService.findStage(next))));
+                                                userRepository.getReferenceById(userId), next)));
     }
 
     private void lockUser(Long userId) {
