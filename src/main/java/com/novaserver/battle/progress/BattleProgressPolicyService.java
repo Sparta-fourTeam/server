@@ -52,20 +52,25 @@ public class BattleProgressPolicyService {
         if (entities.find(Stage.class, stageId, LockModeType.PESSIMISTIC_WRITE) == null) {
             throw ErrorCode.STAGE_NOT_FOUND.exception(stageId);
         }
+        var current = source.snapshot();
         var previous = policies.findById(stageId).orElse(null);
-        if (previous != null && source.revision().equals(previous.getSourceRevision())) {
+        if (previous != null && current.revision().equals(previous.getSourceRevision())) {
             return previous;
         }
-        var derived = source.policy(stageId);
-        validate(derived);
-        return save(
-                stageId,
+        var derived = current.policy(stageId);
+        var frozen =
                 new StageProgressPolicy(
                         derived.maxTimeScale(),
                         derived.minSpawnInterval(),
                         derived.waves(),
                         derived.descendants(),
-                        previous == null ? 0 : previous.getVersion()));
+                        previous == null ? 0 : previous.getVersion());
+        if (previous == null) {
+            previous = new StageProgressPolicyEntity(stageId, encode(frozen), current.revision());
+        } else {
+            previous.replace(encode(frozen), current.revision());
+        }
+        return policies.saveAndFlush(previous);
     }
 
     /** 클라이언트가 실제로 로드한 원문과 전투 최초 고정을 비교한다. */

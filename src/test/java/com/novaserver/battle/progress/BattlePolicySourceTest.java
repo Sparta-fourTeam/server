@@ -5,35 +5,23 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.novaserver.monster.service.MonsterCatalog;
-import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.io.ClassPathResource;
 
 class BattlePolicySourceTest {
     @Test
-    void actualResourcesGenerateAllFortyStagesWithReleaseScaleAndSpawnDescendants()
-            throws Exception {
-        var source = new BattlePolicySource(new MonsterCatalog());
-        assertThat(source.manifest().stageIds())
-                .containsExactlyElementsOf(
-                        java.util.stream.IntStream.rangeClosed(1, 40).boxed().toList());
+    void publishedInputsGenerateWaveBoundsWithReleaseScaleAndDescendants() throws Exception {
+        var source =
+                new BattlePolicySource(
+                        BattleSourceFixture.stages(),
+                        BattleSourceFixture.monsters(),
+                        BattleSourceFixture.combat());
+        assertThat(source.manifest().stageIds()).containsExactly(1);
         assertThat(source.manifest().maxTimeScale()).isEqualByComparingTo("1.0");
-        for (var stage : source.manifest().stageIds()) {
-            var policy = source.policy(stage);
-            assertThat(policy.waves()).hasSize(20);
-            assertThat(policy.descendants()).hasSize(21);
-        }
-        assertThat(source.policy(1).minSpawnInterval()).isEqualByComparingTo("0.3");
-        assertThat(source.policy(1).waves().getFirst())
-                .containsExactlyEntriesOf(java.util.Map.of(2L, 2));
+        assertThat(source.policy(1).waves()).hasSize(20);
+        assertThat(source.policy(1).descendants()).hasSize(3);
         assertThat(source.policy(1).descendants().get(1L))
                 .containsExactly(new StageProgressPolicy.SpawnLimit(3L, 2));
-        assertThat(source.policy(1).descendants().get(5L))
-                .containsExactly(new StageProgressPolicy.SpawnLimit(6L, 4));
         assertThat(source.revision()).matches("[0-9a-f]{64}");
-        assertThat(new BattlePolicySource(new MonsterCatalog()).revision())
-                .isEqualTo(source.revision());
     }
 
     @Test
@@ -53,9 +41,12 @@ class BattlePolicySourceTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
-    private String raw(String name) throws Exception {
-        try (var in = new ClassPathResource("game-data/" + name + ".json").getInputStream()) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        }
+    private String raw(String name) {
+        return switch (name) {
+            case "Stages" -> BattleSourceFixture.stages();
+            case "Monsters" -> BattleSourceFixture.monsters();
+            case "Combat" -> BattleSourceFixture.combat();
+            default -> throw new IllegalArgumentException(name);
+        };
     }
 }

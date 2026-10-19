@@ -64,14 +64,14 @@ public class BattleProgressService {
         if (stages.findByUserIdAndStageId(userId, stageId).isEmpty()) {
             throw ErrorCode.BATTLE_PROGRESS_INVALID.exception();
         }
+        var definition = policies.require(stageId);
+        if (!definition.getSourceRevision().equals(sourceRevision)) {
+            throw ErrorCode.BATTLE_PROGRESS_CONFLICT.exception();
+        }
         var row =
                 progress.saveAndFlush(
                         new BattleProgress(
-                                user,
-                                battleId,
-                                stageId,
-                                policies.require(stageId),
-                                session.getCreatedAt()));
+                                user, battleId, stageId, definition, session.getCreatedAt()));
         return state(row);
     }
 

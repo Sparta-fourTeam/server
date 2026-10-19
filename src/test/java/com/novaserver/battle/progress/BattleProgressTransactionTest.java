@@ -2,7 +2,6 @@ package com.novaserver.battle.progress;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -61,6 +60,9 @@ import org.springframework.web.server.ResponseStatusException;
 class BattleProgressTransactionTest {
     private static final Instant START = Instant.parse("2026-10-18T18:59:50Z");
     @Autowired BattleProgressService service;
+    @Autowired BattleSourceAdminService publisher;
+    @Autowired com.novaserver.version.service.DataVersionService versions;
+    @Autowired BattleSourceRepository sourceRows;
     @Autowired MockMvc mvc;
     @Autowired JwtProvider jwt;
     @Autowired BattleProgressPolicyService policies;
@@ -103,6 +105,8 @@ class BattleProgressTransactionTest {
                                             account, stages.findById(901).orElseThrow()));
                             return account.getId();
                         });
+        sourceRows.deleteAll();
+        publisher.publish(BattleSourceFixture.publication(null));
         definitions.deleteAll();
         policies.save(901, policy(0));
         quests.saveQuest(
@@ -320,15 +324,16 @@ class BattleProgressTransactionTest {
                         1,
                         Set.of(2L),
                         originalRevision);
-        var originalAck = service.report(user, firstReport);
+        final var originalAck = service.report(user, firstReport);
         var replacement =
                 new BattlePolicySource(
-                        source.stagesJson() + "\n",
-                        new com.novaserver.monster.service.MonsterCatalog().json(),
-                        source.combatJson());
-        doReturn(replacement.revision()).when(source).revision();
-        doReturn(replacement.manifest()).when(source).manifest();
-        doReturn(replacement.stagesJson()).when(source).stagesJson();
+                        source.stagesJson() + "\n", source.monstersJson(), source.combatJson());
+        publisher.publish(
+                new BattleSourceAdminService.Publication(
+                        replacement.stagesJson(),
+                        replacement.monstersJson(),
+                        replacement.combatJson(),
+                        originalRevision));
         assertThat(policies.require(1).getVersion()).isEqualTo(2);
         var laterOldReport =
                 new ProgressReport(
@@ -433,6 +438,58 @@ class BattleProgressTransactionTest {
                 reached,
                 Set.of(1L, 2L),
                 policies.sourceRevision());
+    }
+
+    @Test
+    void publicationIsAdminOnlyAtomicVersionedAndDoesNotFallbackToFiles() throws Exception {
+        String token = "Bearer " + jwt.createAccessToken(user, ClientType.GAME, Role.USER);
+        String admin = "Bearer " + jwt.createAccessToken(user, ClientType.WEB, Role.ADMIN);
+        String original = source.revision();
+        final var before = versions.getVersions().getTables();
+        var invalid =
+                new BattleSourceAdminService.Publication(
+                        "[]", source.monstersJson(), source.combatJson(), original);
+        mvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
+                                        "/api/admin/data/battle-source")
+                                .header("Authorization", token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(BattleProgressPolicyService.encode(invalid)))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                                .isForbidden());
+        mvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
+                                        "/api/admin/data/battle-source")
+                                .header("Authorization", admin)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(BattleProgressPolicyService.encode(invalid)))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                                .isBadRequest());
+        assertThat(source.revision()).isEqualTo(original);
+        assertThat(versions.getVersions().getTables()).isEqualTo(before);
+        publisher.publish(
+                new BattleSourceAdminService.Publication(
+                        source.stagesJson(),
+                        source.monstersJson(),
+                        "{\"BaseTimeScale\":0.75}",
+                        original));
+        assertThat(source.manifest().maxTimeScale()).isEqualByComparingTo("1.50");
+        assertThat(versions.getVersions().getTables().get("Combat"))
+                .isEqualTo(before.get("Combat") + 1);
+        assertThat(versions.getVersions().getTables().get("Stages"))
+                .isEqualTo(before.get("Stages"));
+        assertThatThrownBy(() -> publisher.publish(BattleSourceFixture.publication(original)))
+                .isInstanceOf(ResponseStatusException.class);
+        sourceRows.deleteAll();
+        mvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+                                        "/api/data/battle-source/snapshot")
+                                .header("Authorization", token))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                                .isServiceUnavailable());
     }
 
     private StageProgressPolicy policy(int version) {

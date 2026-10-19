@@ -16,25 +16,35 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
-/** 승인된 같은 배포물의 Stages·Monsters·Combat 원문에서만 스폰 정책을 만든다. */
+/** DB에 게시된 단일 전투 원본에서 스폰 정책을 만든다. */
 @Component
 public class BattlePolicySource {
+    private final BattleSourceRepository repository;
+    private volatile BattlePolicySource cached;
+    private final String monstersJson;
     private final String stagesJson;
     private final String combatJson;
     private final Manifest manifest;
     private final Map<Integer, StageProgressPolicy> stages;
     private final java.util.Set<Long> monsterIds;
 
-    /** 실제 원문을 검증하고 공급한다. 계정·운영 DB를 미리 채우지 않는다. */
+    /** 원본은 관리 API로 DB에 게시한다. 서버 파일이나 로컬 기본값으로 대체하지 않는다. */
     @Autowired
-    public BattlePolicySource(MonsterCatalog monsters) throws IOException {
-        this(read("Stages"), monsters.json(), read("Combat"));
+    public BattlePolicySource(BattleSourceRepository repository) {
+        this.repository = repository;
+        stagesJson = null;
+        monstersJson = null;
+        combatJson = null;
+        manifest = null;
+        stages = null;
+        monsterIds = null;
     }
 
     BattlePolicySource(String stageJson, String monsterJson, String combatJson) throws IOException {
+        repository = null;
+        monstersJson = monsterJson;
         this.stagesJson = stageJson;
         this.combatJson = combatJson;
         var json = new ObjectMapper();
@@ -122,42 +132,68 @@ public class BattlePolicySource {
 
     /** 현재 원본 세트의 내용 주소. 숫자 테이블 버전과 달리 실제 원문 변화에 함께 바뀐다. */
     public String revision() {
-        return manifest.sourceRevision();
+        return snapshot().manifest.sourceRevision();
     }
 
     /** 같은 몬스터 원문에서 확인한 ID만 내부 정책 참조로 허용한다. */
     public boolean containsMonster(Long id) {
-        return monsterIds.contains(id);
+        return snapshot().monsterIds.contains(id);
     }
 
     /** 원문별 hash와 묶음 revision을 한 응답으로 제공한다. */
     public Manifest manifest() {
-        return manifest;
+        return snapshot().manifest;
     }
 
     /** 정책을 생성한 Stages 원문이다. */
     public String stagesJson() {
-        return stagesJson;
+        return snapshot().stagesJson;
     }
 
     /** 출시 배속을 계산한 Combat 원문이다. */
     public String combatJson() {
-        return combatJson;
+        return snapshot().combatJson;
     }
 
     /** 반복 버스트·분열·소환을 포함한 가능 범위다. 고정 웨이브 합계를 처치 최대치로 쓰지 않는다. */
     public StageProgressPolicy policy(Integer stageId) {
-        var policy = stages.get(stageId);
+        var policy = snapshot().stages.get(stageId);
         if (policy == null) {
             throw ErrorCode.BATTLE_PROGRESS_UNAVAILABLE.exception();
         }
         return policy;
     }
 
-    private static String read(String table) throws IOException {
-        try (var in = new ClassPathResource("game-data/" + table + ".json").getInputStream()) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+    /** 동일 DB 행에서 읽은 불변 세트다. 여러 getter를 쓸 때에도 이 객체를 고정한다. */
+    public BattlePolicySource snapshot() {
+        if (repository == null) {
+            return this;
         }
+        var row =
+                repository
+                        .findById(1)
+                        .orElseThrow(() -> ErrorCode.BATTLE_PROGRESS_UNAVAILABLE.exception());
+        var current = cached;
+        if (current != null && current.revision().equals(row.getSourceRevision())) {
+            return current;
+        }
+        try {
+            var parsed =
+                    new BattlePolicySource(
+                            row.getStagesJson(), row.getMonstersJson(), row.getCombatJson());
+            if (!parsed.revision().equals(row.getSourceRevision())) {
+                throw ErrorCode.BATTLE_PROGRESS_UNAVAILABLE.exception();
+            }
+            cached = parsed;
+            return parsed;
+        } catch (IOException | IllegalArgumentException invalid) {
+            throw ErrorCode.BATTLE_PROGRESS_UNAVAILABLE.exception();
+        }
+    }
+
+    /** 정책과 같은 DB 원본의 몬스터 데이터다. */
+    public String monstersJson() {
+        return snapshot().monstersJson;
     }
 
     private static int positive(JsonNode row, String name) {

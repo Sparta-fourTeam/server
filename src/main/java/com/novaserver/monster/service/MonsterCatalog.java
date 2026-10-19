@@ -1,17 +1,14 @@
 package com.novaserver.monster.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.novaserver.battle.progress.BattlePolicySource;
 import com.novaserver.condex.entity.MonsterGrade;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
-/** 클라이언트 dev의 확정 Monsters 테이블을 그대로 조회하며 시작 전에 전체 참조를 검증한다. */
+/** DB 원본의 몬스터 테이블을 조회하며 게시 전에 전체 참조를 검증한다. */
 @Component
 public class MonsterCatalog {
     private static final Set<String> MONSTER_FIELDS =
@@ -45,18 +42,16 @@ public class MonsterCatalog {
                     "Vulnerability",
                     "AllDebuffs");
 
-    private final String json;
+    private final BattlePolicySource source;
 
-    /** 서버 배포물의 몬스터 원문을 읽고 불완전하면 시작을 거부한다. */
-    public MonsterCatalog() throws IOException {
-        var resource = new ClassPathResource("game-data/Monsters.json");
-        json = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        validate(new ObjectMapper().readTree(json));
+    /** DB에 게시된 전투 원본을 사용한다. */
+    public MonsterCatalog(BattlePolicySource source) {
+        this.source = source;
     }
 
     /** 버전은 기존 /data/version의 Monsters 값과 X-Data-Version 헤더로 전달한다. */
     public String json() {
-        return json;
+        return source.monstersJson();
     }
 
     /** 모든 수치·등급·패시브·소환 대상을 한 번에 확인해 잘못된 카탈로그로 서버가 시작하지 않게 한다. */

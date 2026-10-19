@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 같은 배포물의 원문과 내용 주소를 함께 제공한다. 기존 Monsters 공급은 해당 API를 쓴다. */
+/** DB 단일 원본과 내용 주소를 제공한다. */
 @RestController
 @RequestMapping("/data")
 @RequiredArgsConstructor
@@ -31,6 +31,24 @@ public class BattleSourceController {
     public ResponseEntity<String> combat() {
         return raw(source.combatJson());
     }
+
+    /** 원문과 manifest를 한 DB 스냅샷으로 내려준다. 중간 갱신이 섞이지 않는다. */
+    @GetMapping("/battle-source/snapshot")
+    public Download download() {
+        var current = source.snapshot();
+        return new Download(
+                current.manifest(),
+                current.stagesJson(),
+                current.monstersJson(),
+                current.combatJson());
+    }
+
+    /** 원문 문자열은 내용 주소 계산에 사용한 UTF-8 바이트를 보존한다. */
+    public record Download(
+            BattlePolicySource.Manifest manifest,
+            String stagesJson,
+            String monstersJson,
+            String combatJson) {}
 
     private ResponseEntity<String> raw(String json) {
         return ResponseEntity.ok()
