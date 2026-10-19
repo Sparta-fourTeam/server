@@ -1,6 +1,7 @@
 package com.novaserver.global.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -13,10 +14,12 @@ import com.novaserver.auth.jwt.JwtAuthenticationEntryPoint;
 import com.novaserver.auth.jwt.JwtProvider;
 import com.novaserver.auth.jwt.TokenValidityProperties;
 import com.novaserver.auth.jwt.TokenValidityProperties.Validity;
+import com.novaserver.auth.repository.AccessTokenRepository;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.user.Role;
 import java.time.Duration;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,6 +60,7 @@ class SecurityConfigTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private JwtProvider jwtProvider;
     @MockitoBean private TokenBlocklistRepository tokenBlocklistRepository;
+    @MockitoBean private AccessTokenRepository accessTokenRepository;
 
     @Test
     @DisplayName("토큰 없이 보호된 API를 호출하면 401 '로그인이 필요합니다'")
@@ -73,6 +77,36 @@ class SecurityConfigTest {
     void shouldPassAndProvideUserId_whenAccessTokenIsValid() throws Exception {
         // given
         String token = jwtProvider.createAccessToken(42L, ClientType.GAME, Role.USER);
+
+        // when
+        ResultActions result = callWithToken("/api/player/me", token);
+
+        // then
+        result.andExpect(status().isOk()).andExpect(content().string("42"));
+    }
+
+    @Test
+    @DisplayName("GAME 토큰이 더 최신 로그인으로 교체되면 서명·만료가 유효해도 401 '유효하지 않은 토큰입니다'")
+    void shouldReturnInvalidToken_whenGameSessionIsSuperseded() throws Exception {
+        // given
+        String token = jwtProvider.createAccessToken(42L, ClientType.GAME, Role.USER);
+        when(accessTokenRepository.findTokenId(42L, ClientType.GAME))
+                .thenReturn(Optional.of("other-device-jti"));
+
+        // when
+        ResultActions result = callWithToken("/api/player/me", token);
+
+        // then
+        result.andExpect(error(ErrorCode.INVALID_TOKEN));
+    }
+
+    @Test
+    @DisplayName("WEB 토큰은 세션 교체 검사 대상이 아니라 저장된 jti가 달라도 통과한다")
+    void shouldPass_whenWebSessionDiffersFromStored() throws Exception {
+        // given
+        String token = jwtProvider.createAccessToken(42L, ClientType.WEB, Role.USER);
+        when(accessTokenRepository.findTokenId(42L, ClientType.WEB))
+                .thenReturn(Optional.of("other-device-jti"));
 
         // when
         ResultActions result = callWithToken("/api/player/me", token);

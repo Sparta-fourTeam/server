@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.novaserver.auth.jwt.ClientType;
 import com.novaserver.auth.jwt.JwtProvider;
+import com.novaserver.auth.repository.AccessTokenRepository;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.battle.service.BattleService;
 import com.novaserver.condex.entity.Codex;
@@ -83,6 +84,7 @@ class BattleProgressTransactionTest {
     @Autowired EncounterFailure encounterFailure;
     @MockitoBean Clock clock;
     @MockitoBean TokenBlocklistRepository blocklist;
+    @MockitoBean AccessTokenRepository accessTokenRepository;
     private Long user;
     private String battle;
 

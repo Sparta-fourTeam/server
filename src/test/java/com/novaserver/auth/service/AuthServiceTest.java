@@ -15,14 +15,17 @@ import static org.mockito.Mockito.when;
 import com.novaserver.auth.dto.GuestSignUpResponse;
 import com.novaserver.auth.dto.TokenResponse;
 import com.novaserver.auth.jwt.ClientType;
+import com.novaserver.auth.jwt.GameWebSocketSessionRegistry;
 import com.novaserver.auth.jwt.IssuedToken;
 import com.novaserver.auth.jwt.JwtProvider;
 import com.novaserver.auth.jwt.TokenInfo;
 import com.novaserver.auth.jwt.TokenType;
+import com.novaserver.auth.repository.AccessTokenRepository;
 import com.novaserver.auth.repository.RefreshTokenRepository;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.auth.social.SocialTokenVerifier;
 import com.novaserver.global.error.ErrorCode;
+import com.novaserver.notification.service.SseEmitterService;
 import com.novaserver.quest.service.UserQuestService;
 import com.novaserver.user.Provider;
 import com.novaserver.user.Role;
@@ -61,9 +64,12 @@ class AuthServiceTest {
     @Mock private UserService userService;
     @Mock private UserQuestService quests;
     @Mock private JwtProvider jwtProvider;
+    @Mock private AccessTokenRepository accessTokenRepository;
     @Mock private RefreshTokenRepository refreshTokenRepository;
     @Mock private TokenBlocklistRepository tokenBlocklistRepository;
     @Mock private SocialTokenVerifier socialTokenVerifier;
+    @Mock private GameWebSocketSessionRegistry gameWebSocketSessionRegistry;
+    @Mock private SseEmitterService sseEmitterService;
 
     @InjectMocks private AuthService authService;
 
@@ -107,6 +113,22 @@ class AuthServiceTest {
 
         // then
         verify(refreshTokenRepository).save(USER_ID, ClientType.GAME, "refresh-jti");
+    }
+
+    @Test
+    @DisplayName("GAME 로그인 시 이전에 열려있던 WebSocket·SSE 연결을 끊는다")
+    void shouldDisconnectExistingWebSocketSession_onGameLogin() {
+        // given
+        when(userRepository.save(any(User.class)))
+                .thenAnswer(invocation -> withId(invocation.getArgument(0)));
+        stubTokens();
+
+        // when
+        authService.guestSignUp();
+
+        // then
+        verify(gameWebSocketSessionRegistry).disconnectExisting(USER_ID);
+        verify(sseEmitterService).disconnectExistingGameSessions(USER_ID);
     }
 
     @Test
@@ -202,6 +224,26 @@ class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("GAME 토큰 재발급은 같은 세션의 연장이므로 WebSocket 연결을 끊지 않는다")
+    void shouldNotDisconnectWebSocketSession_onGameRefresh() {
+        // given
+        when(jwtProvider.parse(OLD_REFRESH))
+                .thenReturn(
+                        new TokenInfo(
+                                USER_ID, Role.USER, ClientType.GAME, TokenType.REFRESH, "old-jti"));
+        when(refreshTokenRepository.findTokenId(USER_ID, ClientType.GAME))
+                .thenReturn(Optional.of("old-jti"));
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(storedUser(Role.USER)));
+        stubTokens();
+
+        // when
+        authService.refresh(OLD_REFRESH, ClientType.GAME);
+
+        // then
+        verifyNoInteractions(gameWebSocketSessionRegistry, sseEmitterService);
+    }
+
+    @Test
     @DisplayName("WEB 경로에서는 WEB refresh로 WEB 토큰을 재발급한다")
     void shouldKeepClientType_onRefresh() {
         // given
@@ -216,6 +258,14 @@ class AuthServiceTest {
                 .thenReturn("web-access");
         when(jwtProvider.createRefreshToken(USER_ID, ClientType.WEB, Role.USER))
                 .thenReturn(new IssuedToken("web-refresh", "web-jti"));
+        when(jwtProvider.parse("web-access"))
+                .thenReturn(
+                        new TokenInfo(
+                                USER_ID,
+                                Role.USER,
+                                ClientType.WEB,
+                                TokenType.ACCESS,
+                                "web-access-jti"));
 
         // when
         TokenResponse response = authService.refresh(OLD_REFRESH, ClientType.WEB);
@@ -223,6 +273,8 @@ class AuthServiceTest {
         // then
         assertThat(response.getAccessToken()).isEqualTo("web-access");
         verify(refreshTokenRepository).save(USER_ID, ClientType.WEB, "web-jti");
+        verify(gameWebSocketSessionRegistry, never()).disconnectExisting(any());
+        verify(sseEmitterService, never()).disconnectExistingGameSessions(any());
     }
 
     @Test
@@ -540,6 +592,14 @@ class AuthServiceTest {
                 .thenReturn("admin-access");
         when(jwtProvider.createRefreshToken(USER_ID, ClientType.WEB, Role.ADMIN))
                 .thenReturn(new IssuedToken("admin-refresh", "admin-jti"));
+        when(jwtProvider.parse("admin-access"))
+                .thenReturn(
+                        new TokenInfo(
+                                USER_ID,
+                                Role.ADMIN,
+                                ClientType.WEB,
+                                TokenType.ACCESS,
+                                "admin-access-jti"));
 
         // when
         TokenResponse response = authService.refresh(OLD_REFRESH, ClientType.WEB);
@@ -668,7 +728,8 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("탈퇴: 유저 데이터를 삭제하고 GAME·WEB refresh 토큰을 지운 뒤 블록리스트에 등록한다")
+    @DisplayName(
+            "탈퇴: 유저 데이터를 삭제하고 GAME·WEB의 refresh·access 세션을 지운 뒤 블록리스트에 등록하고 WebSocket·SSE 연결도 끊는다")
     void shouldDeleteDataAndRevokeTokens_onDeleteUser() {
         // when
         authService.deleteUser(USER_ID);
@@ -677,7 +738,11 @@ class AuthServiceTest {
         verify(userService).deleteAccount(USER_ID);
         verify(refreshTokenRepository).delete(USER_ID, ClientType.GAME);
         verify(refreshTokenRepository).delete(USER_ID, ClientType.WEB);
+        verify(accessTokenRepository).delete(USER_ID, ClientType.GAME);
+        verify(accessTokenRepository).delete(USER_ID, ClientType.WEB);
         verify(tokenBlocklistRepository).block(USER_ID);
+        verify(gameWebSocketSessionRegistry).disconnectExisting(USER_ID);
+        verify(sseEmitterService).disconnectExistingGameSessions(USER_ID);
     }
 
     @Test
@@ -688,7 +753,12 @@ class AuthServiceTest {
                 () -> authService.deleteUser(null),
                 HttpStatus.UNAUTHORIZED,
                 ErrorCode.UNAUTHORIZED);
-        verifyNoInteractions(userService, refreshTokenRepository, tokenBlocklistRepository);
+        verifyNoInteractions(
+                userService,
+                refreshTokenRepository,
+                tokenBlocklistRepository,
+                gameWebSocketSessionRegistry,
+                sseEmitterService);
     }
 
     private static void assertStatus(
@@ -709,6 +779,14 @@ class AuthServiceTest {
                 .thenReturn("access-token");
         when(jwtProvider.createRefreshToken(USER_ID, ClientType.GAME, Role.USER))
                 .thenReturn(new IssuedToken("refresh-token", "refresh-jti"));
+        when(jwtProvider.parse("access-token"))
+                .thenReturn(
+                        new TokenInfo(
+                                USER_ID,
+                                Role.USER,
+                                ClientType.GAME,
+                                TokenType.ACCESS,
+                                "access-jti"));
     }
 
     private static User storedUser(Role role) {

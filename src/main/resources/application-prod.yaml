@@ -35,7 +35,7 @@ app:
       jwk-set-uri: https://appleid.apple.com/auth/keys
       issuers: https://appleid.apple.com
       client-ids: ${APPLE_CLIENT_IDS:}    # 번들 ID(·Services ID), 쉼표로 구분
-    
+
 logging:
   level:
     org.springframework.security: DEBUG

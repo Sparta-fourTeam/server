@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.novaserver.auth.jwt.ClientType;
 import com.novaserver.auth.jwt.JwtProvider;
+import com.novaserver.auth.repository.AccessTokenRepository;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
@@ -108,6 +109,7 @@ class TutorialAccountTransactionTest {
     @MockitoSpyBean private UserTutorialRepository states;
     @MockitoBean private Clock clock;
     @MockitoBean private TokenBlocklistRepository blocklist;
+    @MockitoBean private AccessTokenRepository accessTokenRepository;
     private TransactionTemplate tx;
     private Long userId;
     private Long rewardId;

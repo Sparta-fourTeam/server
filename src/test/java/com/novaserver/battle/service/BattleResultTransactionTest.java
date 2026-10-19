@@ -24,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.novaserver.auth.jwt.ClientType;
 import com.novaserver.auth.jwt.JwtProvider;
+import com.novaserver.auth.repository.AccessTokenRepository;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.battle.dto.BattleEndRequest;
 import com.novaserver.battle.repository.BattleRepository;
@@ -116,6 +117,7 @@ class BattleResultTransactionTest {
     @MockitoSpyBean private StageRewardService rewards;
     @MockitoBean private Clock clock;
     @MockitoBean private TokenBlocklistRepository blocklist;
+    @MockitoBean private AccessTokenRepository accessTokenRepository;
     private Long userId;
     private TransactionTemplate transaction;
 

@@ -3,14 +3,17 @@ package com.novaserver.auth.service;
 import com.novaserver.auth.dto.GuestSignUpResponse;
 import com.novaserver.auth.dto.TokenResponse;
 import com.novaserver.auth.jwt.ClientType;
+import com.novaserver.auth.jwt.GameWebSocketSessionRegistry;
 import com.novaserver.auth.jwt.IssuedToken;
 import com.novaserver.auth.jwt.JwtProvider;
 import com.novaserver.auth.jwt.TokenInfo;
 import com.novaserver.auth.jwt.TokenType;
+import com.novaserver.auth.repository.AccessTokenRepository;
 import com.novaserver.auth.repository.RefreshTokenRepository;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.auth.social.SocialTokenVerifier;
 import com.novaserver.global.error.ErrorCode;
+import com.novaserver.notification.service.SseEmitterService;
 import com.novaserver.quest.service.UserQuestService;
 import com.novaserver.user.Provider;
 import com.novaserver.user.Role;
@@ -38,9 +41,12 @@ public class AuthService {
     private final UserService userService;
     private final UserQuestService quests;
     private final JwtProvider jwtProvider;
+    private final AccessTokenRepository accessTokenRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final TokenBlocklistRepository tokenBlocklistRepository;
     private final SocialTokenVerifier socialTokenVerifier;
+    private final GameWebSocketSessionRegistry gameWebSocketSessionRegistry;
+    private final SseEmitterService sseEmitterService;
 
     /**
      * 새 게스트 유저를 만들고 토큰을 발급한다. DB에는 guestId의 해시만 저장한다.
@@ -53,7 +59,7 @@ public class AuthService {
         User user = userRepository.save(new User(Provider.GUEST, hash(guestId)));
         userService.createInitialState(user);
         return new GuestSignUpResponse(
-                guestId, issueTokens(user.getId(), ClientType.GAME, Role.USER));
+                guestId, issueTokensForNewLogin(user.getId(), ClientType.GAME, Role.USER));
     }
 
     /**
@@ -71,7 +77,7 @@ public class AuthService {
                 userRepository
                         .findByProviderAndAccountId(Provider.GUEST, hashed)
                         .orElseThrow(ErrorCode.INVALID_GUEST_ID::exception);
-        return issueTokens(user.getId(), ClientType.GAME, Role.USER);
+        return issueTokensForNewLogin(user.getId(), ClientType.GAME, Role.USER);
     }
 
     /**
@@ -130,12 +136,27 @@ public class AuthService {
         }
     }
 
+    /**
+     * 새 로그인에서만 쓴다. refresh 재발급은 같은 세션의 연장이므로 기존 WebSocket·SSE 연결을 끊지 않는다.
+     *
+     * @see #issueTokens
+     */
+    private TokenResponse issueTokensForNewLogin(Long userId, ClientType clientType, Role role) {
+        TokenResponse tokens = issueTokens(userId, clientType, role);
+        if (clientType == ClientType.GAME) {
+            gameWebSocketSessionRegistry.disconnectExisting(userId);
+            sseEmitterService.disconnectExistingGameSessions(userId);
+        }
+        return tokens;
+    }
+
     private TokenResponse issueTokens(Long userId, ClientType clientType, Role role) {
         if (clientType == ClientType.GAME) {
             quests.recordLogin(userId);
         }
         String access = jwtProvider.createAccessToken(userId, clientType, role);
         IssuedToken refresh = jwtProvider.createRefreshToken(userId, clientType, role);
+        accessTokenRepository.save(userId, clientType, jwtProvider.parse(access).tokenId());
         refreshTokenRepository.save(userId, clientType, refresh.tokenId());
         return new TokenResponse(access, refresh.token());
     }
@@ -160,7 +181,7 @@ public class AuthService {
                 userRepository
                         .findByProviderAndAccountId(provider, sub)
                         .orElseGet(() -> createSocialUser(provider, sub));
-        return issueTokens(user.getId(), clientType, user.getRole());
+        return issueTokensForNewLogin(user.getId(), clientType, user.getRole());
     }
 
     private User createSocialUser(Provider provider, String sub) {
@@ -254,7 +275,8 @@ public class AuthService {
     }
 
     /**
-     * 계정을 탈퇴 처리한다. 유저와 유저의 모든 데이터를 즉시 삭제하고, 남아있는 refresh 토큰을 지운 뒤 아직 만료되지 않은 access 토큰도 막는다.
+     * 계정을 탈퇴 처리한다. 유저와 유저의 모든 데이터를 즉시 삭제하고, 남아있는 refresh·access 세션을 지운 뒤 아직 만료되지 않은 access 토큰도 막는다.
+     * 이미 열려있는 GAME WebSocket·SSE 연결도 끊는다.
      *
      * <p>데이터 삭제는 {@link UserService#deleteAccount}의 트랜잭션으로 원자적으로 처리된다. 그 트랜잭션이 커밋된 뒤에 Redis 정리를
      * 하므로, 삭제가 실패하면 토큰은 그대로 유효하다.
@@ -269,6 +291,10 @@ public class AuthService {
         userService.deleteAccount(userId);
         refreshTokenRepository.delete(userId, ClientType.GAME);
         refreshTokenRepository.delete(userId, ClientType.WEB);
+        accessTokenRepository.delete(userId, ClientType.GAME);
+        accessTokenRepository.delete(userId, ClientType.WEB);
         tokenBlocklistRepository.block(userId);
+        gameWebSocketSessionRegistry.disconnectExisting(userId);
+        sseEmitterService.disconnectExistingGameSessions(userId);
     }
 }

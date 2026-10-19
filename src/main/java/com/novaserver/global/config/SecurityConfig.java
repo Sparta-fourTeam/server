@@ -4,6 +4,7 @@ import com.novaserver.auth.jwt.JwtAccessDeniedHandler;
 import com.novaserver.auth.jwt.JwtAuthenticationEntryPoint;
 import com.novaserver.auth.jwt.JwtAuthenticationFilter;
 import com.novaserver.auth.jwt.JwtProvider;
+import com.novaserver.auth.repository.AccessTokenRepository;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.user.Role;
 import lombok.RequiredArgsConstructor;
@@ -22,8 +23,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 /**
  * JWT 기반 보안 설정.
  *
- * <p>로그인·헬스체크·Swagger·에러 경로는 토큰 없이 허용하고, 관리자 경로는 ADMIN 권한이 필요하다. 도감 관리 경로는 WEB 토큰도 요구하며 나머지는 유효한
- * access 토큰이 있어야 한다.
+ * <p>로그인·헬스체크·Swagger·에러 경로는 토큰 없이 허용하고, 관리자 경로는 ADMIN 권한이 필요하다. 도감 관리·공지 등록 경로는 WEB 토큰도 요구하며 나머지는
+ * 유효한 access 토큰이 있어야 한다.
  */
 @Configuration
 @EnableWebSecurity
@@ -41,6 +42,7 @@ public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
     private final TokenBlocklistRepository tokenBlocklistRepository;
+    private final AccessTokenRepository accessTokenRepository;
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
     private final JwtAccessDeniedHandler accessDeniedHandler;
 
@@ -67,6 +69,13 @@ public class SecurityConfig {
                                                                 Role.ADMIN.name()),
                                                         AuthorityAuthorizationManager.hasAuthority(
                                                                 "CLIENT_WEB")))
+                                        .requestMatchers("/api/admin/notices/**")
+                                        .access(
+                                                AuthorizationManagers.allOf(
+                                                        AuthorityAuthorizationManager.hasRole(
+                                                                Role.ADMIN.name()),
+                                                        AuthorityAuthorizationManager.hasAuthority(
+                                                                "CLIENT_WEB")))
                                         .requestMatchers("/api/admin/**")
                                         .hasRole(Role.ADMIN.name())
                                         .anyRequest()
@@ -77,7 +86,8 @@ public class SecurityConfig {
                                         .authenticationEntryPoint(authenticationEntryPoint)
                                         .accessDeniedHandler(accessDeniedHandler))
                 .addFilterBefore(
-                        new JwtAuthenticationFilter(jwtProvider, tokenBlocklistRepository),
+                        new JwtAuthenticationFilter(
+                                jwtProvider, tokenBlocklistRepository, accessTokenRepository),
                         UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
