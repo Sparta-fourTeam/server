@@ -176,8 +176,9 @@ class BattleServiceTest {
         Stage stage = mock(Stage.class);
         Stage nextStage = mock(Stage.class);
         when(stageService.findStage(1)).thenReturn(stage);
-        when(stageRepository.findById(2)).thenReturn(Optional.of(nextStage));
-        when(progressReports.nextStageId(1)).thenReturn(Optional.of(2));
+        when(stageRepository.findFirstByStageIdGreaterThanOrderByStageIdAsc(1))
+                .thenReturn(Optional.of(nextStage));
+        when(nextStage.getStageId()).thenReturn(2);
         when(userStageProgressRepository.findByUserIdAndStageId(1L, 1))
                 .thenReturn(Optional.empty());
         when(userStageProgressRepository.findByUserIdAndStageId(1L, 2))
@@ -194,7 +195,7 @@ class BattleServiceTest {
     }
 
     @Test
-    void clearSucceedsWhenNextStageRowIsMissingFromStageTable() {
+    void clearOfLastStageCreatesNoExtraProgressRow() {
         BattleSession existing = new BattleSession(1L, "battle-1", "key-1");
         when(battleRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(battleRepository.deleteByUserIdAndBattleId(1L, "battle-1")).thenReturn(1);
@@ -202,10 +203,10 @@ class BattleServiceTest {
                 .thenReturn(new ClearRewardResult(100, 50, Map.of("mat.wood", 5), 0));
         Stage stage = mock(Stage.class);
         when(stageService.findStage(1)).thenReturn(stage);
-        when(progressReports.nextStageId(1)).thenReturn(Optional.of(2));
         when(userStageProgressRepository.findByUserIdAndStageId(any(), any()))
                 .thenReturn(Optional.empty());
-        when(stageRepository.findById(2)).thenReturn(Optional.empty());
+        when(stageRepository.findFirstByStageIdGreaterThanOrderByStageIdAsc(1))
+                .thenReturn(Optional.empty());
         when(userStageProgressRepository.save(any()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
