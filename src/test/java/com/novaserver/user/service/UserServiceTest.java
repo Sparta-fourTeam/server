@@ -28,6 +28,8 @@ import com.novaserver.user.repository.UserCodexRepository;
 import com.novaserver.user.repository.UserDataRepository;
 import com.novaserver.user.repository.UserEnergyRepository;
 import com.novaserver.user.repository.UserItemRepository;
+import com.novaserver.user.repository.UserQuestPointRepository;
+import com.novaserver.user.repository.UserQuestProgressRepository;
 import com.novaserver.user.repository.UserRepository;
 import com.novaserver.user.repository.UserStageProgressRepository;
 import com.novaserver.user.repository.UserTutorialRepository;
@@ -63,6 +65,8 @@ class UserServiceTest {
     @Mock private WalletRepository walletRepository;
     @Mock private UserEnergyRepository userEnergyRepository;
     @Mock private UserStageProgressRepository userStageProgressRepository;
+    @Mock private UserQuestProgressRepository userQuestProgressRepository;
+    @Mock private UserQuestPointRepository userQuestPointRepository;
     @Mock private UserUpgradeRepository userUpgradeRepository;
     @Mock private UserUpgradeRequestRepository userUpgradeRequestRepository;
     @Mock private UserItemRepository userItemRepository;
@@ -84,6 +88,8 @@ class UserServiceTest {
                         walletRepository,
                         userEnergyRepository,
                         userStageProgressRepository,
+                        userQuestProgressRepository,
+                        userQuestPointRepository,
                         userUpgradeRepository,
                         userUpgradeRequestRepository,
                         userItemRepository,
@@ -128,6 +134,8 @@ class UserServiceTest {
         // then
         verifyNoInteractions(
                 userStageProgressRepository,
+                userQuestProgressRepository,
+                userQuestPointRepository,
                 userUpgradeRepository,
                 userUpgradeRequestRepository,
                 userItemRepository,
@@ -146,6 +154,8 @@ class UserServiceTest {
         verify(walletRepository).deleteByUserId(USER_ID);
         verify(userEnergyRepository).deleteByUserId(USER_ID);
         verify(userStageProgressRepository).deleteByUserId(USER_ID);
+        verify(userQuestProgressRepository).deleteByUserId(USER_ID);
+        verify(userQuestPointRepository).deleteByUserId(USER_ID);
         verify(userUpgradeRequestRepository).deleteByUserId(USER_ID);
         verify(userUpgradeRepository).deleteByUserId(USER_ID);
         verify(userItemRepository).deleteByUserId(USER_ID);

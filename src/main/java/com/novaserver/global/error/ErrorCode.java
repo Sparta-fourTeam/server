@@ -143,7 +143,13 @@ public enum ErrorCode {
 
     // 에너지
     INSUFFICIENT_ENERGY(HttpStatus.CONFLICT, "해당 유저의 에너지가 부족합니다."),
-    ENERGY_LOCK_CONFLICT(HttpStatus.CONFLICT, "잠시 후 다시 시도해주세요.");
+    ENERGY_LOCK_CONFLICT(HttpStatus.CONFLICT, "잠시 후 다시 시도해주세요."),
+
+    // 퀘스트
+    QUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 퀘스트입니다: %s"),
+    QUEST_DUPLICATED(HttpStatus.CONFLICT, "이미 존재하는 퀘스트 id입니다: %s"),
+    QUEST_IN_USE(HttpStatus.CONFLICT, "진행 중인 유저가 있어 삭제할 수 없습니다: %s"),
+
     // 퀘스트 보상
     QUEST_REWARD_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 퀘스트 보상입니다: %s"),
     QUEST_REWARD_DUPLICATED(HttpStatus.CONFLICT, "이미 존재하는 퀘스트 보상 id입니다: %s"),

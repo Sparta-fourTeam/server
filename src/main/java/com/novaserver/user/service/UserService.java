@@ -11,6 +11,8 @@ import com.novaserver.user.repository.UserCodexRepository;
 import com.novaserver.user.repository.UserDataRepository;
 import com.novaserver.user.repository.UserEnergyRepository;
 import com.novaserver.user.repository.UserItemRepository;
+import com.novaserver.user.repository.UserQuestPointRepository;
+import com.novaserver.user.repository.UserQuestProgressRepository;
 import com.novaserver.user.repository.UserRepository;
 import com.novaserver.user.repository.UserStageProgressRepository;
 import com.novaserver.user.repository.UserTutorialRepository;
@@ -33,6 +35,8 @@ public class UserService {
     private final WalletRepository walletRepository;
     private final UserEnergyRepository userEnergyRepository;
     private final UserStageProgressRepository userStageProgressRepository;
+    private final UserQuestProgressRepository userQuestProgressRepository;
+    private final UserQuestPointRepository userQuestPointRepository;
     private final UserUpgradeRepository userUpgradeRepository;
     private final UserUpgradeRequestRepository userUpgradeRequestRepository;
     private final UserItemRepository userItemRepository;
@@ -78,6 +82,8 @@ public class UserService {
         walletRepository.deleteByUserId(userId);
         userEnergyRepository.deleteByUserId(userId);
         userStageProgressRepository.deleteByUserId(userId);
+        userQuestProgressRepository.deleteByUserId(userId);
+        userQuestPointRepository.deleteByUserId(userId);
         userUpgradeRequestRepository.deleteByUserId(userId);
         userUpgradeRepository.deleteByUserId(userId);
         userItemRepository.deleteByUserId(userId);
