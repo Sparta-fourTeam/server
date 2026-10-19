@@ -152,6 +152,9 @@ public class BattleService {
                                             new UserStageProgress(user, stage));
                                 });
         progress.updateClearRating(request.getRating());
+        if (request.getRating() > 0) {
+            unlockNextStage(userId, request.getStageId());
+        }
         BattleResult result =
                 results.saveAndFlush(
                         new BattleResult(
@@ -161,6 +164,23 @@ public class BattleService {
                                 progress.getClearRating(),
                                 clock.instant().truncatedTo(ChronoUnit.MICROS)));
         return BattleResultResponse.from(result);
+    }
+
+    /** 클리어한 스테이지의 다음 스테이지 진행 행(등급 0)을 만들어 클라이언트가 해금으로 보게 한다. */
+    private void unlockNextStage(Long userId, Integer stageId) {
+        progressReports
+                .nextStageId(stageId)
+                .filter(
+                        next ->
+                                userStageProgressRepository
+                                        .findByUserIdAndStageId(userId, next)
+                                        .isEmpty())
+                .ifPresent(
+                        next ->
+                                userStageProgressRepository.save(
+                                        new UserStageProgress(
+                                                userRepository.getReferenceById(userId),
+                                                stageService.findStage(next))));
     }
 
     private void lockUser(Long userId) {

@@ -89,6 +89,15 @@ public class BattleProgressService {
         return state(row);
     }
 
+    /** 게시된 스테이지 순서에서 stageId 다음 스테이지를 돌려준다. 마지막이거나 순서에 없으면 비어 있다. */
+    public java.util.Optional<Integer> nextStageId(Integer stageId) {
+        var order = policies.stageOrder();
+        int index = order.indexOf(stageId);
+        return index >= 0 && index + 1 < order.size()
+                ? java.util.Optional.of(order.get(index + 1))
+                : java.util.Optional.empty();
+    }
+
     /** 전투 실행 상태를 기기간 복원하는 API가 아니라 이미 인정한 누적 기준 조회다. */
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public State snapshot(Long userId, String battleId) {
