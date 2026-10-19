@@ -15,5 +15,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("select u from User u where u.id = :userId")
     Optional<User> findByIdForUpdate(@Param("userId") Long userId);
 
+    boolean existsByNicknameKeyAndIdNot(String nicknameKey, Long id);
+
     Optional<User> findByProviderAndAccountId(Provider provider, String accountId);
 }

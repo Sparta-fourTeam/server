@@ -174,6 +174,9 @@ public enum ErrorCode {
     STAGE_RATING_REWARD_NOTHING_TO_CLAIM(HttpStatus.CONFLICT, "받을 수 있는 보상이 없습니다: %s"),
 
     // 유저
+    NICKNAME_DUPLICATED(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다"),
+    INVALID_NICKNAME(HttpStatus.BAD_REQUEST, "닉네임은 한글, 영문, 숫자, 밑줄 2~20자여야 합니다"),
+    INVALID_AVATAR(HttpStatus.BAD_REQUEST, "선택할 수 없는 초상입니다"),
     USER_DATA_NOT_FOUND(HttpStatus.NOT_FOUND, "유저 데이터가 없습니다: %s"),
     WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "유저 지갑이 없습니다: %s"),
     WALLET_GOLD_NOT_ENOUGH(HttpStatus.CONFLICT, "골드가 부족합니다: %s"),

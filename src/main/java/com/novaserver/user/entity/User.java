@@ -12,6 +12,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
+import java.util.Locale;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -43,6 +45,16 @@ public class User {
     @ColumnDefault("'USER'")
     private Role role = Role.USER;
 
+    @Column(length = 20)
+    private String nickname;
+
+    @Column(name = "nickname_key", length = 20, unique = true)
+    private String nicknameKey;
+
+    @Column(nullable = false)
+    @ColumnDefault("0")
+    private int avatarId;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -60,6 +72,27 @@ public class User {
     public User(Provider provider, String accountId) {
         this.provider = provider;
         this.accountId = accountId;
+        initializeProfile();
+    }
+
+    /** 이전 계정에도 저장 가능한 기본 프로필을 만든다. */
+    public void initializeProfile() {
+        if (nickname == null) {
+            nickname = "낙서_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        }
+        nicknameKey = nickname.toLowerCase(Locale.ROOT);
+    }
+
+    /** 검증된 프로필 값만 반영한다. null 필드는 기존 값을 유지한다. */
+    public void updateProfile(String nickname, Integer avatarId) {
+        initializeProfile();
+        if (nickname != null) {
+            this.nickname = nickname;
+            this.nicknameKey = nickname.toLowerCase(Locale.ROOT);
+        }
+        if (avatarId != null) {
+            this.avatarId = avatarId;
+        }
     }
 
     /**
