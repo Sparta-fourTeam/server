@@ -7,7 +7,7 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
 /**
- * STOMP 기반 WebSocket 메시징 설정. 현재는 전체 채팅 1개 채널(/topic/chat)만 쓴다.
+ * STOMP 기반 WebSocket 메시징 설정. 전체 채팅(/topic/chat)과 접속자 수(/topic/chat/presence) 채널을 쓴다.
  *
  * <p>핸드셰이크는 일반 HTTP 요청으로 처리되어 {@code SecurityConfig}의 JWT 인증을 그대로 거친다. 인증된 사용자만 {@code
  * /api/ws-chat}에 연결할 수 있고, 연결된 세션의 Principal은 JWT에서 꺼낸 사용자다. 경로를 {@code /api}로 시작한 건 배포 환경 nginx가 이
