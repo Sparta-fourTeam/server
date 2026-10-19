@@ -48,6 +48,7 @@ import org.springframework.web.server.ResponseStatusException;
 @ExtendWith(MockitoExtension.class)
 class BattleServiceTest {
 
+    @Mock private com.novaserver.battle.progress.BattleProgressService progressReports;
     @Mock private BattleRepository battleRepository;
     @Mock private BattleResultRepository results;
     @Mock private UserService userService;

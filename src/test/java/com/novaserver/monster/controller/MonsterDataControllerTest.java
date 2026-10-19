@@ -7,9 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.novaserver.monster.service.MonsterCatalog;
-import com.novaserver.version.dto.DataVersionResponse;
-import com.novaserver.version.service.DataVersionService;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -24,12 +21,12 @@ class MonsterDataControllerTest {
 
     @MockitoBean private MonsterCatalog catalog;
 
-    @MockitoBean private DataVersionService versions;
-
     @Test
     void returnsClientTableJsonAndSameMonstersVersionAsVersionEndpoint() throws Exception {
-        when(catalog.json()).thenReturn("[{\"Id\":1,\"Hp\":36,\"Grade\":\"Normal\"}]");
-        when(versions.getVersions()).thenReturn(new DataVersionResponse(4, Map.of("Monsters", 3)));
+        when(catalog.download())
+                .thenReturn(
+                        new MonsterCatalog.Download(
+                                "[{\"Id\":1,\"Hp\":36,\"Grade\":\"Normal\"}]", 3, "a".repeat(64)));
 
         mockMvc.perform(get("/api/data/monsters"))
                 .andExpect(status().isOk())

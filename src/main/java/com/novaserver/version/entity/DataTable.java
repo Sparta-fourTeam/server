@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 public enum DataTable {
     MONSTERS("Monsters"),
     STAGES("Stages"),
+    COMBAT("Combat"),
     UPGRADES("Upgrades"),
     ENERGY("Energy"),
     PLAYER_LEVELS("PlayerLevels"),

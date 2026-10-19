@@ -1,17 +1,20 @@
 package com.novaserver.monster.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.novaserver.battle.progress.BattlePolicySource;
 import com.novaserver.condex.entity.MonsterGrade;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import com.novaserver.global.error.ErrorCode;
+import com.novaserver.version.entity.DataTable;
+import com.novaserver.version.entity.DataVersion;
+import com.novaserver.version.repository.DataVersionRepository;
+import com.novaserver.version.service.DataVersionService;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
-/** 클라이언트 dev의 확정 Monsters 테이블을 그대로 조회하며 시작 전에 전체 참조를 검증한다. */
+/** DB 원본의 몬스터 테이블을 조회하며 게시 전에 전체 참조를 검증한다. */
 @Component
 public class MonsterCatalog {
     private static final Set<String> MONSTER_FIELDS =
@@ -45,18 +48,37 @@ public class MonsterCatalog {
                     "Vulnerability",
                     "AllDebuffs");
 
-    private final String json;
+    private final BattlePolicySource source;
+    private final DataVersionRepository versionRows;
+    private final DataVersionService versions;
 
-    /** 서버 배포물의 몬스터 원문을 읽고 불완전하면 시작을 거부한다. */
-    public MonsterCatalog() throws IOException {
-        var resource = new ClassPathResource("game-data/Monsters.json");
-        json = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        validate(new ObjectMapper().readTree(json));
+    /** DB에 게시된 전투 원본을 사용한다. */
+    public MonsterCatalog(
+            BattlePolicySource source,
+            DataVersionRepository versionRows,
+            DataVersionService versions) {
+        this.source = source;
+        this.versionRows = versionRows;
+        this.versions = versions;
     }
+
+    /** 게시와 버전 갱신이 끼어들지 못하도록 공유 락 안에서 원문과 버전을 함께 읽는다. */
+    @Transactional(readOnly = true)
+    public Download download() {
+        versionRows
+                .findByTableNameForRead(DataVersion.REVISION_KEY)
+                .orElseThrow(() -> ErrorCode.DATA_VERSION_ROW_MISSING.exception("revision"));
+        var current = source.snapshot();
+        int version = versions.getVersions().getTables().get(DataTable.MONSTERS.getKey());
+        return new Download(current.monstersJson(), version, current.revision());
+    }
+
+    /** 불변 원문 응답과 그 게시 버전이다. */
+    public record Download(String json, int version, String sourceRevision) {}
 
     /** 버전은 기존 /data/version의 Monsters 값과 X-Data-Version 헤더로 전달한다. */
     public String json() {
-        return json;
+        return source.monstersJson();
     }
 
     /** 모든 수치·등급·패시브·소환 대상을 한 번에 확인해 잘못된 카탈로그로 서버가 시작하지 않게 한다. */

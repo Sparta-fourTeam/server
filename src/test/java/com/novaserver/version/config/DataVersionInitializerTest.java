@@ -27,6 +27,7 @@ class DataVersionInitializerTest {
         when(dataVersionRepository.existsById(DataVersion.REVISION_KEY)).thenReturn(true);
         when(dataVersionRepository.existsById(DataTable.MONSTERS.getKey())).thenReturn(false);
         when(dataVersionRepository.existsById(DataTable.STAGES.getKey())).thenReturn(true);
+        when(dataVersionRepository.existsById(DataTable.COMBAT.getKey())).thenReturn(true);
         when(dataVersionRepository.existsById(DataTable.UPGRADES.getKey())).thenReturn(true);
         when(dataVersionRepository.existsById(DataTable.ENERGY.getKey())).thenReturn(true);
         when(dataVersionRepository.existsById(DataTable.CARDS.getKey())).thenReturn(true);

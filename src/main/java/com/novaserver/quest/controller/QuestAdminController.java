@@ -37,7 +37,7 @@ public class QuestAdminController {
     @Operation(
             summary = "퀘스트 조건 등록·교체",
             description =
-                    "LOGIN과 SPEND_ENERGY만 지원합니다. 수령 이력이 있으면 409이며 새 ID로 "
+                    "LOGIN, SPEND_ENERGY와 서버가 인정한 KILL_MONSTERS를 지원합니다. 수령 이력이 있으면 409이며 새 ID로 "
                             + "등록해야 합니다. 현재 기간의 서버 행동 누계로 새 조건도 평가합니다. 운영 정의를 자동 생성하지 않습니다.")
     @PutMapping("/quests/{id}")
     public QuestConfigResponse quest(

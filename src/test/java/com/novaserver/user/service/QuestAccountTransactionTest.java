@@ -497,7 +497,7 @@ class QuestAccountTransactionTest {
                                 .content(
                                         "{\"period\":\"DAILY\",\"kind\":\"KILL_MONSTERS\","
                                                 + "\"target\":1,\"points\":1}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
     }
 
     @Test

@@ -26,7 +26,7 @@ public class UserQuestController {
             summary = "현재 일일·주간 퀘스트 복원",
             description =
                     "서버 KST04 영업일과 월요일 04시 주간 기준. 시각은 UTC. 로그인과 실제 전투 입장 "
-                            + "에너지 소모만 집계합니다. 몬스터 처치 수는 지원하지 않습니다.")
+                            + "에너지 소모와 스폰 범위 검사를 통과한 누적 보고의 처치 차이만 집계합니다.")
     @GetMapping
     public List<QuestBoardResponse> list(@AuthenticationPrincipal Long userId) {
         return service.snapshot(userId);

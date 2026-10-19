@@ -5,6 +5,7 @@ import com.novaserver.battle.dto.BattleResponse;
 import com.novaserver.battle.dto.BattleResultResponse;
 import com.novaserver.battle.entity.BattleResult;
 import com.novaserver.battle.entity.BattleSession;
+import com.novaserver.battle.progress.BattleProgressService;
 import com.novaserver.battle.repository.BattleRepository;
 import com.novaserver.battle.repository.BattleResultRepository;
 import com.novaserver.global.error.ErrorCode;
@@ -43,6 +44,7 @@ public class BattleService {
     private final BattleRepository battleRepository;
     private final BattleResultRepository results;
     private final Clock clock;
+    private final BattleProgressService progressReports;
     private final UserQuestService quests;
 
     /**
@@ -66,6 +68,9 @@ public class BattleService {
         var eventAt = userService.useEnergy(userId, BATTLE_ENERGY_COST);
 
         String battleId = UUID.randomUUID().toString();
+        battleRepository
+                .findById(userId)
+                .ifPresent(previous -> progressReports.close(userId, previous.getBattleId(), null));
         battleRepository.upsert(userId, battleId, createId, eventAt);
         quests.recordBattleEnergy(userId, BATTLE_ENERGY_COST, eventAt);
 
@@ -88,6 +93,7 @@ public class BattleService {
             }
             throw ErrorCode.BATTLE_ID_MISMATCH.exception();
         }
+        progressReports.close(userId, battleId, null);
     }
 
     /** 보상·진척·최초 확정 영수증을 함께 저장하고 동일 결과 재요청은 재지급 없이 복원한다. */
@@ -109,6 +115,7 @@ public class BattleService {
         if (!session.getBattleId().equals(request.getBattleId())) {
             throw ErrorCode.BATTLE_ID_MISMATCH.exception();
         }
+        progressReports.close(userId, request.getBattleId(), request.getStageId());
         int deleted = battleRepository.deleteByUserIdAndBattleId(userId, request.getBattleId());
         if (deleted == 0) {
             throw ErrorCode.BATTLE_NOT_FOUND.exception();

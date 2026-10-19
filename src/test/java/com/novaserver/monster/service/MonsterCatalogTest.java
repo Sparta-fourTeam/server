@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.novaserver.battle.progress.BattleSourceFixture;
 import java.io.IOException;
 import org.junit.jupiter.api.Test;
 
@@ -14,13 +15,13 @@ class MonsterCatalogTest {
     private final ObjectMapper mapper = new ObjectMapper();
 
     @Test
-    void acceptsExactClientCatalogWithAllTwentyOneIdsAndThreeGrades() throws IOException {
-        var catalog = new MonsterCatalog();
-        JsonNode rows = mapper.readTree(catalog.json());
+    void acceptsPublishedCatalogWithThreeGrades() throws IOException {
+        JsonNode rows = source();
+        MonsterCatalog.validate(rows);
 
-        assertThat(rows).hasSize(21);
+        assertThat(rows).hasSize(3);
         assertThat(rows.get(0).get("Id").intValue()).isEqualTo(1);
-        assertThat(rows.get(20).get("Id").intValue()).isEqualTo(100);
+        assertThat(rows.get(2).get("Id").intValue()).isEqualTo(3);
         assertThat(rows.findValuesAsText("Grade")).contains("Normal", "Elite", "Boss");
     }
 
@@ -144,6 +145,6 @@ class MonsterCatalogTest {
     }
 
     private JsonNode source() throws IOException {
-        return mapper.readTree(new MonsterCatalog().json());
+        return mapper.readTree(BattleSourceFixture.monsters());
     }
 }
