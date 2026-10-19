@@ -154,7 +154,7 @@ public class BattleService {
                                             new UserStageProgress(user, stage));
                                 });
         progress.updateClearRating(request.getRating());
-        if (request.getRating() > 0) {
+        if (progress.getClearRating() > 0) {
             unlockNextStage(userId, request.getStageId());
         }
         BattleResult result =

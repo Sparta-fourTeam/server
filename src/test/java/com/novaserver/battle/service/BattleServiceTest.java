@@ -194,6 +194,33 @@ class BattleServiceTest {
     }
 
     @Test
+    void retainedClearRatingUnlocksNextStageEvenWhenThisRunHasNoRating() {
+        BattleSession existing = new BattleSession(1L, "battle-1", "key-1");
+        when(battleRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(battleRepository.deleteByUserIdAndBattleId(1L, "battle-1")).thenReturn(1);
+        when(stageRewardService.calculateClearReward(1L, 1, 10, 0))
+                .thenReturn(new ClearRewardResult(10, 5, Map.of(), 0));
+        Stage stage = mock(Stage.class);
+        UserStageProgress cleared = new UserStageProgress(null, stage);
+        cleared.updateClearRating(3);
+        when(userStageProgressRepository.findByUserIdAndStageId(1L, 1))
+                .thenReturn(Optional.of(cleared));
+        when(userStageProgressRepository.findByUserIdAndStageId(1L, 2))
+                .thenReturn(Optional.empty());
+        Stage nextStage = mock(Stage.class);
+        when(progressReports.nextStageId(1)).thenReturn(Optional.of(2));
+        when(stageRepository.findById(2)).thenReturn(Optional.of(nextStage));
+        when(userStageProgressRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        battleService.endBattle(1L, endRequest("battle-1", 10, 0));
+
+        var saved = org.mockito.ArgumentCaptor.forClass(UserStageProgress.class);
+        verify(userStageProgressRepository).save(saved.capture());
+        assertThat(saved.getValue().getStage()).isSameAs(nextStage);
+    }
+
+    @Test
     void clearOfLastStageCreatesNoExtraProgressRow() {
         BattleSession existing = new BattleSession(1L, "battle-1", "key-1");
         when(battleRepository.findById(1L)).thenReturn(Optional.of(existing));
