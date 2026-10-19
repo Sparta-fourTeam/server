@@ -144,6 +144,17 @@ public enum ErrorCode {
     // 에너지
     INSUFFICIENT_ENERGY(HttpStatus.CONFLICT, "해당 유저의 에너지가 부족합니다."),
     ENERGY_LOCK_CONFLICT(HttpStatus.CONFLICT, "잠시 후 다시 시도해주세요.");
+    // 퀘스트 보상
+    QUEST_REWARD_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 퀘스트 보상입니다: %s"),
+    QUEST_REWARD_DUPLICATED(HttpStatus.CONFLICT, "이미 존재하는 퀘스트 보상 id입니다: %s"),
+    QUEST_REWARD_THRESHOLD_DUPLICATED(
+            HttpStatus.CONFLICT, "이미 등록된 포인트 구간입니다: period=%s, points=%s"),
+
+    // 유저 퀘스트 진행도
+    QUEST_PROGRESS_NOT_FOUND(HttpStatus.NOT_FOUND, "퀘스트 진행도가 없습니다: %s"),
+    QUEST_NOT_COMPLETED(HttpStatus.CONFLICT, "아직 완료하지 않은 퀘스트입니다: %s"),
+    QUEST_REWARD_ALREADY_CLAIMED(HttpStatus.CONFLICT, "이미 보상을 수령한 퀘스트입니다: %s"),
+    QUEST_REWARD_NOTHING_TO_CLAIM(HttpStatus.CONFLICT, "받을 수 있는 보상이 없습니다: %s");
 
     private final HttpStatus status;
     private final String message;
