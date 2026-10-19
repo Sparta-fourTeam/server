@@ -151,9 +151,46 @@ class ChatPresenceServiceTest {
     }
 
     @Test
+    @DisplayName("구독 완료 전에 해제된 구독은 지연 콜백으로 다시 집계하지 않는다")
+    void ignoresSubscribeAfterUnsubscribe() {
+        var delayed = subscribeEvent("session-1", "presence", DESTINATION);
+        service.onUnsubscribe(unsubscribeEvent("session-1", "presence"));
+
+        service.onSubscribe(delayed);
+
+        verifyNoInteractions(messagingTemplate);
+    }
+
+    @Test
+    @DisplayName("구독 ID를 재사용해도 이전 구독의 지연 해제가 새 구독을 제거하지 않는다")
+    void staleUnsubscribeDoesNotRemoveReusedSubscriptionId() {
+        var oldSubscribe = subscribeEvent("session-1", "presence", DESTINATION);
+        var oldUnsubscribe = unsubscribeEvent("session-1", "presence");
+        var newSubscribe = subscribeEvent("session-1", "presence", DESTINATION);
+        service.onSubscribe(newSubscribe);
+
+        service.onUnsubscribe(oldUnsubscribe);
+        service.onSubscribe(oldSubscribe);
+
+        verify(messagingTemplate).convertAndSend(DESTINATION, new ChatPresenceResponse(1));
+        verify(messagingTemplate, never()).convertAndSend(DESTINATION, new ChatPresenceResponse(0));
+    }
+
+    @Test
     @DisplayName("실제 브로커의 대기 중 구독이 연결 종료 뒤 실행되어도 집계에서 제외한다")
     void queuedSubscribeAfterDisconnectDoesNotInflateActualBrokerCount()
             throws InterruptedException {
+        assertQueuedSubscribeNotCounted(true);
+    }
+
+    @Test
+    @DisplayName("실제 브로커의 구독 해제 뒤 지연 구독 콜백이 실행되어도 집계에서 제외한다")
+    void queuedSubscribeAfterUnsubscribeDoesNotInflateActualBrokerCount()
+            throws InterruptedException {
+        assertQueuedSubscribeNotCounted(false);
+    }
+
+    private void assertQueuedSubscribeNotCounted(boolean disconnect) throws InterruptedException {
         try (var context = new AnnotationConfigWebApplicationContext()) {
             context.setServletContext(new MockServletContext());
             context.register(WebSocketConfig.class, ChatPresenceService.class);
@@ -167,6 +204,7 @@ class ChatPresenceServiceTest {
             var subscribeQueued = new CountDownLatch(1);
             var resumeSubscribe = new CountDownLatch(1);
             var subscribeHandled = new CountDownLatch(1);
+            var unsubscribeHandled = new CountDownLatch(1);
             var interceptors = new ArrayList<>(inbound.getInterceptors());
             interceptors.add(
                     0,
@@ -200,6 +238,12 @@ class ChatPresenceServiceTest {
                             if (isDelayedSubscribe(message, handler)) {
                                 subscribeHandled.countDown();
                             }
+                            if (handler instanceof SimpleBrokerMessageHandler
+                                    && SimpMessageHeaderAccessor.getMessageType(
+                                                    message.getHeaders())
+                                            == SimpMessageType.UNSUBSCRIBE) {
+                                unsubscribeHandled.countDown();
+                            }
                         }
 
                         private boolean isDelayedSubscribe(
@@ -216,10 +260,14 @@ class ChatPresenceServiceTest {
                     });
             inbound.setInterceptors(interceptors);
             try {
-                inbound.send(
-                        subscribeEvent("closed-session", "presence", DESTINATION).getMessage());
+                inbound.send(subscribeMessage("closed-session", "presence", DESTINATION));
                 assertThat(subscribeQueued.await(3, TimeUnit.SECONDS)).isTrue();
-                context.publishEvent(disconnectEvent("closed-session"));
+                if (disconnect) {
+                    context.publishEvent(disconnectEvent("closed-session"));
+                } else {
+                    inbound.send(unsubscribeMessage("closed-session", "presence"));
+                    assertThat(unsubscribeHandled.await(3, TimeUnit.SECONDS)).isTrue();
+                }
             } finally {
                 resumeSubscribe.countDown();
             }
@@ -230,7 +278,7 @@ class ChatPresenceServiceTest {
             connect.setSessionAttributes(attributes("live-session"));
             inbound.send(MessageBuilder.createMessage(new byte[0], connect.getMessageHeaders()));
             assertThat(received.poll(3, TimeUnit.SECONDS)).isNotNull();
-            inbound.send(subscribeEvent("live-session", "presence", DESTINATION).getMessage());
+            inbound.send(subscribeMessage("live-session", "presence", DESTINATION));
 
             var count = received.poll(3, TimeUnit.SECONDS);
             assertThat(count).isNotNull();
@@ -260,7 +308,7 @@ class ChatPresenceServiceTest {
             inbound.send(MessageBuilder.createMessage(new byte[0], connect.getMessageHeaders()));
             assertThat(received.poll(3, TimeUnit.SECONDS)).isNotNull();
 
-            inbound.send(subscribeEvent("only-session", "presence", DESTINATION).getMessage());
+            inbound.send(subscribeMessage("only-session", "presence", DESTINATION));
 
             var initial = received.poll(3, TimeUnit.SECONDS);
             assertThat(initial).isNotNull();
@@ -275,26 +323,35 @@ class ChatPresenceServiceTest {
 
     private SessionSubscribeEvent subscribeEvent(
             String sessionId, String subscriptionId, String destination) {
+        return new SessionSubscribeEvent(
+                new Object(),
+                service.prepareMessage(subscribeMessage(sessionId, subscriptionId, destination)));
+    }
+
+    private Message<byte[]> subscribeMessage(
+            String sessionId, String subscriptionId, String destination) {
         SimpMessageHeaderAccessor accessor =
                 SimpMessageHeaderAccessor.create(SimpMessageType.SUBSCRIBE);
         accessor.setSessionId(sessionId);
         accessor.setSubscriptionId(subscriptionId);
         accessor.setDestination(destination);
         accessor.setSessionAttributes(attributes(sessionId));
-        Message<byte[]> message =
-                MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
-        return new SessionSubscribeEvent(new Object(), message);
+        return MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
     }
 
     private SessionUnsubscribeEvent unsubscribeEvent(String sessionId, String subscriptionId) {
+        return new SessionUnsubscribeEvent(
+                new Object(),
+                service.prepareMessage(unsubscribeMessage(sessionId, subscriptionId)));
+    }
+
+    private Message<byte[]> unsubscribeMessage(String sessionId, String subscriptionId) {
         SimpMessageHeaderAccessor accessor =
                 SimpMessageHeaderAccessor.create(SimpMessageType.UNSUBSCRIBE);
         accessor.setSessionId(sessionId);
         accessor.setSubscriptionId(subscriptionId);
         accessor.setSessionAttributes(attributes(sessionId));
-        Message<byte[]> message =
-                MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
-        return new SessionUnsubscribeEvent(new Object(), message);
+        return MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
     }
 
     private SessionDisconnectEvent disconnectEvent(String sessionId) {

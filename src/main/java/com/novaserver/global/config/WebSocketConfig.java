@@ -43,6 +43,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registration.interceptors(
                 new ExecutorChannelInterceptor() {
                     @Override
+                    public Message<?> preSend(Message<?> message, MessageChannel channel) {
+                        return presence.getObject().prepareMessage(message);
+                    }
+
+                    @Override
                     public void afterMessageHandled(
                             Message<?> message,
                             MessageChannel channel,
@@ -74,6 +79,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        registry.setPreserveReceiveOrder(true);
         registry.addEndpoint(ENDPOINT).setAllowedOriginPatterns("*");
     }
 
