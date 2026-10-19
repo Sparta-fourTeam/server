@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.novaserver.auth.jwt.ClientType;
 import com.novaserver.auth.jwt.JwtProvider;
+import com.novaserver.auth.repository.AccessTokenRepository;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.condex.dto.CodexGradeRewardRequest;
 import com.novaserver.condex.dto.CodexMonsterRequest;
@@ -79,6 +80,7 @@ class CodexRewardSourceTransactionTest {
     @MockitoSpyBean private CodexGradeRewardRepository grades;
     @MockitoSpyBean private UserCodexRepository states;
     @MockitoBean private TokenBlocklistRepository blocklist;
+    @MockitoBean private AccessTokenRepository accessTokenRepository;
     @MockitoBean private Clock clock;
     private TransactionTemplate tx;
     private final List<Long> userIds = new ArrayList<>();

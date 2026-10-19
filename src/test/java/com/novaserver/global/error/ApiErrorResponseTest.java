@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.novaserver.auth.jwt.ClientType;
 import com.novaserver.auth.jwt.JwtProvider;
+import com.novaserver.auth.repository.AccessTokenRepository;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.user.Role;
 import java.net.URI;
@@ -27,8 +28,9 @@ class ApiErrorResponseTest {
 
     @Autowired private JwtProvider jwtProvider;
 
-    // JWT 필터는 실제로 실행하되, 차단 계정 조회 때문에 외부 Redis가 필요하지 않게 한다.
+    // JWT 필터는 실제로 실행하되, 차단 계정·세션 조회 때문에 외부 Redis가 필요하지 않게 한다.
     @MockitoBean private TokenBlocklistRepository tokenBlocklistRepository;
+    @MockitoBean private AccessTokenRepository accessTokenRepository;
 
     private final HttpClient client = HttpClient.newHttpClient();
 

@@ -4,6 +4,7 @@ import com.novaserver.auth.jwt.JwtAccessDeniedHandler;
 import com.novaserver.auth.jwt.JwtAuthenticationEntryPoint;
 import com.novaserver.auth.jwt.JwtAuthenticationFilter;
 import com.novaserver.auth.jwt.JwtProvider;
+import com.novaserver.auth.repository.AccessTokenRepository;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.user.Role;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,7 @@ public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
     private final TokenBlocklistRepository tokenBlocklistRepository;
+    private final AccessTokenRepository accessTokenRepository;
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
     private final JwtAccessDeniedHandler accessDeniedHandler;
 
@@ -77,7 +79,8 @@ public class SecurityConfig {
                                         .authenticationEntryPoint(authenticationEntryPoint)
                                         .accessDeniedHandler(accessDeniedHandler))
                 .addFilterBefore(
-                        new JwtAuthenticationFilter(jwtProvider, tokenBlocklistRepository),
+                        new JwtAuthenticationFilter(
+                                jwtProvider, tokenBlocklistRepository, accessTokenRepository),
                         UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

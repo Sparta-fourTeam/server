@@ -1,5 +1,6 @@
 package com.novaserver.global.config;
 
+import com.novaserver.auth.jwt.GameWebSocketSessionRegistry;
 import com.novaserver.chat.service.ChatPresenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
@@ -17,6 +18,7 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketTransportRegistration;
 import org.springframework.web.socket.messaging.SessionSubscribeEvent;
 import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 
@@ -26,17 +28,20 @@ import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
  * <p>핸드셰이크는 일반 HTTP 요청으로 처리되어 {@code SecurityConfig}의 JWT 인증을 그대로 거친다. 인증된 사용자만 {@code
  * /api/ws-chat}에 연결할 수 있고, 연결된 세션의 Principal은 JWT에서 꺼낸 사용자다. 경로를 {@code /api}로 시작한 건 배포 환경 nginx가 이
  * 접두사가 있는 요청만 스프링 서버로 넘기기 때문이다.
+ *
+ * <p>{@link GameWebSocketSessionRegistry}를 데코레이터로 등록해, GAME 계정당 세션 1개 강제를 WebSocket 연결에도 적용한다.
  */
 @Configuration
 @EnableWebSocketMessageBroker
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    private final ObjectProvider<ChatPresenceService> presence;
-
     private static final String ENDPOINT = "/api/ws-chat";
     private static final String APPLICATION_PREFIX = "/app";
     private static final String BROKER_PREFIX = "/topic";
+
+    private final ObjectProvider<ChatPresenceService> presence;
+    private final GameWebSocketSessionRegistry gameWebSocketSessionRegistry;
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
@@ -87,5 +92,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         registry.setApplicationDestinationPrefixes(APPLICATION_PREFIX);
         registry.enableSimpleBroker(BROKER_PREFIX);
+    }
+
+    @Override
+    public void configureWebSocketTransport(WebSocketTransportRegistration registration) {
+        registration.addDecoratorFactory(gameWebSocketSessionRegistry);
     }
 }

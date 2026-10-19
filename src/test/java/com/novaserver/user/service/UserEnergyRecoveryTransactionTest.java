@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.novaserver.auth.jwt.ClientType;
 import com.novaserver.auth.jwt.JwtProvider;
+import com.novaserver.auth.repository.AccessTokenRepository;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.user.EnergyRecoverySource;
 import com.novaserver.user.Provider;
@@ -84,6 +85,7 @@ class UserEnergyRecoveryTransactionTest {
     @MockitoSpyBean private UserEnergyRecoveryReceiptRepository receipts;
     @MockitoBean private Clock clock;
     @MockitoBean private TokenBlocklistRepository tokenBlocklistRepository;
+    @MockitoBean private AccessTokenRepository accessTokenRepository;
 
     private TransactionTemplate transaction;
     private Long userId;
