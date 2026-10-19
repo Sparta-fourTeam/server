@@ -5,7 +5,6 @@ import com.novaserver.chat.dto.ChatMessageResponse;
 import com.novaserver.chat.entity.ChatMessage;
 import com.novaserver.chat.repository.ChatMessageRepository;
 import com.novaserver.user.dto.UserProfileResponse;
-import com.novaserver.user.repository.UserRepository;
 import com.novaserver.user.service.UserProfileService;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
@@ -29,7 +28,6 @@ public class ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final Clock clock;
     private final UserProfileService profiles;
-    private final UserRepository users;
 
     /** 메시지를 저장하고 방송용 응답으로 변환한다. */
     @Transactional
@@ -48,8 +46,7 @@ public class ChatService {
         Collections.reverse(recent);
         var senderIds = recent.stream().map(ChatMessage::getSenderId).distinct().toList();
         var identities =
-                users.findAllById(senderIds).stream()
-                        .map(UserProfileResponse::from)
+                profiles.getProfiles(senderIds).stream()
                         .collect(
                                 Collectors.toMap(UserProfileResponse::userId, Function.identity()));
         return recent.stream()

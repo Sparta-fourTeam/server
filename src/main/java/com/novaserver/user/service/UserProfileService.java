@@ -6,6 +6,8 @@ import com.novaserver.user.dto.UserProfileResponse;
 import com.novaserver.user.entity.User;
 import com.novaserver.user.repository.UserRepository;
 import java.text.Normalizer;
+import java.util.Collection;
+import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,22 @@ public class UserProfileService {
                         .orElseThrow(() -> ErrorCode.UNAUTHORIZED.exception());
         user.initializeProfile();
         return UserProfileResponse.from(user);
+    }
+
+    /** 채팅 기록의 발신자 프로필을 일괄 초기화하고 저장된 이름으로 반환한다. */
+    @Transactional
+    public List<UserProfileResponse> getProfiles(Collection<Long> userIds) {
+        if (userIds.isEmpty()) {
+            return List.of();
+        }
+        // 단일 프로필 수정과 같은 행 잠금을 쓰고, 여러 행은 항상 ID 순서로 잠근다.
+        return users.findAllByIdForUpdate(userIds).stream()
+                .map(
+                        user -> {
+                            user.initializeProfile();
+                            return UserProfileResponse.from(user);
+                        })
+                .toList();
     }
 
     /** 지정한 필드만 수정하고 중복 이름은 충돌로 거절한다. */
