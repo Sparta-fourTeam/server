@@ -166,6 +166,33 @@ class BattleServiceTest {
     }
 
     @Test
+    void clearingStageCreatesNextStageProgressRow() {
+        BattleSession existing = new BattleSession(1L, "battle-1", "key-1");
+        when(battleRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(battleRepository.deleteByUserIdAndBattleId(1L, "battle-1")).thenReturn(1);
+        when(stageRewardService.calculateClearReward(1L, 1, 10, 3))
+                .thenReturn(new ClearRewardResult(100, 50, Map.of("mat.wood", 5), 0));
+        Stage stage = mock(Stage.class);
+        Stage nextStage = mock(Stage.class);
+        when(stageService.findStage(1)).thenReturn(stage);
+        when(stageService.findStage(2)).thenReturn(nextStage);
+        when(progressReports.nextStageId(1)).thenReturn(Optional.of(2));
+        when(userStageProgressRepository.findByUserIdAndStageId(1L, 1))
+                .thenReturn(Optional.empty());
+        when(userStageProgressRepository.findByUserIdAndStageId(1L, 2))
+                .thenReturn(Optional.empty());
+        when(userStageProgressRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        battleService.endBattle(1L, endRequest("battle-1", 10, 3));
+
+        var saved = org.mockito.ArgumentCaptor.forClass(UserStageProgress.class);
+        verify(userStageProgressRepository, org.mockito.Mockito.times(2)).save(saved.capture());
+        assertThat(saved.getAllValues().get(1).getStage()).isSameAs(nextStage);
+        assertThat(saved.getAllValues().get(1).getClearRating()).isZero();
+    }
+
+    @Test
     void throwsNotFoundWhenNoBattleInProgress() {
         when(battleRepository.findById(1L)).thenReturn(Optional.empty());
 
