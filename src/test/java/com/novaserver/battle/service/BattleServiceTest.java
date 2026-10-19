@@ -176,9 +176,8 @@ class BattleServiceTest {
         Stage stage = mock(Stage.class);
         Stage nextStage = mock(Stage.class);
         when(stageService.findStage(1)).thenReturn(stage);
-        when(stageRepository.findFirstByStageIdGreaterThanOrderByStageIdAsc(1))
-                .thenReturn(Optional.of(nextStage));
-        when(nextStage.getStageId()).thenReturn(2);
+        when(progressReports.nextStageId(1)).thenReturn(Optional.of(2));
+        when(stageRepository.findById(2)).thenReturn(Optional.of(nextStage));
         when(userStageProgressRepository.findByUserIdAndStageId(1L, 1))
                 .thenReturn(Optional.empty());
         when(userStageProgressRepository.findByUserIdAndStageId(1L, 2))
@@ -204,8 +203,6 @@ class BattleServiceTest {
         Stage stage = mock(Stage.class);
         when(stageService.findStage(1)).thenReturn(stage);
         when(userStageProgressRepository.findByUserIdAndStageId(any(), any()))
-                .thenReturn(Optional.empty());
-        when(stageRepository.findFirstByStageIdGreaterThanOrderByStageIdAsc(1))
                 .thenReturn(Optional.empty());
         when(userStageProgressRepository.save(any()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
