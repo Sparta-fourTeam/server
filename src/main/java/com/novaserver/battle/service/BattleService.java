@@ -169,18 +169,17 @@ public class BattleService {
     }
 
     /**
-     * 클리어한 스테이지의 다음 스테이지 진행 행(등급 0)을 만들어 클라이언트가 해금으로 보게 한다. 다음 스테이지가 Stage 테이블에 아직 없으면 해금만 건너뛰고 전투
-     * 결과 저장은 막지 않는다.
+     * 클리어한 스테이지 바로 다음 스테이지의 진행 행(등급 0)을 만들어 클라이언트가 해금으로 보게 한다. 다음 스테이지가 Stage 테이블에 없으면(마지막 스테이지)
+     * 아무것도 하지 않는다.
      */
     private void unlockNextStage(Long userId, Integer stageId) {
-        progressReports
-                .nextStageId(stageId)
+        stageRepository
+                .findFirstByStageIdGreaterThanOrderByStageIdAsc(stageId)
                 .filter(
                         next ->
                                 userStageProgressRepository
-                                        .findByUserIdAndStageId(userId, next)
+                                        .findByUserIdAndStageId(userId, next.getStageId())
                                         .isEmpty())
-                .flatMap(stageRepository::findById)
                 .ifPresent(
                         next ->
                                 userStageProgressRepository.save(
