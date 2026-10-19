@@ -23,13 +23,15 @@ public class BattleSourceController {
     /** 서버가 검증·스폰 정책에 사용한 스테이지 원문이다. */
     @GetMapping(value = "/stages", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> stages() {
-        return raw(source.stagesJson());
+        var current = source.snapshot();
+        return raw(current.stagesJson(), current.revision());
     }
 
     /** 같은 원본 세트의 전투 배속 설정이다. */
     @GetMapping(value = "/combat", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> combat() {
-        return raw(source.combatJson());
+        var current = source.snapshot();
+        return raw(current.combatJson(), current.revision());
     }
 
     /** 원문과 manifest를 한 DB 스냅샷으로 내려준다. 중간 갱신이 섞이지 않는다. */
@@ -50,9 +52,9 @@ public class BattleSourceController {
             String monstersJson,
             String combatJson) {}
 
-    private ResponseEntity<String> raw(String json) {
+    private ResponseEntity<String> raw(String json, String revision) {
         return ResponseEntity.ok()
-                .header("X-Battle-Source-Revision", source.revision())
+                .header("X-Battle-Source-Revision", revision)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(json);
     }

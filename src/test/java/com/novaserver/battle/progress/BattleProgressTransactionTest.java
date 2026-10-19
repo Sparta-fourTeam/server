@@ -441,6 +441,30 @@ class BattleProgressTransactionTest {
     }
 
     @Test
+    void eachRawEndpointUsesOneSnapshotForBodyAndRevisionDuringPublication() throws Exception {
+        var previous = source.snapshot();
+        org.mockito.Mockito.doReturn(previous).when(source).snapshot();
+        org.mockito.Mockito.doReturn("b".repeat(64)).when(source).revision();
+        String token = "Bearer " + jwt.createAccessToken(user, ClientType.GAME, Role.USER);
+        for (var table :
+                Map.of("stages", previous.stagesJson(), "combat", previous.combatJson())
+                        .entrySet()) {
+            mvc.perform(
+                            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+                                            "/api/data/" + table.getKey())
+                                    .header("Authorization", token))
+                    .andExpect(
+                            org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                    .header()
+                                    .string("X-Battle-Source-Revision", previous.revision()))
+                    .andExpect(
+                            org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                    .content()
+                                    .string(table.getValue()));
+        }
+    }
+
+    @Test
     void publicationIsAdminOnlyAtomicVersionedAndDoesNotFallbackToFiles() throws Exception {
         String token = "Bearer " + jwt.createAccessToken(user, ClientType.GAME, Role.USER);
         String admin = "Bearer " + jwt.createAccessToken(user, ClientType.WEB, Role.ADMIN);
