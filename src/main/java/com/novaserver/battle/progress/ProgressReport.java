@@ -3,6 +3,7 @@ package com.novaserver.battle.progress;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import java.util.Set;
 
@@ -14,4 +15,5 @@ public record ProgressReport(
         @Min(0) int killedMonsters,
         @Min(0) int completedWaves,
         @Min(0) int reachedWave,
-        @NotNull Set<@NotNull @Positive Long> encounteredMonsterIds) {}
+        @NotNull Set<@NotNull @Positive Long> encounteredMonsterIds,
+        @NotNull @Pattern(regexp = "[0-9a-f]{64}") String sourceRevision) {}

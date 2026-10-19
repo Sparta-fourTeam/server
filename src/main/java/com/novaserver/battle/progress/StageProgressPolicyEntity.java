@@ -16,19 +16,23 @@ public class StageProgressPolicyEntity {
     @Id private Integer stageId;
     private int version;
 
+    @Column(nullable = false, length = 64)
+    private String sourceRevision;
+
     @Lob
     @Column(nullable = false, columnDefinition = "longtext")
     private String definition;
 
     /** 최초 정책을 등록한다. */
-    public StageProgressPolicyEntity(Integer stageId, String definition) {
+    public StageProgressPolicyEntity(Integer stageId, String definition, String sourceRevision) {
         this.stageId = stageId;
-        replace(definition);
+        replace(definition, sourceRevision);
     }
 
     /** 동결된 기존 전투를 바꾸지 않고 이후 전투용 개정을 올린다. */
-    public void replace(String definition) {
+    public void replace(String definition, String sourceRevision) {
         version = Math.addExact(version, 1);
         this.definition = definition;
+        this.sourceRevision = sourceRevision;
     }
 }

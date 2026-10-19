@@ -29,6 +29,9 @@ public class BattleProgress {
     private Integer stageId;
     private int policyVersion;
 
+    @Column(nullable = false, length = 64)
+    private String sourceRevision;
+
     @Lob
     @Column(nullable = false, columnDefinition = "longtext")
     private String policy;
@@ -57,6 +60,7 @@ public class BattleProgress {
         this.stageId = stageId;
         this.policy = policy.getDefinition();
         this.policyVersion = policy.getVersion();
+        this.sourceRevision = policy.getSourceRevision();
         this.startedAt = startedAt;
     }
 

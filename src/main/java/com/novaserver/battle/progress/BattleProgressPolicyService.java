@@ -2,7 +2,6 @@ package com.novaserver.battle.progress;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.novaserver.condex.repository.CodexRepository;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.stage.entity.Stage;
 import jakarta.persistence.EntityManager;
@@ -23,13 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class BattleProgressPolicyService {
     private static final ObjectMapper JSON = new ObjectMapper();
-    // 승인된 현재 Combat.BaseTimeScale 0.5 × 출시 배속 2. Editor 4·8배는 제외한다.
-    private static final BigDecimal RELEASE_MAX_TIME_SCALE = BigDecimal.ONE;
     private final StageProgressPolicyRepository policies;
-    private final CodexRepository monsters;
+    private final BattlePolicySource source;
     private final EntityManager entities;
 
-    /** 동일 버전 Stages·Monsters·Combat 원본 공급은 별도 연결해야 한다. 자동 등록은 없다. */
+    /** 내부 정책 저장. 임의 스폰 구성을 받는 외부 API는 제공하지 않는다. */
     @Transactional
     public StageProgressPolicyEntity save(Integer stageId, StageProgressPolicy policy) {
         if (entities.find(Stage.class, stageId, LockModeType.PESSIMISTIC_WRITE) == null) {
@@ -42,20 +39,41 @@ public class BattleProgressPolicyService {
         }
         String definition = encode(policy);
         if (previous == null) {
-            previous = new StageProgressPolicyEntity(stageId, definition);
+            previous = new StageProgressPolicyEntity(stageId, definition, source.revision());
         } else {
-            previous.replace(definition);
+            previous.replace(definition, source.revision());
         }
         return policies.saveAndFlush(previous);
     }
 
-    @Transactional(readOnly = true)
+    /** 실제 같은 원본으로 정책을 생성·개정한다. 활성 전투의 동결본은 수정하지 않는다. */
+    @Transactional
     public StageProgressPolicyEntity require(Integer stageId) {
-        return policies.findById(stageId)
-                .orElseThrow(ErrorCode.BATTLE_PROGRESS_UNAVAILABLE::exception);
+        if (entities.find(Stage.class, stageId, LockModeType.PESSIMISTIC_WRITE) == null) {
+            throw ErrorCode.STAGE_NOT_FOUND.exception(stageId);
+        }
+        var previous = policies.findById(stageId).orElse(null);
+        if (previous != null && source.revision().equals(previous.getSourceRevision())) {
+            return previous;
+        }
+        var derived = source.policy(stageId);
+        validate(derived);
+        return save(
+                stageId,
+                new StageProgressPolicy(
+                        derived.maxTimeScale(),
+                        derived.minSpawnInterval(),
+                        derived.waves(),
+                        derived.descendants(),
+                        previous == null ? 0 : previous.getVersion()));
     }
 
-    /** 발급 당시 동결한 스폰 데이터와 서버 경과 시간으로 불가능한 보고만 거절한다. */
+    /** 클라이언트가 실제로 로드한 원문과 전투 최초 고정을 비교한다. */
+    public String sourceRevision() {
+        return source.revision();
+    }
+
+    /** 원장을 열 때 동결한 스폰 데이터와 서버 경과 시간으로 불가능한 보고만 거절한다. */
     public void check(BattleProgress progress, ProgressReport report, Instant now) {
         StageProgressPolicy policy = decode(progress.getPolicy());
         if (report.completedWaves() > report.reachedWave()
@@ -102,7 +120,7 @@ public class BattleProgressPolicyService {
         if (policy == null
                 || policy.expectedVersion() < 0
                 || policy.maxTimeScale() == null
-                || policy.maxTimeScale().compareTo(RELEASE_MAX_TIME_SCALE) != 0
+                || policy.maxTimeScale().compareTo(source.manifest().maxTimeScale()) != 0
                 || policy.minSpawnInterval() == null
                 || policy.minSpawnInterval().signum() <= 0
                 || policy.waves() == null
@@ -116,7 +134,7 @@ public class BattleProgressPolicyService {
             if (monster.getKey() == null
                     || monster.getKey() <= 0
                     || monster.getValue() == null
-                    || !monsters.existsById(monster.getKey())) {
+                    || !source.containsMonster(monster.getKey())) {
                 throw ErrorCode.BATTLE_PROGRESS_INVALID.exception();
             }
             var seen = new HashSet<Long>();

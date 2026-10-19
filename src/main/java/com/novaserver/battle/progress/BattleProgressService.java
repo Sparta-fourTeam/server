@@ -41,7 +41,7 @@ public class BattleProgressService {
 
     /** 새 차감 없이 기존 활성 전투에 스테이지·정책을 한 번만 고정한다. */
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public State open(Long userId, String battleId, Integer stageId) {
+    public State open(Long userId, String battleId, Integer stageId, String sourceRevision) {
         final var user =
                 users.findByIdForUpdate(userId).orElseThrow(ErrorCode.ACCOUNT_DELETED::exception);
         var session = sessions.findById(userId).orElseThrow(ErrorCode.BATTLE_NOT_FOUND::exception);
@@ -52,10 +52,14 @@ public class BattleProgressService {
         if (prior != null) {
             if (!prior.getUser().getId().equals(userId)
                     || !prior.getStageId().equals(stageId)
-                    || prior.isClosed()) {
+                    || prior.isClosed()
+                    || !prior.getSourceRevision().equals(sourceRevision)) {
                 throw ErrorCode.BATTLE_PROGRESS_CONFLICT.exception();
             }
             return state(prior);
+        }
+        if (!policies.sourceRevision().equals(sourceRevision)) {
+            throw ErrorCode.BATTLE_PROGRESS_CONFLICT.exception();
         }
         if (stages.findByUserIdAndStageId(userId, stageId).isEmpty()) {
             throw ErrorCode.BATTLE_PROGRESS_INVALID.exception();
@@ -88,6 +92,8 @@ public class BattleProgressService {
                 || request.completedWaves() < 0
                 || request.reachedWave() < 0
                 || request.expectedRevision() < 0
+                || request.sourceRevision() == null
+                || !request.sourceRevision().matches("[0-9a-f]{64}")
                 || request.reportId() == null
                 || !request.reportId()
                         .matches(
@@ -105,7 +111,8 @@ public class BattleProgressService {
                         request.killedMonsters(),
                         request.completedWaves(),
                         request.reachedWave(),
-                        new TreeSet<>(request.encounteredMonsterIds()));
+                        new TreeSet<>(request.encounteredMonsterIds()),
+                        request.sourceRevision());
         String payload = BattleProgressPolicyService.encode(normalized);
         var prior = receipts.findById(request.reportId()).orElse(null);
         if (prior != null) {
@@ -115,7 +122,8 @@ public class BattleProgressService {
             }
             return ack(prior.getAck());
         }
-        if (row.isClosed()
+        if (!row.getSourceRevision().equals(request.sourceRevision())
+                || row.isClosed()
                 || row.getRevision() != request.expectedRevision()
                 || sessions.findById(userId)
                         .filter(s -> s.getBattleId().equals(row.getBattleId()))
@@ -194,6 +202,7 @@ public class BattleProgressService {
                 row.getBattleId(),
                 row.getStageId(),
                 row.getPolicyVersion(),
+                row.getSourceRevision(),
                 row.getRevision(),
                 row.getKilledMonsters(),
                 row.getCompletedWaves(),

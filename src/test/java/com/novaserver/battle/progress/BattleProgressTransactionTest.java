@@ -2,6 +2,7 @@ package com.novaserver.battle.progress;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -49,6 +50,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -62,6 +64,7 @@ class BattleProgressTransactionTest {
     @Autowired MockMvc mvc;
     @Autowired JwtProvider jwt;
     @Autowired BattleProgressPolicyService policies;
+    @MockitoSpyBean BattlePolicySource source;
     @Autowired BattleProgressRepository ledger;
     @Autowired BattleProgressReceiptRepository receipts;
     @Autowired StageProgressPolicyRepository definitions;
@@ -106,7 +109,7 @@ class BattleProgressTransactionTest {
                 "daily.fixture.kill",
                 new QuestConfigRequest(QuestPeriod.DAILY, QuestKind.KILL_MONSTERS, 100, 17));
         battle = battles.createBattle(user, UUID.randomUUID().toString()).getBattleId();
-        service.open(user, battle, 901);
+        service.open(user, battle, 901, policies.sourceRevision());
         when(clock.instant()).thenReturn(START.plusSeconds(5));
     }
 
@@ -157,7 +160,16 @@ class BattleProgressTransactionTest {
         assertThat(service.snapshot(user, battle).progress().killedMonsters()).isEqualTo(3);
         assertThatThrownBy(() -> service.report(user, report(0, 6, 1, 2)))
                 .isInstanceOf(ResponseStatusException.class);
-        var changed = new ProgressReport(battle, request.reportId(), 0, 4, 1, 1, Set.of(1L, 2L));
+        var changed =
+                new ProgressReport(
+                        battle,
+                        request.reportId(),
+                        0,
+                        4,
+                        1,
+                        1,
+                        Set.of(1L, 2L),
+                        policies.sourceRevision());
         assertThatThrownBy(() -> service.report(user, changed))
                 .isInstanceOf(ResponseStatusException.class);
         assertThat(service.snapshot(user, battle).progress().revision()).isEqualTo(1);
@@ -166,7 +178,15 @@ class BattleProgressTransactionTest {
     @Test
     void invalidCatalogTimeWaveAndRollbackReportsLeaveNoReceiptOrProgress() {
         var absent =
-                new ProgressReport(battle, UUID.randomUUID().toString(), 0, 3, 1, 1, Set.of(999L));
+                new ProgressReport(
+                        battle,
+                        UUID.randomUUID().toString(),
+                        0,
+                        3,
+                        1,
+                        1,
+                        Set.of(999L),
+                        policies.sourceRevision());
         assertThatThrownBy(() -> service.report(user, absent))
                 .isInstanceOf(ResponseStatusException.class);
         assertThatThrownBy(() -> service.report(user, report(0, 16, 1, 1)))
@@ -195,7 +215,7 @@ class BattleProgressTransactionTest {
         assertThat(service.report(user, report(0, 3, 1, 1)).policyVersion()).isEqualTo(1);
         definitions.deleteAll();
         var next = battles.createBattle(user, UUID.randomUUID().toString()).getBattleId();
-        assertThatThrownBy(() -> service.open(user, next, 901))
+        assertThatThrownBy(() -> service.open(user, next, 901, policies.sourceRevision()))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("503");
         assertThat(service.snapshot(user, battle).closed()).isTrue();
@@ -226,6 +246,109 @@ class BattleProgressTransactionTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("400");
         assertThat(service.report(user, report(0, 3, 1, 1)).policyVersion()).isEqualTo(1);
+    }
+
+    @Test
+    void realStagePolicyIsGeneratedWithoutAdminInputAndWrongSourceCannotBind() {
+        stages.saveAndFlush(Stage.create(1));
+        new TransactionTemplate(transactions)
+                .execute(
+                        status -> {
+                            if (unlocked.findByUserIdAndStageId(user, 1).isEmpty()) {
+                                unlocked.saveAndFlush(
+                                        new UserStageProgress(
+                                                accounts.findById(user).orElseThrow(),
+                                                stages.findById(1).orElseThrow()));
+                            }
+                            return null;
+                        });
+        definitions.deleteAll();
+        var next = battles.createBattle(user, UUID.randomUUID().toString()).getBattleId();
+        assertThatThrownBy(() -> service.open(user, next, 1, "0".repeat(64)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("409");
+        assertThat(ledger.findById(next)).isEmpty();
+        var state = service.open(user, next, 1, policies.sourceRevision());
+        assertThat(state.progress().sourceRevision()).isEqualTo(policies.sourceRevision());
+        assertThat(definitions.findById(1)).isPresent();
+        when(clock.instant()).thenReturn(START.plusSeconds(15));
+        var report =
+                new ProgressReport(
+                        next,
+                        UUID.randomUUID().toString(),
+                        0,
+                        2,
+                        1,
+                        1,
+                        Set.of(2L),
+                        policies.sourceRevision());
+        assertThat(service.report(user, report).acceptedDelta()).isEqualTo(2);
+        var changedSource =
+                new ProgressReport(
+                        next, UUID.randomUUID().toString(), 1, 3, 1, 1, Set.of(2L), "0".repeat(64));
+        assertThatThrownBy(() -> service.report(user, changedSource))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("409");
+        assertThat(service.snapshot(user, next).progress().killedMonsters()).isEqualTo(2);
+    }
+
+    @Test
+    void newSourceRegeneratesPolicyButKeepsOldBattleAndReceiptsOnFrozenSource() throws Exception {
+        stages.saveAndFlush(Stage.create(1));
+        new TransactionTemplate(transactions)
+                .execute(
+                        status -> {
+                            if (unlocked.findByUserIdAndStageId(user, 1).isEmpty()) {
+                                unlocked.saveAndFlush(
+                                        new UserStageProgress(
+                                                accounts.findById(user).orElseThrow(),
+                                                stages.findById(1).orElseThrow()));
+                            }
+                            return null;
+                        });
+        String originalRevision = policies.sourceRevision();
+        var firstBattle = battles.createBattle(user, UUID.randomUUID().toString()).getBattleId();
+        service.open(user, firstBattle, 1, originalRevision);
+        when(clock.instant()).thenReturn(START.plusSeconds(15));
+        var firstReport =
+                new ProgressReport(
+                        firstBattle,
+                        UUID.randomUUID().toString(),
+                        0,
+                        2,
+                        1,
+                        1,
+                        Set.of(2L),
+                        originalRevision);
+        var originalAck = service.report(user, firstReport);
+        var replacement =
+                new BattlePolicySource(
+                        source.stagesJson() + "\n",
+                        new com.novaserver.monster.service.MonsterCatalog().json(),
+                        source.combatJson());
+        doReturn(replacement.revision()).when(source).revision();
+        doReturn(replacement.manifest()).when(source).manifest();
+        doReturn(replacement.stagesJson()).when(source).stagesJson();
+        assertThat(policies.require(1).getVersion()).isEqualTo(2);
+        var laterOldReport =
+                new ProgressReport(
+                        firstBattle,
+                        UUID.randomUUID().toString(),
+                        1,
+                        3,
+                        1,
+                        1,
+                        Set.of(2L),
+                        originalRevision);
+        assertThat(service.report(user, laterOldReport).sourceRevision())
+                .isEqualTo(originalRevision);
+        assertThat(service.open(user, firstBattle, 1, originalRevision).progress().policyVersion())
+                .isEqualTo(1);
+        var next = battles.createBattle(user, UUID.randomUUID().toString()).getBattleId();
+        var current = service.open(user, next, 1, replacement.revision());
+        assertThat(current.progress().sourceRevision()).isEqualTo(replacement.revision());
+        assertThat(current.progress().policyVersion()).isEqualTo(2);
+        assertThat(service.report(user, firstReport)).isEqualTo(originalAck);
     }
 
     @Test
@@ -308,7 +431,8 @@ class BattleProgressTransactionTest {
                 kills,
                 completed,
                 reached,
-                Set.of(1L, 2L));
+                Set.of(1L, 2L),
+                policies.sourceRevision());
     }
 
     private StageProgressPolicy policy(int version) {

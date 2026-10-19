@@ -7,6 +7,7 @@ public record ProgressAck(
         String battleId,
         Integer stageId,
         int policyVersion,
+        String sourceRevision,
         long revision,
         int killedMonsters,
         int completedWaves,
