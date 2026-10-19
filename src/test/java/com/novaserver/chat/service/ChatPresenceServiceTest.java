@@ -6,6 +6,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.novaserver.auth.jwt.GameWebSocketSessionRegistry;
 import com.novaserver.chat.dto.ChatPresenceResponse;
 import com.novaserver.global.config.WebSocketConfig;
 import java.nio.charset.StandardCharsets;
@@ -193,7 +194,10 @@ class ChatPresenceServiceTest {
     private void assertQueuedSubscribeNotCounted(boolean disconnect) throws InterruptedException {
         try (var context = new AnnotationConfigWebApplicationContext()) {
             context.setServletContext(new MockServletContext());
-            context.register(WebSocketConfig.class, ChatPresenceService.class);
+            context.register(
+                    WebSocketConfig.class,
+                    ChatPresenceService.class,
+                    GameWebSocketSessionRegistry.class);
             context.refresh();
             var inbound =
                     context.getBean("clientInboundChannel", ExecutorSubscribableChannel.class);
@@ -294,7 +298,10 @@ class ChatPresenceServiceTest {
     void firstSubscriberReceivesInitialCountThroughActualBroker() throws InterruptedException {
         try (var context = new AnnotationConfigWebApplicationContext()) {
             context.setServletContext(new MockServletContext());
-            context.register(WebSocketConfig.class, ChatPresenceService.class);
+            context.register(
+                    WebSocketConfig.class,
+                    ChatPresenceService.class,
+                    GameWebSocketSessionRegistry.class);
             context.refresh();
             var outbound =
                     context.getBean("clientOutboundChannel", ExecutorSubscribableChannel.class);
