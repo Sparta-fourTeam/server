@@ -442,6 +442,52 @@ class BattleProgressTransactionTest {
     }
 
     @Test
+    void firstAttemptAndNewlyReachedStageOpenWithoutExistingClearRows() throws Exception {
+        var tx = new TransactionTemplate(transactions);
+        tx.execute(
+                status -> {
+                    unlocked.deleteByUserId(user);
+                    return null;
+                });
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        var template = json.readTree(BattleSourceFixture.stages()).get(0);
+        var rows = json.createArrayNode();
+        for (int id = 1; id <= 3; id++) {
+            var copy = (com.fasterxml.jackson.databind.node.ObjectNode) template.deepCopy();
+            copy.put("Id", id);
+            rows.add(copy);
+            stages.saveAndFlush(Stage.create(id));
+        }
+        publisher.publish(
+                new BattleSourceAdminService.Publication(
+                        rows.toString(),
+                        source.monstersJson(),
+                        source.combatJson(),
+                        source.revision()));
+        String first = battles.createBattle(user, UUID.randomUUID().toString()).getBattleId();
+        assertThat(service.open(user, first, 1, source.revision()).progress().stageId())
+                .isEqualTo(1);
+        assertThat(unlocked.findByUserId(user)).isEmpty();
+        tx.execute(
+                status -> {
+                    var clear =
+                            new UserStageProgress(
+                                    accounts.findById(user).orElseThrow(),
+                                    stages.findById(1).orElseThrow());
+                    clear.updateClearRating(1);
+                    unlocked.saveAndFlush(clear);
+                    return null;
+                });
+        String next = battles.createBattle(user, UUID.randomUUID().toString()).getBattleId();
+        assertThat(service.open(user, next, 2, source.revision()).progress().stageId())
+                .isEqualTo(2);
+        assertThat(unlocked.findByUserIdAndStageId(user, 2)).isEmpty();
+        String locked = battles.createBattle(user, UUID.randomUUID().toString()).getBattleId();
+        assertThatThrownBy(() -> service.open(user, locked, 3, source.revision()))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
     void monsterDownloadBlocksPublicationUntilBodyAndNumericVersionAreRead() throws Exception {
         var oldSource = source.snapshot();
         final int oldVersion = versions.getVersions().getTables().get("Monsters");

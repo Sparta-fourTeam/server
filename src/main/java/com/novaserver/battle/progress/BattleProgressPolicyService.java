@@ -73,6 +73,11 @@ public class BattleProgressPolicyService {
         return policies.saveAndFlush(previous);
     }
 
+    /** 게시된 스테이지 순서로 첫 도전과 다음 스테이지 접근을 판단한다. */
+    public java.util.List<Integer> stageOrder() {
+        return source.manifest().stageIds();
+    }
+
     /** 클라이언트가 실제로 로드한 원문과 전투 최초 고정을 비교한다. */
     public String sourceRevision() {
         return source.revision();

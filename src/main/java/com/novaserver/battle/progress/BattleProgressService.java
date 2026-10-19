@@ -61,7 +61,21 @@ public class BattleProgressService {
         if (!policies.sourceRevision().equals(sourceRevision)) {
             throw ErrorCode.BATTLE_PROGRESS_CONFLICT.exception();
         }
-        if (stages.findByUserIdAndStageId(userId, stageId).isEmpty()) {
+        var settled = stages.findByUserId(userId);
+        var order = policies.stageOrder();
+        int index = order.indexOf(stageId);
+        boolean tried = settled.stream().anyMatch(p -> p.getStage().getStageId().equals(stageId));
+        boolean first = index == 0;
+        boolean next =
+                index > 0
+                        && settled.stream()
+                                .anyMatch(
+                                        p ->
+                                                p.getStage()
+                                                                .getStageId()
+                                                                .equals(order.get(index - 1))
+                                                        && p.getClearRating() > 0);
+        if (!tried && !first && !next) {
             throw ErrorCode.BATTLE_PROGRESS_INVALID.exception();
         }
         var definition = policies.require(stageId);
