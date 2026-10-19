@@ -4,11 +4,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.novaserver.chat.dto.ChatPresenceResponse;
 import com.novaserver.global.config.WebSocketConfig;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
@@ -18,9 +23,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.broker.SimpleBrokerMessageHandler;
+import org.springframework.messaging.support.ExecutorChannelInterceptor;
 import org.springframework.messaging.support.ExecutorSubscribableChannel;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.mock.web.MockServletContext;
@@ -39,6 +48,8 @@ class ChatPresenceServiceTest {
     @Mock private SimpMessagingTemplate messagingTemplate;
 
     @InjectMocks private ChatPresenceService service;
+
+    private final Map<String, Map<String, Object>> attributesBySession = new ConcurrentHashMap<>();
 
     @Test
     @DisplayName("presence 구독이 늘어날 때마다 현재 인원수를 방송한다")
@@ -111,6 +122,126 @@ class ChatPresenceServiceTest {
     }
 
     @Test
+    @DisplayName("구독 처리 전에 종료된 세션은 지연 구독으로 다시 집계하지 않는다")
+    void ignoresSubscribeAfterDisconnect() {
+        var delayed = subscribeEvent("closed-session", "presence", DESTINATION);
+        service.onDisconnect(disconnectEvent("closed-session"));
+        service.onDisconnect(disconnectEvent("closed-session"));
+
+        service.onSubscribe(delayed);
+
+        verifyNoInteractions(messagingTemplate);
+        service.onSubscribe(subscribeEvent("live-session", "presence", DESTINATION));
+        verify(messagingTemplate).convertAndSend(DESTINATION, new ChatPresenceResponse(1));
+    }
+
+    @Test
+    @DisplayName("기존 구독을 종료한 뒤 지연된 재구독도 집계하지 않는다")
+    void ignoresResubscribeAfterDisconnect() {
+        service.onSubscribe(subscribeEvent("closed-session", "presence", DESTINATION));
+        service.onDisconnect(disconnectEvent("closed-session"));
+
+        service.onSubscribe(subscribeEvent("closed-session", "late-presence", DESTINATION));
+        service.onSubscribe(subscribeEvent("live-session", "presence", DESTINATION));
+
+        verify(messagingTemplate).convertAndSend(DESTINATION, new ChatPresenceResponse(0));
+        verify(messagingTemplate, times(2))
+                .convertAndSend(DESTINATION, new ChatPresenceResponse(1));
+        verify(messagingTemplate, never()).convertAndSend(DESTINATION, new ChatPresenceResponse(2));
+    }
+
+    @Test
+    @DisplayName("실제 브로커의 대기 중 구독이 연결 종료 뒤 실행되어도 집계에서 제외한다")
+    void queuedSubscribeAfterDisconnectDoesNotInflateActualBrokerCount()
+            throws InterruptedException {
+        try (var context = new AnnotationConfigWebApplicationContext()) {
+            context.setServletContext(new MockServletContext());
+            context.register(WebSocketConfig.class, ChatPresenceService.class);
+            context.refresh();
+            var inbound =
+                    context.getBean("clientInboundChannel", ExecutorSubscribableChannel.class);
+            var outbound =
+                    context.getBean("clientOutboundChannel", ExecutorSubscribableChannel.class);
+            var received = new LinkedBlockingQueue<Message<?>>();
+            outbound.subscribe(received::add);
+            var subscribeQueued = new CountDownLatch(1);
+            var resumeSubscribe = new CountDownLatch(1);
+            var subscribeHandled = new CountDownLatch(1);
+            var interceptors = new ArrayList<>(inbound.getInterceptors());
+            interceptors.add(
+                    0,
+                    new ExecutorChannelInterceptor() {
+                        @Override
+                        public Message<?> beforeHandle(
+                                Message<?> message,
+                                MessageChannel channel,
+                                MessageHandler handler) {
+                            if (isDelayedSubscribe(message, handler)) {
+                                subscribeQueued.countDown();
+                                try {
+                                    if (!resumeSubscribe.await(5, TimeUnit.SECONDS)) {
+                                        throw new IllegalStateException(
+                                                "SUBSCRIBE was not released");
+                                    }
+                                } catch (InterruptedException ex) {
+                                    Thread.currentThread().interrupt();
+                                    throw new IllegalStateException(ex);
+                                }
+                            }
+                            return message;
+                        }
+
+                        @Override
+                        public void afterMessageHandled(
+                                Message<?> message,
+                                MessageChannel channel,
+                                MessageHandler handler,
+                                Exception error) {
+                            if (isDelayedSubscribe(message, handler)) {
+                                subscribeHandled.countDown();
+                            }
+                        }
+
+                        private boolean isDelayedSubscribe(
+                                Message<?> message, MessageHandler handler) {
+                            return handler instanceof SimpleBrokerMessageHandler
+                                    && SimpMessageHeaderAccessor.getMessageType(
+                                                    message.getHeaders())
+                                            == SimpMessageType.SUBSCRIBE
+                                    && "closed-session"
+                                            .equals(
+                                                    SimpMessageHeaderAccessor.getSessionId(
+                                                            message.getHeaders()));
+                        }
+                    });
+            inbound.setInterceptors(interceptors);
+            try {
+                inbound.send(
+                        subscribeEvent("closed-session", "presence", DESTINATION).getMessage());
+                assertThat(subscribeQueued.await(3, TimeUnit.SECONDS)).isTrue();
+                context.publishEvent(disconnectEvent("closed-session"));
+            } finally {
+                resumeSubscribe.countDown();
+            }
+            assertThat(subscribeHandled.await(3, TimeUnit.SECONDS)).isTrue();
+
+            var connect = SimpMessageHeaderAccessor.create(SimpMessageType.CONNECT);
+            connect.setSessionId("live-session");
+            connect.setSessionAttributes(attributes("live-session"));
+            inbound.send(MessageBuilder.createMessage(new byte[0], connect.getMessageHeaders()));
+            assertThat(received.poll(3, TimeUnit.SECONDS)).isNotNull();
+            inbound.send(subscribeEvent("live-session", "presence", DESTINATION).getMessage());
+
+            var count = received.poll(3, TimeUnit.SECONDS);
+            assertThat(count).isNotNull();
+            assertThat(SimpMessageHeaderAccessor.getSessionId(count.getHeaders()))
+                    .isEqualTo("live-session");
+            assertThat(new String((byte[]) count.getPayload(), StandardCharsets.UTF_8))
+                    .contains("\"onlineCount\":1");
+        }
+    }
+
+    @Test
     @DisplayName("첫 구독자 혼자 있어도 구독 직후 현재 인원수를 받는다")
     void firstSubscriberReceivesInitialCountThroughActualBroker() throws InterruptedException {
         try (var context = new AnnotationConfigWebApplicationContext()) {
@@ -125,7 +256,7 @@ class ChatPresenceServiceTest {
             outbound.subscribe(received::add);
             var connect = SimpMessageHeaderAccessor.create(SimpMessageType.CONNECT);
             connect.setSessionId("only-session");
-            connect.setSessionAttributes(new HashMap<>());
+            connect.setSessionAttributes(attributes("only-session"));
             inbound.send(MessageBuilder.createMessage(new byte[0], connect.getMessageHeaders()));
             assertThat(received.poll(3, TimeUnit.SECONDS)).isNotNull();
 
@@ -142,35 +273,41 @@ class ChatPresenceServiceTest {
         }
     }
 
-    private static SessionSubscribeEvent subscribeEvent(
+    private SessionSubscribeEvent subscribeEvent(
             String sessionId, String subscriptionId, String destination) {
         SimpMessageHeaderAccessor accessor =
                 SimpMessageHeaderAccessor.create(SimpMessageType.SUBSCRIBE);
         accessor.setSessionId(sessionId);
         accessor.setSubscriptionId(subscriptionId);
         accessor.setDestination(destination);
+        accessor.setSessionAttributes(attributes(sessionId));
         Message<byte[]> message =
                 MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
         return new SessionSubscribeEvent(new Object(), message);
     }
 
-    private static SessionUnsubscribeEvent unsubscribeEvent(
-            String sessionId, String subscriptionId) {
+    private SessionUnsubscribeEvent unsubscribeEvent(String sessionId, String subscriptionId) {
         SimpMessageHeaderAccessor accessor =
                 SimpMessageHeaderAccessor.create(SimpMessageType.UNSUBSCRIBE);
         accessor.setSessionId(sessionId);
         accessor.setSubscriptionId(subscriptionId);
+        accessor.setSessionAttributes(attributes(sessionId));
         Message<byte[]> message =
                 MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
         return new SessionUnsubscribeEvent(new Object(), message);
     }
 
-    private static SessionDisconnectEvent disconnectEvent(String sessionId) {
+    private SessionDisconnectEvent disconnectEvent(String sessionId) {
         SimpMessageHeaderAccessor accessor =
                 SimpMessageHeaderAccessor.create(SimpMessageType.DISCONNECT);
         accessor.setSessionId(sessionId);
+        accessor.setSessionAttributes(attributes(sessionId));
         Message<byte[]> message =
                 MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
         return new SessionDisconnectEvent(new Object(), message, sessionId, CloseStatus.NORMAL);
+    }
+
+    private Map<String, Object> attributes(String sessionId) {
+        return attributesBySession.computeIfAbsent(sessionId, ignored -> new HashMap<>());
     }
 }

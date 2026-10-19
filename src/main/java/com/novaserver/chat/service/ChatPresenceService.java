@@ -23,14 +23,20 @@ import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 public class ChatPresenceService {
 
     private static final String DESTINATION = "/topic/chat/presence";
+    private static final String DISCONNECTED =
+            ChatPresenceService.class.getName() + ".disconnected";
 
     private final SimpMessagingTemplate messagingTemplate;
     private final Map<String, String> subscriptionIdBySession = new ConcurrentHashMap<>();
 
     /** Presence 채널 구독을 집계하고 인원수를 다시 방송한다. */
-    public void onSubscribe(SessionSubscribeEvent event) {
+    public synchronized void onSubscribe(SessionSubscribeEvent event) {
         SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.wrap(event.getMessage());
         if (!DESTINATION.equals(accessor.getDestination())) {
+            return;
+        }
+        var attributes = accessor.getSessionAttributes();
+        if (attributes == null || Boolean.TRUE.equals(attributes.get(DISCONNECTED))) {
             return;
         }
         subscriptionIdBySession.put(accessor.getSessionId(), accessor.getSubscriptionId());
@@ -38,7 +44,7 @@ public class ChatPresenceService {
     }
 
     /** 본인의 presence 구독이 끊기면 집계에서 빼고 인원수를 다시 방송한다. */
-    public void onUnsubscribe(SessionUnsubscribeEvent event) {
+    public synchronized void onUnsubscribe(SessionUnsubscribeEvent event) {
         SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.wrap(event.getMessage());
         if (subscriptionIdBySession.remove(accessor.getSessionId(), accessor.getSubscriptionId())) {
             broadcast();
@@ -47,7 +53,14 @@ public class ChatPresenceService {
 
     /** 소켓 연결이 끊기면 그 세션을 집계에서 빼고 인원수를 다시 방송한다. */
     @EventListener
-    public void onDisconnect(SessionDisconnectEvent event) {
+    public synchronized void onDisconnect(SessionDisconnectEvent event) {
+        var attributes =
+                SimpMessageHeaderAccessor.getSessionAttributes(event.getMessage().getHeaders());
+        if (attributes != null) {
+            // 대기 중인 SUBSCRIBE도 같은 세션 속성을 공유한다. 종료 표식은 세션과 함께 해제된다.
+            // 표식 확인·추가·제거를 같은 락으로 묶어 disconnect와 구독 완료 간 경합을 막는다.
+            attributes.put(DISCONNECTED, true);
+        }
         if (subscriptionIdBySession.remove(event.getSessionId()) != null) {
             broadcast();
         }
