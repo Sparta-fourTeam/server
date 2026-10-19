@@ -1,3 +1,6 @@
+server:
+  shutdown: immediate # SSE 등 열린 비동기 요청이 남아있어도 graceful shutdown을 기다리지 않고 바로 종료한다
+
 spring:
   datasource:
     url: jdbc:h2:mem:testdb;MODE=MySQL

@@ -15,6 +15,10 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  *
  * <p>같은 유저가 여러 탭·기기로 접속할 수 있어 유저당 복수의 {@link SseEmitter}를 보관한다. 연결 유지는 주기적인 하트비트로 처리하며, 공지(전체
  * 브로드캐스트)·우편함(특정 유저 전송) 기능은 이후 {@link #sendTo}/{@link #broadcast}를 사용해 얹는다.
+ *
+ * <p>구독자는 사실상 GAME 클라이언트뿐이라 WEB과 구분해 관리하지 않는다. 새 GAME 로그인 시 {@link
+ * #disconnectExistingGameSessions}가 그 userId로 열려있는 연결을 전부 강제 로그아웃시킨다 — WEB이 같은 계정으로 SSE를 구독하는 기능이
+ * 생기면 그때는 GAME 연결만 구분해서 끊도록 다시 나눠야 한다.
  */
 @Slf4j
 @Service
@@ -52,6 +56,18 @@ public class SseEmitterService {
     public void broadcast(String eventName, Object data) {
         for (Long userId : emitters.keySet()) {
             sendTo(userId, eventName, data);
+        }
+    }
+
+    /** 지정한 userId로 열려있는 연결에 강제 로그아웃 이벤트를 보내고 끊는다. 다른 기기의 새 GAME 로그인으로 세션이 교체됐을 때 호출한다. */
+    public void disconnectExistingGameSessions(Long userId) {
+        List<SseEmitter> existing = emitters.get(userId);
+        if (existing == null) {
+            return;
+        }
+        for (SseEmitter emitter : existing) {
+            send(emitter, "forceLogout", "다른 기기에서 로그인되어 연결이 종료됩니다");
+            emitter.complete();
         }
     }
 

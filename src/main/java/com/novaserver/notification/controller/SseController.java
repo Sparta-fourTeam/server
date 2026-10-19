@@ -19,7 +19,11 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class SseController {
     private final SseEmitterService sseEmitterService;
 
-    @Operation(summary = "SSE 구독", description = "토큰의 유저 id로 SSE 연결을 맺는다. 연결 직후 connect 이벤트를 보낸다.")
+    @Operation(
+            summary = "SSE 구독",
+            description =
+                    "토큰의 유저 id로 SSE 연결을 맺는다. 연결 직후 connect 이벤트를 보낸다. 계정당 연결 1개만 허용되어, 다른 기기에서 새로"
+                            + " 로그인하면 forceLogout 이벤트를 받고 끊긴다.")
     @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribe(@AuthenticationPrincipal Long userId) {
         return sseEmitterService.subscribe(userId);

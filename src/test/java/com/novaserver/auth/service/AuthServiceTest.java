@@ -25,6 +25,7 @@ import com.novaserver.auth.repository.RefreshTokenRepository;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
 import com.novaserver.auth.social.SocialTokenVerifier;
 import com.novaserver.global.error.ErrorCode;
+import com.novaserver.notification.service.SseEmitterService;
 import com.novaserver.quest.service.UserQuestService;
 import com.novaserver.user.Provider;
 import com.novaserver.user.Role;
@@ -68,6 +69,7 @@ class AuthServiceTest {
     @Mock private TokenBlocklistRepository tokenBlocklistRepository;
     @Mock private SocialTokenVerifier socialTokenVerifier;
     @Mock private GameWebSocketSessionRegistry gameWebSocketSessionRegistry;
+    @Mock private SseEmitterService sseEmitterService;
 
     @InjectMocks private AuthService authService;
 
@@ -114,7 +116,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("GAME 로그인 시 이전에 열려있던 WebSocket 연결을 끊는다")
+    @DisplayName("GAME 로그인 시 이전에 열려있던 WebSocket·SSE 연결을 끊는다")
     void shouldDisconnectExistingWebSocketSession_onGameLogin() {
         // given
         when(userRepository.save(any(User.class)))
@@ -126,6 +128,7 @@ class AuthServiceTest {
 
         // then
         verify(gameWebSocketSessionRegistry).disconnectExisting(USER_ID);
+        verify(sseEmitterService).disconnectExistingGameSessions(USER_ID);
     }
 
     @Test
@@ -237,7 +240,7 @@ class AuthServiceTest {
         authService.refresh(OLD_REFRESH, ClientType.GAME);
 
         // then
-        verifyNoInteractions(gameWebSocketSessionRegistry);
+        verifyNoInteractions(gameWebSocketSessionRegistry, sseEmitterService);
     }
 
     @Test
@@ -271,6 +274,7 @@ class AuthServiceTest {
         assertThat(response.getAccessToken()).isEqualTo("web-access");
         verify(refreshTokenRepository).save(USER_ID, ClientType.WEB, "web-jti");
         verify(gameWebSocketSessionRegistry, never()).disconnectExisting(any());
+        verify(sseEmitterService, never()).disconnectExistingGameSessions(any());
     }
 
     @Test
@@ -724,7 +728,8 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("탈퇴: 유저 데이터를 삭제하고 GAME·WEB의 refresh·access 세션을 지운 뒤 블록리스트에 등록하고 WebSocket 연결도 끊는다")
+    @DisplayName(
+            "탈퇴: 유저 데이터를 삭제하고 GAME·WEB의 refresh·access 세션을 지운 뒤 블록리스트에 등록하고 WebSocket·SSE 연결도 끊는다")
     void shouldDeleteDataAndRevokeTokens_onDeleteUser() {
         // when
         authService.deleteUser(USER_ID);
@@ -737,6 +742,7 @@ class AuthServiceTest {
         verify(accessTokenRepository).delete(USER_ID, ClientType.WEB);
         verify(tokenBlocklistRepository).block(USER_ID);
         verify(gameWebSocketSessionRegistry).disconnectExisting(USER_ID);
+        verify(sseEmitterService).disconnectExistingGameSessions(USER_ID);
     }
 
     @Test
@@ -751,7 +757,8 @@ class AuthServiceTest {
                 userService,
                 refreshTokenRepository,
                 tokenBlocklistRepository,
-                gameWebSocketSessionRegistry);
+                gameWebSocketSessionRegistry,
+                sseEmitterService);
     }
 
     private static void assertStatus(
