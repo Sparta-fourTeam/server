@@ -60,6 +60,7 @@ import org.springframework.web.server.ResponseStatusException;
 class BattleProgressTransactionTest {
     private static final Instant START = Instant.parse("2026-10-18T18:59:50Z");
     @Autowired BattleProgressService service;
+    @Autowired com.novaserver.monster.service.MonsterCatalog monsterCatalog;
     @Autowired BattleSourceAdminService publisher;
     @Autowired com.novaserver.version.service.DataVersionService versions;
     @Autowired BattleSourceRepository sourceRows;
@@ -438,6 +439,52 @@ class BattleProgressTransactionTest {
                 reached,
                 Set.of(1L, 2L),
                 policies.sourceRevision());
+    }
+
+    @Test
+    void monsterDownloadBlocksPublicationUntilBodyAndNumericVersionAreRead() throws Exception {
+        var oldSource = source.snapshot();
+        final int oldVersion = versions.getVersions().getTables().get("Monsters");
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        var changed = json.readTree(oldSource.monstersJson());
+        ((com.fasterxml.jackson.databind.node.ObjectNode) changed.get(0)).put("Hp", 999);
+        var request =
+                new BattleSourceAdminService.Publication(
+                        oldSource.stagesJson(),
+                        changed.toString(),
+                        oldSource.combatJson(),
+                        oldSource.revision());
+        var captured = new java.util.concurrent.CountDownLatch(1);
+        final var release = new java.util.concurrent.CountDownLatch(1);
+        org.mockito.Mockito.doAnswer(
+                        call -> {
+                            var snapshot = call.callRealMethod();
+                            captured.countDown();
+                            if (!release.await(10, java.util.concurrent.TimeUnit.SECONDS)) {
+                                throw new IllegalStateException("reader timeout");
+                            }
+                            return snapshot;
+                        })
+                .when(source)
+                .snapshot();
+        try (var pool = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            var read = pool.submit(() -> monsterCatalog.download());
+            try {
+                assertThat(captured.await(10, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+                var write = pool.submit(() -> publisher.publish(request));
+                assertThatThrownBy(() -> write.get(200, java.util.concurrent.TimeUnit.MILLISECONDS))
+                        .isInstanceOf(java.util.concurrent.TimeoutException.class);
+                release.countDown();
+                var download = read.get(10, java.util.concurrent.TimeUnit.SECONDS);
+                assertThat(download.json()).isEqualTo(oldSource.monstersJson());
+                assertThat(download.version()).isEqualTo(oldVersion);
+                write.get(10, java.util.concurrent.TimeUnit.SECONDS);
+                assertThat(monsterCatalog.download().json()).isEqualTo(changed.toString());
+                assertThat(monsterCatalog.download().version()).isEqualTo(oldVersion + 1);
+            } finally {
+                release.countDown();
+            }
+        }
     }
 
     @Test

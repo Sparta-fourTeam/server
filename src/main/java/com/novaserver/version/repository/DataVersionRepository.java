@@ -11,6 +11,11 @@ import org.springframework.data.repository.query.Param;
 
 /** 데이터 버전 조회, 증가. */
 public interface DataVersionRepository extends JpaRepository<DataVersion, String> {
+    /** 게시자가 잡는 전체 버전 행의 쓰기 락과 충돌하는 공유 읽기 락이다. */
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("select v from DataVersion v where v.tableName = :tableName")
+    Optional<DataVersion> findByTableNameForRead(@Param("tableName") String tableName);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select v from DataVersion v where v.tableName = :tableName")
     Optional<DataVersion> findByTableNameForUpdate(@Param("tableName") String tableName);

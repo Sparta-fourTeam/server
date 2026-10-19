@@ -1,8 +1,6 @@
 package com.novaserver.monster.controller;
 
 import com.novaserver.monster.service.MonsterCatalog;
-import com.novaserver.version.entity.DataTable;
-import com.novaserver.version.service.DataVersionService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -17,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class MonsterDataController {
     private final MonsterCatalog catalog;
-    private final DataVersionService versions;
 
     @Operation(
             summary = "몬스터 전체 데이터 조회",
@@ -26,10 +23,11 @@ public class MonsterDataController {
                             + "버전은 X-Data-Version과 /data/version의 Monsters 값입니다.")
     @GetMapping(value = "/monsters", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> monsters() {
-        int version = versions.getVersions().getTables().get(DataTable.MONSTERS.getKey());
+        var download = catalog.download();
         return ResponseEntity.ok()
-                .header("X-Data-Version", Integer.toString(version))
+                .header("X-Data-Version", Integer.toString(download.version()))
+                .header("X-Battle-Source-Revision", download.sourceRevision())
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(catalog.json());
+                .body(download.json());
     }
 }
