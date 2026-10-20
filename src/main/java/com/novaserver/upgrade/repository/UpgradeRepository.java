@@ -1,6 +1,8 @@
 package com.novaserver.upgrade.repository;
 
 import com.novaserver.upgrade.entity.Upgrade;
+import java.util.Collection;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,4 +20,7 @@ public interface UpgradeRepository extends JpaRepository<Upgrade, String> {
                     + "and u.upgradeId <> :excludeUpgradeId")
     boolean existsByMaterialItemIdAndUpgradeIdNot(
             @Param("itemId") String itemId, @Param("excludeUpgradeId") String excludeUpgradeId);
+
+    @Query("select u from Upgrade u where u.materialItem.itemId in :itemIds")
+    List<Upgrade> findByMaterialItemIds(@Param("itemIds") Collection<String> itemIds);
 }

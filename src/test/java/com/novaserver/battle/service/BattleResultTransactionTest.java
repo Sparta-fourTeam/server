@@ -608,7 +608,7 @@ class BattleResultTransactionTest {
                                     "fixture.equipment.target",
                                     4,
                                     unlockLevel,
-                                    null,
+                                    items.findById(EQUIPMENT).orElseThrow(),
                                     1,
                                     0,
                                     1,
@@ -618,9 +618,6 @@ class BattleResultTransactionTest {
                                     null));
                     playerLevels.saveAndFlush(new PlayerLevelConfig(7, 3, 8));
                 });
-        var target = new ItemRequest();
-        ReflectionTestUtils.setField(target, "targetId", "fixture.equipment.target");
-        itemService.updateItem(EQUIPMENT, target);
         rulesService.saveConfig(RewardRulesFixture.rules());
         transaction.executeWithoutResult(
                 status ->
