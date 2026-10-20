@@ -184,6 +184,9 @@ public enum ErrorCode {
     WALLET_GOLD_NOT_ENOUGH(HttpStatus.CONFLICT, "골드가 부족합니다: %s"),
     ENERGY_NOT_FOUND(HttpStatus.NOT_FOUND, "유저 에너지가 없습니다: %s"),
 
+    // 우편
+    MAIL_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 우편입니다: %s"),
+    MAIL_ALREADY_CLAIMED(HttpStatus.CONFLICT, "이미 수령한 우편입니다: %s"),
 
     // 퀘스트
     QUEST_INVALID(HttpStatus.BAD_REQUEST, "퀘스트 입력이나 정의가 올바르지 않습니다"),

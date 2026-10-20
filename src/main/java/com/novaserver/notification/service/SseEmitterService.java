@@ -13,8 +13,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 /**
  * 유저별 SSE 연결을 관리하고 이벤트를 전송한다.
  *
- * <p>같은 유저가 여러 탭·기기로 접속할 수 있어 유저당 복수의 {@link SseEmitter}를 보관한다. 연결 유지는 주기적인 하트비트로 처리하며, 공지(전체
- * 브로드캐스트)·우편함(특정 유저 전송) 기능은 이후 {@link #sendTo}/{@link #broadcast}를 사용해 얹는다.
+ * <p>같은 유저가 여러 탭·기기로 접속할 수 있어 유저당 복수의 {@link SseEmitter}를 보관한다. 연결 유지는 주기적인 하트비트로 처리하며, 공지는 전체
+ * 브로드캐스트({@link #broadcast})로, 우편함은 특정 유저 전송({@link #sendTo})으로 얹혀 있다.
  *
  * <p>구독자는 사실상 GAME 클라이언트뿐이라 WEB과 구분해 관리하지 않는다. 새 GAME 로그인 시 {@link
  * #disconnectExistingGameSessions}가 그 userId로 열려있는 연결을 전부 강제 로그아웃시킨다 — WEB이 같은 계정으로 SSE를 구독하는 기능이

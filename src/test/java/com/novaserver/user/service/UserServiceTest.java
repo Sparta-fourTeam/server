@@ -2,7 +2,9 @@ package com.novaserver.user.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -20,6 +22,7 @@ import com.novaserver.stage.entity.Stage;
 import com.novaserver.tutorial.entity.Tutorials;
 import com.novaserver.upgrade.entity.Upgrade;
 import com.novaserver.user.dto.UserDataResponse;
+import com.novaserver.user.dto.UserSummaryResponse;
 import com.novaserver.user.entity.User;
 import com.novaserver.user.entity.UserCodex;
 import com.novaserver.user.entity.UserData;
@@ -56,6 +59,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
@@ -183,6 +187,47 @@ class UserServiceTest {
                 userItemRepository,
                 userCodexRepository,
                 userTutorialRepository);
+    }
+
+    @Test
+    @DisplayName("관리자 유저 검색: keyword가 비면 최근 가입순으로 반환한다")
+    void shouldReturnRecentUsers_whenSearchKeywordBlank() {
+        // given
+        User user = mock(User.class);
+        when(user.getId()).thenReturn(USER_ID);
+        when(user.getNickname()).thenReturn("낙서_abc123");
+        when(userRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, 20)))
+                .thenReturn(List.of(user));
+
+        // when
+        List<UserSummaryResponse> responses = userService.searchUsers("", 20);
+
+        // then
+        assertThat(responses).hasSize(1);
+        assertThat(responses.getFirst().userId()).isEqualTo(USER_ID);
+        assertThat(responses.getFirst().nickname()).isEqualTo("낙서_abc123");
+        verify(userRepository, never())
+                .findByNicknameKeyContainingOrderByCreatedAtDesc(any(), any());
+    }
+
+    @Test
+    @DisplayName("관리자 유저 검색: keyword는 소문자로 바꿔 닉네임 부분 일치로 검색한다")
+    void shouldSearchByLowercasedNicknameKey_whenKeywordGiven() {
+        // given
+        User user = mock(User.class);
+        when(user.getId()).thenReturn(USER_ID);
+        when(user.getNickname()).thenReturn("Hero");
+        when(userRepository.findByNicknameKeyContainingOrderByCreatedAtDesc(
+                        "hero", PageRequest.of(0, 10)))
+                .thenReturn(List.of(user));
+
+        // when
+        List<UserSummaryResponse> responses = userService.searchUsers("Hero", 10);
+
+        // then
+        assertThat(responses).hasSize(1);
+        assertThat(responses.getFirst().nickname()).isEqualTo("Hero");
+        verify(userRepository, never()).findAllByOrderByCreatedAtDesc(any());
     }
 
     @Test

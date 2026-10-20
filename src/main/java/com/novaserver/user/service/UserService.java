@@ -8,6 +8,7 @@ import com.novaserver.quest.repository.UserQuestPeriodRepository;
 import com.novaserver.quest.service.UserQuestService;
 import com.novaserver.shop.service.UserShopService;
 import com.novaserver.user.dto.UserDataResponse;
+import com.novaserver.user.dto.UserSummaryResponse;
 import com.novaserver.user.entity.User;
 import com.novaserver.user.entity.UserData;
 import com.novaserver.user.entity.UserEnergy;
@@ -28,8 +29,11 @@ import com.novaserver.user.repository.WalletRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,6 +74,22 @@ public class UserService {
                         user,
                         UserEnergy.MAX_ENERGY,
                         clock.instant().truncatedTo(ChronoUnit.MICROS)));
+    }
+
+    /**
+     * 관리자가 닉네임으로 유저를 검색한다. keyword가 비면 최근 가입순으로 반환한다.
+     *
+     * @param keyword 닉네임 부분 일치 검색어. null·공백이면 전체 대상
+     * @param size 반환할 최대 개수
+     */
+    public List<UserSummaryResponse> searchUsers(String keyword, int size) {
+        PageRequest pageable = PageRequest.of(0, size);
+        List<User> users =
+                (keyword == null || keyword.isBlank())
+                        ? userRepository.findAllByOrderByCreatedAtDesc(pageable)
+                        : userRepository.findByNicknameKeyContainingOrderByCreatedAtDesc(
+                                keyword.toLowerCase(Locale.ROOT), pageable);
+        return users.stream().map(UserSummaryResponse::from).toList();
     }
 
     /** 토큰의 유저 id로 유저 상태 정보를 조회한다. */

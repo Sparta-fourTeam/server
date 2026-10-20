@@ -83,6 +83,13 @@ public class SecurityConfig {
                                                                 Role.ADMIN.name()),
                                                         AuthorityAuthorizationManager.hasAuthority(
                                                                 "CLIENT_WEB")))
+                                        .requestMatchers("/api/admin/users/**")
+                                        .access(
+                                                AuthorizationManagers.allOf(
+                                                        AuthorityAuthorizationManager.hasRole(
+                                                                Role.ADMIN.name()),
+                                                        AuthorityAuthorizationManager.hasAuthority(
+                                                                "CLIENT_WEB")))
                                         .requestMatchers("/api/admin/**")
                                         .hasRole(Role.ADMIN.name())
                                         .anyRequest()
