@@ -188,6 +188,12 @@ public enum ErrorCode {
     MAIL_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 우편입니다: %s"),
     MAIL_ALREADY_CLAIMED(HttpStatus.CONFLICT, "이미 수령한 우편입니다: %s"),
 
+    // 친구
+    FRIEND_SELF_REQUEST(HttpStatus.BAD_REQUEST, "자기 자신에게 친구 신청을 보낼 수 없습니다: %s"),
+    FRIEND_ALREADY_FRIEND(HttpStatus.CONFLICT, "이미 친구인 유저입니다: %s"),
+    FRIEND_REQUEST_ALREADY_SENT(HttpStatus.CONFLICT, "이미 친구 신청을 보낸 유저입니다: %s"),
+    FRIEND_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 친구 신청입니다: %s"),
+
     // 퀘스트
     QUEST_INVALID(HttpStatus.BAD_REQUEST, "퀘스트 입력이나 정의가 올바르지 않습니다"),
     QUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 퀘스트/상자입니다: %s"),
