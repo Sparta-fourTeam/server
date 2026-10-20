@@ -1,10 +1,12 @@
 package com.novaserver.global.error;
 
+import java.util.Arrays;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.error.ErrorAttributeOptions;
 import org.springframework.boot.web.error.ErrorAttributeOptions.Include;
 import org.springframework.boot.webmvc.error.DefaultErrorAttributes;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.FieldError;
@@ -34,6 +36,8 @@ public class CustomErrorAttributes extends DefaultErrorAttributes {
             }
         } else if (error instanceof HttpMessageNotReadableException) {
             attrs.put("message", ErrorCode.INVALID_REQUEST.getMessage());
+        } else if (status == HttpStatus.UNAUTHORIZED.value()) {
+            log.warn("401 errorCode={} path={}", resolveUnauthorizedCode(attrs), attrs.get("path"));
         } else if (status >= 500) {
             log.error("서버 오류: {}", attrs.get("path"), error);
             if (!(error instanceof ResponseStatusException)) {
@@ -41,5 +45,15 @@ public class CustomErrorAttributes extends DefaultErrorAttributes {
             }
         }
         return attrs;
+    }
+
+    /** 401 응답 메시지로 에러 코드를 찾는다. 코드 없이 던져진 401이면 UNKNOWN. */
+    private static String resolveUnauthorizedCode(Map<String, Object> attrs) {
+        return Arrays.stream(ErrorCode.values())
+                .filter(code -> code.getStatus() == HttpStatus.UNAUTHORIZED)
+                .filter(code -> code.getMessage().equals(attrs.get("message")))
+                .map(ErrorCode::name)
+                .findFirst()
+                .orElse("UNKNOWN");
     }
 }
