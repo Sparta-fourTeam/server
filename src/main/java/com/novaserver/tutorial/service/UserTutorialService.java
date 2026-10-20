@@ -17,6 +17,7 @@ import com.novaserver.user.repository.UserTutorialRepository;
 import com.novaserver.user.repository.UserUpgradeRepository;
 import com.novaserver.user.service.UserRewardService;
 import java.time.Clock;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -69,9 +70,11 @@ public class UserTutorialService {
                 tutorials
                         .findById(id)
                         .orElseThrow(() -> ErrorCode.TUTORIAL_NOT_FOUND.exception(id));
+        // 응답은 저장 전 엔티티에서 만들므로 DB datetime(6)과 같은 마이크로초로 맞춘다.
+        var now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         var row = previous.orElseGet(() -> new UserTutorial(user, definition));
         if (dialogue) {
-            row.recordDialogue(clock.instant());
+            row.recordDialogue(now);
         } else {
             UserData account =
                     data.findByUserIdForUpdate(userId)
@@ -93,7 +96,7 @@ public class UserTutorialService {
             // setLevel은 Local과 동일하게 정확한 레벨 시작점으로 맞춘다. 일반 보상 EXP와 분리한다.
             account.addExp(after - before);
             rewards.grant(userId, 0, reward.getGold(), items);
-            row.complete(reward.getGold(), items, before, after, clock.instant());
+            row.complete(reward.getGold(), items, before, after, now);
         }
         states.saveAndFlush(row);
         return TutorialReceiptResponse.from(row, dialogue);
