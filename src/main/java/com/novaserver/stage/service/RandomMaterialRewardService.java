@@ -87,12 +87,27 @@ public class RandomMaterialRewardService {
                 items.findAllById(ids).stream()
                         .collect(Collectors.toMap(Item::getItemId, item -> item));
         Map<String, String> targets = new HashMap<>();
-        for (String id : ids) {
-            Item item = catalog.get(id);
-            if (item == null || item.getTargetId() == null || item.getTargetId().isBlank()) {
+        if (kind.equals("EquipmentMaterial")) {
+            // 장비 재료는 TargetId를 두지 않고 강화(Upgrade)의 재료로 대상을 찾는다 (1재료 → 1강화)
+            var linked = upgrades.findByMaterialItemIds(ids);
+            if (linked.size() != ids.size()) {
                 throw ErrorCode.BATTLE_REWARD_UNAVAILABLE.exception();
             }
-            targets.put(id, item.getTargetId());
+            linked.forEach(
+                    upgrade ->
+                            targets.put(
+                                    upgrade.getMaterialItem().getItemId(), upgrade.getUpgradeId()));
+            if (targets.size() != ids.size()) {
+                throw ErrorCode.BATTLE_REWARD_UNAVAILABLE.exception();
+            }
+        } else {
+            for (String id : ids) {
+                Item item = catalog.get(id);
+                if (item == null || item.getTargetId() == null || item.getTargetId().isBlank()) {
+                    throw ErrorCode.BATTLE_REWARD_UNAVAILABLE.exception();
+                }
+                targets.put(id, item.getTargetId());
+            }
         }
         Map<String, Integer> unlockLevels;
         if (kind.equals("SkillMaterial")) {

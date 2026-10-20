@@ -73,7 +73,9 @@ class RandomMaterialRewardServiceTest {
         Upgrade equipment = mock(Upgrade.class);
         lenient().when(equipment.getUnlockLevel()).thenReturn(1);
         lenient().when(equipment.getUpgradeId()).thenReturn("fixture.equipment.target");
+        lenient().when(equipment.getMaterialItem()).thenReturn(new Item(EQUIPMENT, null));
         lenient().when(upgrades.findAllById(any())).thenReturn(List.of(equipment));
+        lenient().when(upgrades.findByMaterialItemIds(any())).thenReturn(List.of(equipment));
     }
 
     @Test
@@ -133,7 +135,9 @@ class RandomMaterialRewardServiceTest {
         Upgrade equipment = mock(Upgrade.class);
         when(equipment.getUpgradeId()).thenReturn("fixture.equipment.target");
         when(equipment.getUnlockLevel()).thenReturn(rawLevel);
+        when(equipment.getMaterialItem()).thenReturn(new Item(EQUIPMENT, null));
         when(upgrades.findAllById(any())).thenReturn(List.of(equipment));
+        when(upgrades.findByMaterialItemIds(any())).thenReturn(List.of(equipment));
         var linked = mock(SkillRepository.UpgradeUnlock.class);
         when(linked.getProgressionId()).thenReturn("fixture.equipment.target");
         when(linked.getUnlockLevel()).thenReturn(linkedLevel);
@@ -155,6 +159,7 @@ class RandomMaterialRewardServiceTest {
                 .isInstanceOf(ResponseStatusException.class);
         when(levels.levelAt(0)).thenReturn(1);
         when(items.findAllById(any())).thenReturn(List.of(new Item(EQUIPMENT, null)));
+        when(upgrades.findByMaterialItemIds(any())).thenReturn(List.of());
         assertThatThrownBy(() -> resolver.resolve(1L, reward, rules))
                 .isInstanceOf(ResponseStatusException.class);
         when(items.findAllById(any())).thenReturn(RewardRulesFixture.catalog());
