@@ -167,6 +167,9 @@ public class AuthService {
      * <p>DB 쓰기가 유저 생성 한 번뿐이고 공개키 조회로 오래 걸릴 수 있어 트랜잭션으로 묶지 않는다. 같은 계정의 첫 로그인이 동시에 들어와도 한쪽이 먼저 만든 유저를
      * 다시 조회해 둘 다 성공한다.
      *
+     * <p>기존 세션 유무를 확인하지 않는 버전이다. 호출하는 쪽이 이미 로그인 중이어도 끊고 들어갈지 판단을 끝낸 경우({@code /social/link}용 조회,
+     * {@code /web/login})에 쓴다.
+     *
      * @param idToken 클라이언트가 Google·Apple에서 받은 ID 토큰 원문
      * @param provider ID 토큰을 발급한 소셜 provider
      * @param clientType 발급할 토큰의 클라이언트 종류. 엔드포인트(컨트롤러)가 정한다
@@ -176,12 +179,56 @@ public class AuthService {
      *     SOCIAL_PROVIDER_UNAVAILABLE
      */
     public TokenResponse socialLogIn(String idToken, Provider provider, ClientType clientType) {
+        return socialLogIn(idToken, provider, clientType, true);
+    }
+
+    /**
+     * Google·Apple ID 토큰을 검증하고 토큰을 발급한다. 처음 로그인한 계정이면 유저를 새로 만든다.
+     *
+     * <p>{@code forceLogin}이 false인데 이미 그 clientType으로 로그인 중인 기기가 있으면(= {@link
+     * AccessTokenRepository}에 현재 access 토큰이 남아있으면) 끊지 않고 ALREADY_LOGGED_IN을 던진다. 클라이언트는 이 응답을 보고
+     * 사용자에게 "다른 기기에서 로그인 중입니다. 강제로 로그인할까요?"를 물어본 뒤, 동의하면 {@code forceLogin=true}로 다시 요청한다.
+     *
+     * <p>이 확인과 토큰 발급은 {@link AccessTokenRepository#tryAcquireLoginLock}으로 직렬화한다. 같은 계정으로 두 기기가
+     * {@code forceLogin=false}로 동시에 요청하면, 잠금을 먼저 얻은 쪽만 "로그인 중 아님"을 확인하고 토큰을 발급하며 나머지는 즉시
+     * ALREADY_LOGGED_IN을 받는다 — 잠금 없이 둘 다 먼저 상태를 읽고 나중에 쓰면, 확인·발급 사이의 틈에 둘 다 "로그인 중 아님"으로 보고 통과해버릴 수
+     * 있다.
+     *
+     * @param idToken 클라이언트가 Google·Apple에서 받은 ID 토큰 원문
+     * @param provider ID 토큰을 발급한 소셜 provider
+     * @param clientType 발급할 토큰의 클라이언트 종류. 엔드포인트(컨트롤러)가 정한다
+     * @param forceLogin true면 기존 세션을 바로 끊고 로그인한다
+     * @return access·refresh 토큰
+     * @throws org.springframework.web.server.ResponseStatusException 소셜 provider가 아니면
+     *     UNSUPPORTED_PROVIDER, ID 토큰 검증에 실패하면 INVALID_SOCIAL_TOKEN, 공개키를 받아오지 못하면
+     *     SOCIAL_PROVIDER_UNAVAILABLE, forceLogin이 false인데 이미 로그인 중이거나 동시에 로그인 중이면
+     *     ALREADY_LOGGED_IN
+     */
+    public TokenResponse socialLogIn(
+            String idToken, Provider provider, ClientType clientType, boolean forceLogin) {
         String sub = socialTokenVerifier.verify(provider, idToken);
         User user =
                 userRepository
                         .findByProviderAndAccountId(provider, sub)
                         .orElseGet(() -> createSocialUser(provider, sub));
-        return issueTokensForNewLogin(user.getId(), clientType, user.getRole());
+        if (forceLogin) {
+            return issueTokensForNewLogin(user.getId(), clientType, user.getRole());
+        }
+        return logInWithoutDisturbingExistingSession(user, clientType);
+    }
+
+    private TokenResponse logInWithoutDisturbingExistingSession(User user, ClientType clientType) {
+        if (!accessTokenRepository.tryAcquireLoginLock(user.getId(), clientType)) {
+            throw ErrorCode.ALREADY_LOGGED_IN.exception();
+        }
+        try {
+            if (accessTokenRepository.findTokenId(user.getId(), clientType).isPresent()) {
+                throw ErrorCode.ALREADY_LOGGED_IN.exception();
+            }
+            return issueTokensForNewLogin(user.getId(), clientType, user.getRole());
+        } finally {
+            accessTokenRepository.releaseLoginLock(user.getId(), clientType);
+        }
     }
 
     private User createSocialUser(Provider provider, String sub) {

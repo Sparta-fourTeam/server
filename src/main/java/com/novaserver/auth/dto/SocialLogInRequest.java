@@ -22,4 +22,9 @@ public class SocialLogInRequest {
             requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "idToken은 필수입니다")
     private String idToken;
+
+    @Schema(
+            description = "true면 이미 로그인 중인 세션이 있어도 끊고 강제로 로그인한다. false면 이미 로그인 중일 때 409를 반환한다",
+            defaultValue = "true")
+    private boolean forceLogin = true;
 }

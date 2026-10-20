@@ -1,11 +1,6 @@
 package com.novaserver.auth.controller;
 
-import com.novaserver.auth.dto.AccessTokenResponse;
-import com.novaserver.auth.dto.GuestLogInRequest;
-import com.novaserver.auth.dto.GuestSignUpResponse;
-import com.novaserver.auth.dto.RefreshRequest;
-import com.novaserver.auth.dto.SocialLogInRequest;
-import com.novaserver.auth.dto.TokenResponse;
+import com.novaserver.auth.dto.*;
 import com.novaserver.auth.jwt.ClientType;
 import com.novaserver.auth.jwt.RefreshCookieFactory;
 import com.novaserver.auth.service.AuthService;
@@ -16,12 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.CookieValue;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /** 게스트·소셜 로그인, 토큰 재발급, Web 로그인·로그아웃 API. */
 @Tag(name = "인증", description = "게스트·소셜 로그인, 토큰 재발급, Web 로그인·로그아웃 API")
@@ -52,12 +42,17 @@ public class AuthController {
             summary = "소셜 로그인",
             description =
                     "Google·Apple ID 토큰을 검증하고 토큰을 발급합니다. 처음 로그인한 계정이면 자동으로 가입합니다. "
+                            + "forceLogin이 false이고 이미 다른 기기에서 로그인 중이면 409를 반환합니다. "
+                            + "forceLogin이 true면 기존 세션을 끊고 로그인합니다. "
                             + "지원하지 않는 provider면 400, ID 토큰 검증에 실패하면 401, "
                             + "Google·Apple 공개키 서버에 연결할 수 없으면 503을 반환합니다.")
     @PostMapping("/social/login")
     public TokenResponse socialLogIn(@Valid @RequestBody SocialLogInRequest request) {
         return authService.socialLogIn(
-                request.getIdToken(), request.getProvider(), ClientType.GAME);
+                request.getIdToken(),
+                request.getProvider(),
+                ClientType.GAME,
+                request.isForceLogin());
     }
 
     @Operation(
