@@ -38,7 +38,7 @@ public class UserEnergyRecoveryService {
     /** 조회만으로 구매 상태 생성·기간 초기화·자연회복 정산 등 어떤 저장도 수행하지 않는다. */
     @Transactional(readOnly = true)
     public EnergyPurchaseStateResponse getPurchaseState(Long userId) {
-        Instant now = clock.instant();
+        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         LocalDate day = policy.purchaseDay(now);
         wallets.findByUserId(userId)
                 .orElseThrow(() -> ErrorCode.WALLET_NOT_FOUND.exception(userId));

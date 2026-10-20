@@ -224,7 +224,8 @@ public class BattleProgressService {
     }
 
     private State state(BattleProgress row) {
-        return new State(currentAck(row, 0, clock.instant()), row.isClosed());
+        return new State(
+                currentAck(row, 0, clock.instant().truncatedTo(ChronoUnit.MICROS)), row.isClosed());
     }
 
     private ProgressAck currentAck(BattleProgress row, int delta, Instant now) {
