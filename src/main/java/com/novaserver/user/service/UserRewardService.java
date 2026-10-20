@@ -5,27 +5,32 @@ import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
 import com.novaserver.user.entity.User;
 import com.novaserver.user.entity.UserData;
+import com.novaserver.user.entity.UserEnergy;
 import com.novaserver.user.entity.UserItem;
 import com.novaserver.user.entity.Wallet;
 import com.novaserver.user.repository.UserDataRepository;
+import com.novaserver.user.repository.UserEnergyRepository;
 import com.novaserver.user.repository.UserItemRepository;
 import com.novaserver.user.repository.UserRepository;
 import com.novaserver.user.repository.WalletRepository;
+import java.time.Clock;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 유저에게 경험치·골드·아이템을 지급하는 공용 서비스. */
+/** 유저에게 경험치·골드·젬·에너지·아이템을 지급하는 공용 서비스. */
 @Service
 @RequiredArgsConstructor
 public class UserRewardService {
     private final UserRepository userRepository;
     private final UserDataRepository userDataRepository;
     private final WalletRepository walletRepository;
+    private final UserEnergyRepository userEnergyRepository;
     private final UserItemRepository userItemRepository;
     private final ItemRepository itemRepository;
+    private final Clock clock;
 
     /**
      * 경험치·골드·아이템을 지급한다. 각 값이 0이면 해당 지급은 건너뛴다.
@@ -37,6 +42,22 @@ public class UserRewardService {
      */
     @Transactional
     public void grant(Long userId, int exp, int gold, Map<String, Integer> items) {
+        grant(userId, exp, gold, 0, 0, items);
+    }
+
+    /**
+     * 경험치·골드·젬·에너지·아이템을 지급한다. 각 값이 0이면 해당 지급은 건너뛴다.
+     *
+     * @param userId 유저 id
+     * @param exp 지급할 경험치
+     * @param gold 지급할 골드
+     * @param gem 지급할 젬(유료 재화)
+     * @param energy 지급할 에너지
+     * @param items 지급할 아이템별 수량
+     */
+    @Transactional
+    public void grant(
+            Long userId, int exp, int gold, int gem, int energy, Map<String, Integer> items) {
         if (exp > 0) {
             UserData userData =
                     userDataRepository
@@ -45,15 +66,35 @@ public class UserRewardService {
             userData.addExp(exp);
         }
 
-        if (gold > 0) {
+        if (gold > 0 || gem > 0) {
             Wallet wallet =
                     walletRepository
                             .findByUserIdForUpdate(userId)
                             .orElseThrow(() -> ErrorCode.WALLET_NOT_FOUND.exception(userId));
-            if ((long) wallet.getGold() + gold > Integer.MAX_VALUE) {
-                throw ErrorCode.REWARD_GOLD_OVERFLOW.exception();
+            if (gold > 0) {
+                if ((long) wallet.getGold() + gold > Integer.MAX_VALUE) {
+                    throw ErrorCode.REWARD_GOLD_OVERFLOW.exception();
+                }
+                wallet.addGold(gold);
             }
-            wallet.addGold(gold);
+            if (gem > 0) {
+                if ((long) wallet.getGem() + gem > Integer.MAX_VALUE) {
+                    throw ErrorCode.REWARD_GEM_OVERFLOW.exception();
+                }
+                wallet.addGem(gem);
+            }
+        }
+
+        if (energy > 0) {
+            UserEnergy userEnergy =
+                    userEnergyRepository
+                            .findByUserIdForUpdate(userId)
+                            .orElseThrow(() -> ErrorCode.ENERGY_NOT_FOUND.exception(userId));
+            userEnergy.recover(clock.instant());
+            if ((long) userEnergy.getEnergyStored() + energy > Integer.MAX_VALUE) {
+                throw ErrorCode.ENERGY_STORAGE_LIMIT.exception();
+            }
+            userEnergy.addEnergy(energy, clock.instant());
         }
 
         if (items != null) {

@@ -39,6 +39,7 @@ public enum ErrorCode {
     ALREADY_LINKED_PROVIDER(HttpStatus.CONFLICT, "이미 소셜 계정과 연동되어 있습니다"),
     SOCIAL_ACCOUNT_ALREADY_LINKED(HttpStatus.CONFLICT, "이미 다른 계정에 연동된 소셜 계정입니다"),
     ACCOUNT_DELETED(HttpStatus.UNAUTHORIZED, "삭제된 계정입니다"),
+    ALREADY_LOGGED_IN(HttpStatus.CONFLICT, "이미 다른 기기에서 로그인 중입니다"),
 
     // 데이터 버전
     DATA_TABLE_NOT_FOUND(HttpStatus.BAD_REQUEST, "존재하지 않는 테이블입니다: %s"),
@@ -178,9 +179,14 @@ public enum ErrorCode {
     INVALID_NICKNAME(HttpStatus.BAD_REQUEST, "닉네임은 한글, 영문, 숫자, 밑줄 2~20자여야 합니다"),
     INVALID_AVATAR(HttpStatus.BAD_REQUEST, "선택할 수 없는 초상입니다"),
     USER_DATA_NOT_FOUND(HttpStatus.NOT_FOUND, "유저 데이터가 없습니다: %s"),
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 유저입니다: %s"),
     WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "유저 지갑이 없습니다: %s"),
     WALLET_GOLD_NOT_ENOUGH(HttpStatus.CONFLICT, "골드가 부족합니다: %s"),
     ENERGY_NOT_FOUND(HttpStatus.NOT_FOUND, "유저 에너지가 없습니다: %s"),
+
+    // 우편
+    MAIL_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 우편입니다: %s"),
+    MAIL_ALREADY_CLAIMED(HttpStatus.CONFLICT, "이미 수령한 우편입니다: %s"),
 
     // 퀘스트
     QUEST_INVALID(HttpStatus.BAD_REQUEST, "퀘스트 입력이나 정의가 올바르지 않습니다"),

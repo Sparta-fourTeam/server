@@ -370,6 +370,91 @@ class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("소셜 로그인: forceLogin이 false이고 로그인 중인 세션이 없으면 정상적으로 로그인하고 잠금을 해제한다")
+    void shouldLogIn_whenForceLoginFalseAndNoExistingSession() {
+        // given
+        when(socialTokenVerifier.verify(Provider.GOOGLE, ID_TOKEN)).thenReturn(SUB);
+        when(userRepository.findByProviderAndAccountId(Provider.GOOGLE, SUB))
+                .thenReturn(Optional.of(withId(new User(Provider.GOOGLE, SUB))));
+        when(accessTokenRepository.tryAcquireLoginLock(USER_ID, ClientType.GAME)).thenReturn(true);
+        when(accessTokenRepository.findTokenId(USER_ID, ClientType.GAME))
+                .thenReturn(Optional.empty());
+        stubTokens();
+
+        // when
+        TokenResponse response =
+                authService.socialLogIn(ID_TOKEN, Provider.GOOGLE, ClientType.GAME, false);
+
+        // then
+        assertThat(response.getAccessToken()).isEqualTo("access-token");
+        verify(refreshTokenRepository).save(USER_ID, ClientType.GAME, "refresh-jti");
+        verify(accessTokenRepository).releaseLoginLock(USER_ID, ClientType.GAME);
+    }
+
+    @Test
+    @DisplayName("소셜 로그인: forceLogin이 false인데 이미 로그인 중이면 409를 던지고 토큰을 발급하지 않지만 잠금은 해제한다")
+    void shouldThrowAlreadyLoggedIn_whenForceLoginFalseAndSessionExists() {
+        // given
+        when(socialTokenVerifier.verify(Provider.GOOGLE, ID_TOKEN)).thenReturn(SUB);
+        when(userRepository.findByProviderAndAccountId(Provider.GOOGLE, SUB))
+                .thenReturn(Optional.of(withId(new User(Provider.GOOGLE, SUB))));
+        when(accessTokenRepository.tryAcquireLoginLock(USER_ID, ClientType.GAME)).thenReturn(true);
+        when(accessTokenRepository.findTokenId(USER_ID, ClientType.GAME))
+                .thenReturn(Optional.of("existing-jti"));
+
+        // when & then
+        assertStatus(
+                () -> authService.socialLogIn(ID_TOKEN, Provider.GOOGLE, ClientType.GAME, false),
+                HttpStatus.CONFLICT,
+                ErrorCode.ALREADY_LOGGED_IN);
+        verify(refreshTokenRepository, never()).save(anyLong(), any(), anyString());
+        verify(jwtProvider, never()).createAccessToken(any(), any(), any());
+        verify(accessTokenRepository).releaseLoginLock(USER_ID, ClientType.GAME);
+    }
+
+    @Test
+    @DisplayName("소셜 로그인: forceLogin이 false이고 동시에 다른 로그인이 잠금을 쥐고 있으면 409를 던지고 상태를 확인하지 않는다")
+    void shouldThrowAlreadyLoggedIn_whenForceLoginFalseAndLockAlreadyHeld() {
+        // given — 두 기기가 동시에 forceLogin=false로 요청해 경쟁하는 상황을 흉내낸다. 잠금을 먼저 가져간
+        // 다른 요청이 있으면, 이 요청은 findTokenId로 상태를 보지도 않고 바로 거절해야 한다. 그렇지 않으면
+        // 확인·발급 사이의 틈에 둘 다 "로그인 중 아님"으로 보고 통과하는 경쟁 상태가 재현된다.
+        when(socialTokenVerifier.verify(Provider.GOOGLE, ID_TOKEN)).thenReturn(SUB);
+        when(userRepository.findByProviderAndAccountId(Provider.GOOGLE, SUB))
+                .thenReturn(Optional.of(withId(new User(Provider.GOOGLE, SUB))));
+        when(accessTokenRepository.tryAcquireLoginLock(USER_ID, ClientType.GAME)).thenReturn(false);
+
+        // when & then
+        assertStatus(
+                () -> authService.socialLogIn(ID_TOKEN, Provider.GOOGLE, ClientType.GAME, false),
+                HttpStatus.CONFLICT,
+                ErrorCode.ALREADY_LOGGED_IN);
+        verify(accessTokenRepository, never()).findTokenId(any(), any());
+        verify(accessTokenRepository, never()).releaseLoginLock(any(), any());
+        verify(jwtProvider, never()).createAccessToken(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("소셜 로그인: forceLogin이 true면 이미 로그인 중이어도 잠금 없이 기존 세션을 끊고 로그인한다")
+    void shouldLogIn_whenForceLoginTrueEvenWithExistingSession() {
+        // given
+        when(socialTokenVerifier.verify(Provider.GOOGLE, ID_TOKEN)).thenReturn(SUB);
+        when(userRepository.findByProviderAndAccountId(Provider.GOOGLE, SUB))
+                .thenReturn(Optional.of(withId(new User(Provider.GOOGLE, SUB))));
+        stubTokens();
+
+        // when
+        TokenResponse response =
+                authService.socialLogIn(ID_TOKEN, Provider.GOOGLE, ClientType.GAME, true);
+
+        // then
+        assertThat(response.getAccessToken()).isEqualTo("access-token");
+        verify(accessTokenRepository, never()).tryAcquireLoginLock(any(), any());
+        verify(accessTokenRepository, never()).findTokenId(any(), any());
+        verify(gameWebSocketSessionRegistry).disconnectExisting(USER_ID);
+        verify(sseEmitterService).disconnectExistingGameSessions(USER_ID);
+    }
+
+    @Test
     @DisplayName("소셜 로그인: 처음 로그인한 계정이면 provider와 sub로 유저를 만들고 토큰을 발급한다")
     void shouldCreateUser_whenSocialUserIsNew() {
         // given

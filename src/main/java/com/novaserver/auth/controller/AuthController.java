@@ -52,12 +52,17 @@ public class AuthController {
             summary = "소셜 로그인",
             description =
                     "Google·Apple ID 토큰을 검증하고 토큰을 발급합니다. 처음 로그인한 계정이면 자동으로 가입합니다. "
+                            + "forceLogin이 false이고 이미 다른 기기에서 로그인 중이면 409를 반환합니다. "
+                            + "forceLogin이 true면 기존 세션을 끊고 로그인합니다. "
                             + "지원하지 않는 provider면 400, ID 토큰 검증에 실패하면 401, "
                             + "Google·Apple 공개키 서버에 연결할 수 없으면 503을 반환합니다.")
     @PostMapping("/social/login")
     public TokenResponse socialLogIn(@Valid @RequestBody SocialLogInRequest request) {
         return authService.socialLogIn(
-                request.getIdToken(), request.getProvider(), ClientType.GAME);
+                request.getIdToken(),
+                request.getProvider(),
+                ClientType.GAME,
+                request.isForceLogin());
     }
 
     @Operation(
