@@ -482,7 +482,7 @@ class UserEnergyRecoveryTransactionTest {
         when(clock.getZone()).thenReturn(ZoneOffset.UTC);
         mvc.perform(get("/api/user/energy/purchase-state").header("Authorization", authorization()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.serverTime").value("2026-10-18T19:00:00.123456789Z"))
+                .andExpect(jsonPath("$.serverTime").value("2026-10-18T19:00:00.123456Z"))
                 .andExpect(jsonPath("$.purchaseDay").value("2026-10-19"))
                 .andExpect(jsonPath("$.purchaseCount").value(0))
                 .andExpect(jsonPath("$.remainingPurchases").value(LIMIT))

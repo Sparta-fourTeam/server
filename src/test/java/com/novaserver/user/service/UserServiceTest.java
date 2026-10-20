@@ -90,31 +90,57 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        ZoneId zone = ZoneId.systemDefault();
-        Clock clock = Clock.fixed(NOW, zone);
+        userService = serviceWith(Clock.fixed(NOW, ZoneId.systemDefault()));
+    }
 
-        userService =
-                new UserService(
-                        userRepository,
-                        userDataRepository,
-                        walletRepository,
-                        userEnergyRepository,
-                        userEnergyRecoveryReceiptRepository,
-                        userEnergyPurchaseStateRepository,
-                        userStageProgressRepository,
-                        userUpgradeRepository,
-                        userUpgradeRequestRepository,
-                        userItemRepository,
-                        userCodexRepository,
-                        userTutorialRepository,
-                        battleRepository,
-                        battleResultRepository,
-                        stageRatingClaims,
-                        clock,
-                        quests,
-                        questPeriods,
-                        questClaims,
-                        shops);
+    private UserService serviceWith(Clock clock) {
+        return new UserService(
+                userRepository,
+                userDataRepository,
+                walletRepository,
+                userEnergyRepository,
+                userEnergyRecoveryReceiptRepository,
+                userEnergyPurchaseStateRepository,
+                userStageProgressRepository,
+                userUpgradeRepository,
+                userUpgradeRequestRepository,
+                userItemRepository,
+                userCodexRepository,
+                userTutorialRepository,
+                battleRepository,
+                battleResultRepository,
+                stageRatingClaims,
+                clock,
+                quests,
+                questPeriods,
+                questClaims,
+                shops);
+    }
+
+    @Test
+    @DisplayName("Clock이 나노초를 줘도 에너지 시각은 DB와 같은 마이크로초로 저장·응답한다")
+    void shouldTruncateEnergyTimestampsToMicros_whenClockHasNanos() {
+        // given
+        Instant nanos = Instant.parse("2026-10-19T01:02:03.123456789Z");
+        Instant micros = Instant.parse("2026-10-19T01:02:03.123456Z");
+        UserService nanoService = serviceWith(Clock.fixed(nanos, ZoneId.of("UTC")));
+        UserEnergy full = new UserEnergy(null, UserEnergy.MAX_ENERGY, micros.minusSeconds(60));
+        when(userEnergyRepository.findByUserId(USER_ID)).thenReturn(Optional.of(full));
+        when(userEnergyRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(full));
+        when(userDataRepository.findByUserId(USER_ID))
+                .thenReturn(Optional.of(new UserData(null, 0)));
+        when(walletRepository.findByUserId(USER_ID))
+                .thenReturn(Optional.of(new Wallet(null, 0, 0)));
+
+        // when
+        Instant usedAt = nanoService.useEnergy(USER_ID, 1);
+        UserDataResponse response = nanoService.getMe(USER_ID);
+
+        // then
+        assertThat(usedAt).isEqualTo(micros);
+        assertThat(full.getEnergyUpdatedAt()).isEqualTo(micros);
+        assertThat(response.getEnergyUpdatedAt()).isNotNull();
+        assertThat(response.getEnergyUpdatedAt().getNano() % 1000).isZero();
     }
 
     @Test

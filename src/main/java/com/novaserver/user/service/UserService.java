@@ -27,6 +27,7 @@ import com.novaserver.user.repository.UserUpgradeRequestRepository;
 import com.novaserver.user.repository.WalletRepository;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
@@ -64,7 +65,11 @@ public class UserService {
     public void createInitialState(User user) {
         userDataRepository.save(new UserData(user, 0));
         walletRepository.save(new Wallet(user, 0, 0));
-        userEnergyRepository.save(new UserEnergy(user, UserEnergy.MAX_ENERGY, clock.instant()));
+        userEnergyRepository.save(
+                new UserEnergy(
+                        user,
+                        UserEnergy.MAX_ENERGY,
+                        clock.instant().truncatedTo(ChronoUnit.MICROS)));
     }
 
     /** 토큰의 유저 id로 유저 상태 정보를 조회한다. */
@@ -81,7 +86,7 @@ public class UserService {
                         storedEnergy.getUser(),
                         storedEnergy.getEnergyStored(),
                         storedEnergy.getEnergyUpdatedAt());
-        energy.recover(clock.instant());
+        energy.recover(clock.instant().truncatedTo(ChronoUnit.MICROS));
 
         return UserDataResponse.of(
                 userData,
@@ -129,7 +134,7 @@ public class UserService {
     @Transactional
     public Instant useEnergy(Long userId, int amount) {
         UserEnergy energy = findEnergyForUpdate(userId);
-        Instant now = clock.instant();
+        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
 
         energy.recover(now);
         energy.consume(amount, now);
@@ -140,7 +145,7 @@ public class UserService {
     @Transactional
     public void grantEnergy(Long userId, int amount) {
         UserEnergy energy = findEnergyForUpdate(userId);
-        Instant now = clock.instant();
+        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
 
         energy.recover(now);
         energy.addEnergy(amount, now);
