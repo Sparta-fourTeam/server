@@ -182,7 +182,9 @@ class TutorialAccountTransactionTest {
 
     @Test
     void dialogueHasNoRewardOrCompletionAndRestoresWithAnotherToken() throws Exception {
+        when(clock.instant()).thenReturn(Instant.parse("2026-10-19T01:02:03.123456789Z"));
         var first = service.complete(userId, INTRO + ".dialogue");
+        assertThat(first.recordedAt()).isEqualTo(Instant.parse("2026-10-19T01:02:03.123456Z"));
         when(clock.instant()).thenReturn(Instant.parse("2026-10-19T02:00:00Z"));
         assertThat(service.complete(userId, INTRO + ".dialogue")).isEqualTo(first);
         assertThat(first.gold()).isZero();
@@ -206,7 +208,9 @@ class TutorialAccountTransactionTest {
     void completionPersistsExactReceiptAfterDefinitionAndBalanceChanges() throws Exception {
         clear(userId, STAGE);
         tx.executeWithoutResult(s -> data.findByUserIdForUpdate(userId).orElseThrow().addExp(90));
+        when(clock.instant()).thenReturn(Instant.parse("2026-10-19T01:02:03.123456789Z"));
         var first = service.complete(userId, INTRO);
+        assertThat(first.recordedAt()).isEqualTo(Instant.parse("2026-10-19T01:02:03.123456Z"));
         assertThat(first.expBefore()).isEqualTo(90);
         assertThat(first.expAfter()).isEqualTo(31);
         assertThat(first.gold()).isEqualTo(13);
