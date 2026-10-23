@@ -35,7 +35,7 @@
 | DRAINING + 차단 ON | 새 battle/start와 새 GAME 로그인/가입은 503 `DRAINING`. 기존 battle progress/open/state/abandon/end/cancel 및 필요한 refresh는 최소 버전 차단보다 우선해 허용 |
 | MAINTENANCE + 차단 ON | GAME HTTP 요청·기존 WS SEND·예약 정리 및 DataVersion 초기화 쓰기 차단. 503 `MAINTENANCE` |
 
-공개 status·health·전용 WEB 로그인·WEB 관리자 경로는 GAME gate 대상이 아니다. 최소 버전은 기존 전투 결과의 동일 payload 재전송을 차단하지 않는다. 기존 end 멱등 처리 코드는 변경하지 않았다.
+공개 status·health·전용 WEB 로그인·WEB 관리자 경로는 GAME gate 대상이 아니다. 최소 버전은 기존 전투 결과의 동일 payload 재전송을 차단하지 않는다. 기존 end 멱등 처리 코드는 변경하지 않았다. 이미 연결된 WebSocket SEND도 현재 정책을 다시 적용한다. platform/build는 HTTP 핸드셰이크 당시 세션에 보존한 값만 사용하며 STOMP native header로 덮어쓸 수 없다. metadata 없는 기존 연결은 allowLegacy를 따른다.
 
 **이 gate는 백업용 쓰기 동결이 아니다.** 이미 통과한 요청·트랜잭션, WEB 관리자 쓰기, 시작 시 Hibernate ddl-auto, 수동 SQL·다른 프로세스는 별도다. 백업 전에는 모든 Spring/Next 컨테이너와 DB 엔진을 정상 종료하고 진행 중 작업을 확인해야 한다. 이번에 이 동작을 실행하지 않았다.
 
@@ -47,7 +47,7 @@
 
 DRAINING의 기존 전투 이어하기는 최소 build보다 우선한다. 권장 안내를 보는 동안 foreground 재검사가 요청돼도 이전 정상 응답으로 진입하지 않고 다시 조회한다. foreground 검사 취소·실패는 자동 Resume 허가가 아니며, 해당 검사가 직접 Pause한 전투만 정상 허가 후 Resume한다.
 
-네트워크/타임아웃/잘못된 JSON은 '상태 확인 실패'로 막고 재시도한다. 정상 점검이라고 거짓 표시하지 않는다. 최초 status 404만 기존 서버 rollout 전 advisory 호환으로 처리하며, 같은 실행에서 지원되는 status를 본 뒤의 404는 실패다. 따라서 API gate 없이 클라이언트 화면만 보안 수단으로 삼으면 안 된다. Local 인증 backend는 정책 네트워크 조회를 하지 않는다. 스토어 자체의 권장 업데이트 조회 실패는 기존처럼 skip 가능하다.
+네트워크/타임아웃/잘못된 JSON은 '상태 확인 실패'로 막고 재시도한다. 정상 점검이라고 거짓 표시하지 않는다. 최초 status 404만 기존 서버 rollout 전 advisory 호환으로 처리하며, 같은 실행에서 지원되는 status를 본 뒤의 404는 실패다. 따라서 API gate 없이 클라이언트 화면만 보안 수단으로 삼으면 안 된다. Android/iOS 기기는 인증 backend·개발 인증 override와 무관하게 공개 정책을 조회한다. Editor의 Local 오프라인 모드만 정책 네트워크 조회를 생략한다. 스토어 자체의 권장 업데이트 조회 실패는 기존처럼 skip 가능하다.
 
 미지원 구버전에 새 점검/업데이트 팝업을 소급 적용할 수 없다. metadata 없는 앱을 막기 위해 allowLegacy=false를 올리면 기존 앱은 일반 로그인 실패/재시도만 볼 수 있다. 헤더 없는 앱은 플랫폼·정확한 build를 구분할 수 없으므로 이 일괄 차단 영향은 별도 승인해야 한다. 실제 설치 앱과 배포 트랙 상태는 이번에 가정하지 않았다.
 
@@ -65,7 +65,7 @@ DRAINING의 기존 전투 이어하기는 최소 build보다 우선한다. 권�
 
 ## 배포·활성화·rollback
 
-빈 DB의 첫 기동은 Spring 한 인스턴스만 시작한다. 공개 health만으로 완료를 판정하지 말고, `DataVersionInitializer`의 초기 버전 행 전체(`DataTable`의 각 key와 `_revision`)가 commit됐고 프로세스가 계속 정상인지 확인한 뒤 두 번째 색상을 시작한다. 현 코드의 `existsById → save`는 동시 최초 기동에 안전하지 않다. 두 자동 DDL writer의 테이블/외래키 경합 경고와 `_revision` 중복 INSERT로 인한 프로세스 종료를 격리 MySQL에서 재현했다. 점검 OFF에서도 이 기존 초기화 특성은 남는다. 이번에는 초기화 알고리즘이나 스키마 마이그레이션 체계를 바꾸지 않고 순차 기동을 검증했다. `/actuator/health/readiness`가 익명 접근 가능하다고 가정하거나 이를 위해 보안 예외를 임의로 추가하지 않는다.
+빈 DB의 첫 기동은 Spring 한 인스턴스만 시작한다. 공개 health만으로 완료를 판정하지 말고, `DataVersionInitializer`의 초기 버전 행 전체(`DataTable`의 각 key와 `_revision`)가 commit됐고 프로세스가 계속 정상인지 확인한 뒤 두 번째 색상을 시작한다. MAINTENANCE 또는 명시한 정책 파일 오류로 시작 시 초기화를 미뤘다면 1초 간격으로 상태를 확인하고 해제 후 초기화 트랜잭션을 재시도한다. commit 성공 뒤에는 더 이상 초기화 DB 조회/쓰기를 하지 않는다. 이 재시도는 복수 인스턴스의 최초 초기화를 직렬화하지 않으므로 `existsById → save`는 동시 최초 기동에 안전하지 않다. 두 자동 DDL writer의 테이블/외래키 경합 경고와 `_revision` 중복 INSERT로 인한 프로세스 종료를 격리 MySQL에서 재현했다. 점검 OFF에서도 이 기존 초기화 특성은 남는다. 이번에는 초기화 알고리즘이나 스키마 마이그레이션 체계를 바꾸지 않고 순차 기동을 검증했다. `/actuator/health/readiness`가 익명 접근 가능하다고 가정하거나 이를 위해 보안 예외를 임의로 추가하지 않는다.
 
 1. 로컬 검증·코드 검토·ApiDog 계약 반영. 서버/status/nginx 구성은 차단 OFF·legacy 허용 상태로 승인 후 배포한다.
 2. 새 앱을 실제 이용자의 플랫폼·지역·기기·배포 트랙에 제공한다. 설치/업데이트 가능 여부, build 헤더, 시작 화면·스토어 복귀·오프라인·이어하기·결과 재전송을 실기기 QA한다.
