@@ -4,6 +4,7 @@ import com.novaserver.chat.dto.ChatMessageRequest;
 import com.novaserver.chat.dto.ChatMessageResponse;
 import com.novaserver.chat.entity.ChatMessage;
 import com.novaserver.chat.repository.ChatMessageRepository;
+import com.novaserver.clientpolicy.ClientPolicySource;
 import com.novaserver.user.dto.UserProfileResponse;
 import com.novaserver.user.service.UserProfileService;
 import java.time.Clock;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class ChatService {
+    @Autowired(required = false)
+    private ClientPolicySource clientPolicy;
+
     private static final int RECENT_MESSAGE_LIMIT = 30;
     private static final int RETENTION_DAYS = 30;
 
@@ -65,6 +70,9 @@ public class ChatService {
     @Scheduled(cron = "0 0 4 * * *", zone = "UTC")
     @Transactional
     public void deleteOldMessages() {
+        if (clientPolicy != null && clientPolicy.current().isMaintenance()) {
+            return;
+        }
         chatMessageRepository.deleteByCreatedAtBefore(
                 clock.instant().minus(RETENTION_DAYS, ChronoUnit.DAYS));
     }

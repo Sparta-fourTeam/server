@@ -1,0 +1,16 @@
+# Include inside the existing HTTPS server block. This is a template, not an applied config.
+# Mount the SAME HOST DIRECTORY into nginx and BOTH Spring colors, read-only.
+# Do not mount a single policy.json inode: atomic rename must remain visible in all containers.
+location = /api/client/status {
+    root /etc/client-policy;
+    try_files /policy.json =503;
+    default_type application/json;
+    add_header Cache-Control "no-store, max-age=0" always;
+    add_header X-Content-Type-Options nosniff always;
+    etag off;
+    if_modified_since off;
+    open_file_cache off;
+}
+# Keep the existing /api/ proxy routes. Stop Spring/Next.js for the cold backup,
+# but KEEP nginx running so this public file remains available. No DB/auth dependency.
+# If the whole EC2 or nginx stops, this endpoint also becomes unavailable.

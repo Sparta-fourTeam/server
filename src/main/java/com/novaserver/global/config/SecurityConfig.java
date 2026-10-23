@@ -6,8 +6,12 @@ import com.novaserver.auth.jwt.JwtAuthenticationFilter;
 import com.novaserver.auth.jwt.JwtProvider;
 import com.novaserver.auth.repository.AccessTokenRepository;
 import com.novaserver.auth.repository.TokenBlocklistRepository;
+import com.novaserver.clientpolicy.ClientPolicy;
+import com.novaserver.clientpolicy.ClientPolicyFilter;
+import com.novaserver.clientpolicy.ClientPolicySource;
 import com.novaserver.user.Role;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -33,6 +37,7 @@ public class SecurityConfig {
 
     private static final String[] PUBLIC_PATHS = {
         "/api/auth/**",
+        "/api/client/status",
         "/actuator/health",
         "/error",
         "/api/v3/api-docs/**",
@@ -45,6 +50,7 @@ public class SecurityConfig {
     private final AccessTokenRepository accessTokenRepository;
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
     private final JwtAccessDeniedHandler accessDeniedHandler;
+    private final ObjectProvider<ClientPolicySource> clientPolicy;
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -102,7 +108,16 @@ public class SecurityConfig {
                 .addFilterBefore(
                         new JwtAuthenticationFilter(
                                 jwtProvider, tokenBlocklistRepository, accessTokenRepository),
-                        UsernamePasswordAuthenticationFilter.class);
+                        UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(
+                        new ClientPolicyFilter(
+                                () -> {
+                                    ClientPolicySource source = clientPolicy.getIfAvailable();
+                                    return source == null
+                                            ? ClientPolicy.disabled()
+                                            : source.current();
+                                }),
+                        JwtAuthenticationFilter.class);
         return http.build();
     }
 }

@@ -1,5 +1,6 @@
 package com.novaserver.notice.service;
 
+import com.novaserver.clientpolicy.ClientPolicySource;
 import com.novaserver.notice.dto.NoticeRequest;
 import com.novaserver.notice.dto.NoticeResponse;
 import com.novaserver.notice.entity.Notice;
@@ -8,6 +9,7 @@ import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class NoticeService {
+    @Autowired(required = false)
+    private ClientPolicySource clientPolicy;
+
     private static final int RECENT_NOTICE_LIMIT = 20;
     private static final int RETENTION_DAYS = 7;
 
@@ -49,6 +54,9 @@ public class NoticeService {
     @Scheduled(cron = "0 0 4 * * *", zone = "UTC")
     @Transactional
     public void deleteOldNotices() {
+        if (clientPolicy != null && clientPolicy.current().isMaintenance()) {
+            return;
+        }
         noticeRepository.deleteByCreatedAtBefore(
                 clock.instant().minus(RETENTION_DAYS, ChronoUnit.DAYS));
     }

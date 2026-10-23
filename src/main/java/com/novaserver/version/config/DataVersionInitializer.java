@@ -1,9 +1,11 @@
 package com.novaserver.version.config;
 
+import com.novaserver.clientpolicy.ClientPolicySource;
 import com.novaserver.version.entity.DataTable;
 import com.novaserver.version.entity.DataVersion;
 import com.novaserver.version.repository.DataVersionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
@@ -13,11 +15,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @RequiredArgsConstructor
 public class DataVersionInitializer implements ApplicationRunner {
+    @Autowired(required = false)
+    private ClientPolicySource clientPolicy;
+
     private final DataVersionRepository dataVersionRepository;
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        if (clientPolicy != null && clientPolicy.current().isMaintenance()) {
+            return;
+        }
         createIfAbsent(DataVersion.REVISION_KEY);
         for (DataTable table : DataTable.values()) {
             createIfAbsent(table.getKey());

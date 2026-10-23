@@ -2,11 +2,13 @@ package com.novaserver.global.config;
 
 import com.novaserver.auth.jwt.GameWebSocketSessionRegistry;
 import com.novaserver.chat.service.ChatPresenceService;
+import com.novaserver.clientpolicy.ClientPolicySource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessageDeliveryException;
 import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageType;
@@ -41,6 +43,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private static final String BROKER_PREFIX = "/topic";
 
     private final ObjectProvider<ChatPresenceService> presence;
+    private final ObjectProvider<ClientPolicySource> clientPolicy;
     private final GameWebSocketSessionRegistry gameWebSocketSessionRegistry;
 
     @Override
@@ -49,6 +52,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 new ExecutorChannelInterceptor() {
                     @Override
                     public Message<?> preSend(Message<?> message, MessageChannel channel) {
+                        ClientPolicySource source = clientPolicy.getIfAvailable();
+                        var type = SimpMessageHeaderAccessor.getMessageType(message.getHeaders());
+                        if (type == SimpMessageType.MESSAGE
+                                && source != null
+                                && source.current().isMaintenance()) {
+                            throw new MessageDeliveryException("MAINTENANCE");
+                        }
                         return presence.getObject().prepareMessage(message);
                     }
 
