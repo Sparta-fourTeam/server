@@ -224,7 +224,12 @@ public enum ErrorCode {
     ENERGY_PURCHASE_LIMIT(HttpStatus.CONFLICT, "일일 에너지 구매 한도에 도달했습니다."),
     ENERGY_STORAGE_LIMIT(HttpStatus.CONFLICT, "에너지 저장 범위를 초과합니다."),
     ENERGY_REQUEST_CONFLICT(HttpStatus.CONFLICT, "같은 회복 요청 키의 경로를 변경할 수 없습니다."),
-    AD_REWARD_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "광고 보상 검증이 준비되지 않았습니다.");
+    AD_REWARD_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "광고 보상 검증이 준비되지 않았습니다."),
+
+    // 몬스터
+    MONSTER_INVALID(HttpStatus.BAD_REQUEST, "몬스터 데이터가 올바르지 않습니다: %s"),
+    MONSTER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 몬스터입니다: %s"),
+    MONSTER_DUPLICATED(HttpStatus.CONFLICT, "이미 존재하는 몬스터입니다: %s");
 
     private final HttpStatus status;
     private final String message;
