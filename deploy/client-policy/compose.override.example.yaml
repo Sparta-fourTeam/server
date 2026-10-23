@@ -1,0 +1,18 @@
+# REVIEW ONLY. Never merge by replacing an existing service's environment/volumes wholesale.
+# Apply only after both image colors contain ClientPolicySource/ClientPolicyFilter.
+services:
+  spring-blue:
+    environment:
+      APP_CLIENT_POLICY_FILE: /etc/client-policy/policy.json
+    volumes:
+      - ./client-policy:/etc/client-policy:ro
+  spring-green:
+    environment:
+      APP_CLIENT_POLICY_FILE: /etc/client-policy/policy.json
+    volumes:
+      - ./client-policy:/etc/client-policy:ro
+  nginx:
+    volumes:
+      - ./client-policy:/etc/client-policy:ro
+# Include nginx-status.conf.example into the existing server block, then validate nginx -t.
+# The example deliberately does NOT change DNS, ingress, images, or the running containers.

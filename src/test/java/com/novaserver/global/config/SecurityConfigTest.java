@@ -261,6 +261,12 @@ class SecurityConfigTest {
         callWithToken("/api/admin/codex/ping", token).andExpect(status().isOk());
     }
 
+    @Test
+    @DisplayName("앱 시작 정책은 토큰 없이 조회 가능하다")
+    void shouldAllowPublicClientStatus() throws Exception {
+        mockMvc.perform(get("/api/client/status")).andExpect(status().isOk());
+    }
+
     private ResultActions callWithToken(String path, String token) throws Exception {
         return mockMvc.perform(get(path).header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
     }
@@ -285,6 +291,11 @@ class SecurityConfigTest {
 
     @RestController
     static class TestController {
+
+        @GetMapping("/client/status")
+        String clientStatus() {
+            return "off";
+        }
 
         @GetMapping("/player/me")
         Long me(@AuthenticationPrincipal Long userId) {

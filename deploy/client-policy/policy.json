@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "revision": "initial-off",
+  "enforcementEnabled": false,
+  "mode": "NORMAL",
+  "message": "",
+  "estimatedEnd": null,
+  "retryAfterSeconds": 30,
+  "allowLegacy": true,
+  "platforms": {}
+}

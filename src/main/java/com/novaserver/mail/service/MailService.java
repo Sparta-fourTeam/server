@@ -1,5 +1,6 @@
 package com.novaserver.mail.service;
 
+import com.novaserver.clientpolicy.ClientPolicySource;
 import com.novaserver.global.error.ErrorCode;
 import com.novaserver.item.entity.Item;
 import com.novaserver.item.repository.ItemRepository;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +37,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class MailService {
+    @Autowired(required = false)
+    private ClientPolicySource clientPolicy;
+
     private static final int RETENTION_DAYS = 30;
 
     private final MailRepository mailRepository;
@@ -191,6 +196,9 @@ public class MailService {
     @Scheduled(cron = "0 0 4 * * *", zone = "UTC")
     @Transactional
     public void deleteOldMails() {
+        if (clientPolicy != null && clientPolicy.current().isMaintenance()) {
+            return;
+        }
         Instant cutoff = clock.instant().minus(RETENTION_DAYS, ChronoUnit.DAYS);
         // 첨부 아이템은 cascade·orphanRemoval로만 같이 지워지므로, 벌크 delete가 아니라 엔티티 단위로
         // 지운다(MailRepository#findAllByCreatedAtBefore 참고).

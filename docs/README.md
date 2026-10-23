@@ -6,6 +6,7 @@
 | --- | --- |
 | [architecture.md](architecture.md) | 계층 구조, 클라이언트와 나누는 기준 |
 | [conventions.md](conventions.md) | API·예외·JPA·코드 스타일·테스트 규칙 |
+| [client-access-policy.md](client-access-policy.md) | 앱 시작 점검·최소 버전 정책, 공유 정책 파일 연결, 활성화·rollback |
 
 - 공통 작업 규칙(브랜치, 커밋, PR): 조직 `.github` 레포의 `CONTRIBUTING.md`
 - 스테이지 흐름과 실패·복구 처리: 클라이언트 레포 `docs/flows.md`

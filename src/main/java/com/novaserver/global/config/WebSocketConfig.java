@@ -2,11 +2,15 @@ package com.novaserver.global.config;
 
 import com.novaserver.auth.jwt.GameWebSocketSessionRegistry;
 import com.novaserver.chat.service.ChatPresenceService;
+import com.novaserver.clientpolicy.ClientPolicyFilter;
+import com.novaserver.clientpolicy.ClientPolicyHandshakeInterceptor;
+import com.novaserver.clientpolicy.ClientPolicySource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessageDeliveryException;
 import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageType;
@@ -41,6 +45,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private static final String BROKER_PREFIX = "/topic";
 
     private final ObjectProvider<ChatPresenceService> presence;
+    private final ObjectProvider<ClientPolicySource> clientPolicy;
     private final GameWebSocketSessionRegistry gameWebSocketSessionRegistry;
 
     @Override
@@ -49,6 +54,34 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 new ExecutorChannelInterceptor() {
                     @Override
                     public Message<?> preSend(Message<?> message, MessageChannel channel) {
+                        ClientPolicySource source = clientPolicy.getIfAvailable();
+                        var type = SimpMessageHeaderAccessor.getMessageType(message.getHeaders());
+                        if (type == SimpMessageType.MESSAGE && source != null) {
+                            var attributes =
+                                    SimpMessageHeaderAccessor.getSessionAttributes(
+                                            message.getHeaders());
+                            var identity =
+                                    attributes == null
+                                            ? null
+                                            : attributes.get(
+                                                    ClientPolicyHandshakeInterceptor
+                                                            .IDENTITY_ATTRIBUTE);
+                            var build =
+                                    identity
+                                                    instanceof
+                                                    ClientPolicyHandshakeInterceptor.Identity value
+                                            ? value
+                                            : null;
+                            String rejection =
+                                    ClientPolicyFilter.rejection(
+                                            source.current(),
+                                            ENDPOINT,
+                                            build == null ? null : build.platform(),
+                                            build == null ? null : build.build());
+                            if (rejection != null) {
+                                throw new MessageDeliveryException(rejection);
+                            }
+                        }
                         return presence.getObject().prepareMessage(message);
                     }
 
@@ -85,7 +118,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.setPreserveReceiveOrder(true);
-        registry.addEndpoint(ENDPOINT).setAllowedOriginPatterns("*");
+        registry.addEndpoint(ENDPOINT)
+                .addInterceptors(new ClientPolicyHandshakeInterceptor())
+                .setAllowedOriginPatterns("*");
     }
 
     @Override
