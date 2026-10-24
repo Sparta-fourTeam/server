@@ -2,6 +2,12 @@ name: Deploy Server (Spring)
 
 on:
   workflow_dispatch:
+    inputs:
+      verify_only:
+        description: 'Verify SSH and image transfer/load only; do not deploy'
+        type: boolean
+        required: true
+        default: true
 
 concurrency:
   group: deploy-server
@@ -17,6 +23,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-24.04-arm
+    outputs:
+      digest: ${{ steps.image.outputs.digest }}
     steps:
       - uses: actions/checkout@v4
 
@@ -42,6 +50,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: docker/build-push-action@v6
+        id: image
         with:
           context: .
           push: true
@@ -53,11 +62,54 @@ jobs:
 
   deploy:
     needs: build
+    permissions:
+      contents: read
+      packages: read
     runs-on: ubuntu-latest
     steps:
+      - name: Refuse retired host
+        env:
+          TARGET_HOST: ${{ secrets.EC2_HOST }}
+        run: test "$TARGET_HOST" = "43.200.159.45"
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare exact ARM64 image with existing CI authentication
+        id: image
+        env:
+          DIGEST: ${{ needs.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          docker pull --platform linux/arm64 "$IMAGE@$DIGEST"
+          image_id=$(docker image inspect --format '{{.Id}}' "$IMAGE@$DIGEST")
+          docker save -o release-image.tar "$image_id"
+          echo "id=$image_id" >> "$GITHUB_OUTPUT"
+          echo "checksum=$(sha256sum release-image.tar | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+      - uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          fingerprint: SHA256:d80XQqK05KxfVtk3wR5S/80skfLXO+4qd862Ksf389c
+          source: release-image.tar
+          target: /home/ec2-user/app/releases/spring-${{ github.run_id }}-${{ github.run_attempt }}
       - uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          script: cd ~/app && ./deploy.sh spring
+          fingerprint: SHA256:d80XQqK05KxfVtk3wR5S/80skfLXO+4qd862Ksf389c
+          script: |
+            set -eu
+            archive=/home/ec2-user/app/releases/spring-${{ github.run_id }}-${{ github.run_attempt }}/release-image.tar
+            trap 'rm -f "$archive"' EXIT
+            printf '%s  %s\n' '${{ steps.image.outputs.checksum }}' "$archive" | sha256sum -c -
+            sudo -n docker load -i "$archive" >/dev/null
+            cd /home/ec2-user/app
+            if [ '${{ inputs.verify_only }}' = 'true' ]; then
+              ./deploy.sh spring '${{ steps.image.outputs.id }}' --verify-only
+            else
+              ./deploy.sh spring '${{ steps.image.outputs.id }}'
+            fi
