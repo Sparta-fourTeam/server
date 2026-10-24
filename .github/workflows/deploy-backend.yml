@@ -17,6 +17,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-24.04-arm
+    outputs:
+      digest: ${{ steps.image.outputs.digest }}
     steps:
       - uses: actions/checkout@v4
 
@@ -33,6 +35,8 @@ jobs:
           ./gradlew bootJar
           find build/libs -name '*.jar' ! -name '*-plain.jar' -exec cp {} app.jar \;
 
+      - name: Deployment safety tests
+        run: python3 -m unittest discover -s deploy -p test_deploy_app.py
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/login-action@v3
@@ -42,6 +46,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: docker/build-push-action@v6
+        id: image
         with:
           context: .
           push: true
@@ -53,11 +58,50 @@ jobs:
 
   deploy:
     needs: build
+    permissions:
+      contents: read
+      packages: read
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - name: Refuse retired host or unexpected user
+        env:
+          TARGET_HOST: ${{ secrets.EC2_HOST }}
+          TARGET_USER: ${{ secrets.EC2_USER }}
+        run: |
+          test "$TARGET_HOST" = "43.200.159.45"
+          test "$TARGET_USER" = "ec2-user"
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare exact ARM64 image (no registry credential sent to EC2)
+        id: transfer
+        env:
+          DIGEST: ${{ needs.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          docker pull --platform linux/arm64 "$IMAGE@$DIGEST"
+          image_id=$(docker image inspect --format '{{.Id}}' "$IMAGE@$DIGEST")
+          docker save -o deploy/release-image.tar "$image_id"
+          echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
+          echo "archive_hash=$(sha256sum deploy/release-image.tar | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+      - uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          fingerprint: SHA256:d80XQqK05KxfVtk3wR5S/80skfLXO+4qd862Ksf389c
+          source: deploy/deploy-app.py,deploy/release-image.tar
+          target: /home/ec2-user/app/releases/spring-green-${{ github.run_id }}-${{ github.run_attempt }}
+          strip_components: 1
       - uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          script: cd ~/app && ./deploy.sh spring
+          fingerprint: SHA256:d80XQqK05KxfVtk3wR5S/80skfLXO+4qd862Ksf389c
+          script: >-
+            sudo -n python3 /home/ec2-user/app/releases/spring-green-${{ github.run_id }}-${{ github.run_attempt }}/deploy-app.py
+            spring-green '${{ steps.transfer.outputs.image_id }}' '${{ steps.transfer.outputs.archive_hash }}'
